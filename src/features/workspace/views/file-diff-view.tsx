@@ -25,6 +25,7 @@ import {
   loadFileContentDraft,
   resolveSeedContent,
 } from "@/features/workspace/lib/file-content-drafts";
+import { countLineDiffStats } from "@/features/workspace/lib/line-diff-stats";
 import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -39,15 +40,6 @@ type FileDiffViewProps = {
 
 function fileNameFromPath(filePath: string) {
   return filePath.split("/").pop() || filePath;
-}
-
-function countLineDelta(original: string, modified: string) {
-  const originalLines = original === "" ? 0 : original.split("\n").length;
-  const modifiedLines = modified === "" ? 0 : modified.split("\n").length;
-  // Coarse +/- for the toolbar until we ship true hunk stats.
-  const added = Math.max(0, modifiedLines - originalLines);
-  const removed = Math.max(0, originalLines - modifiedLines);
-  return { added, removed };
 }
 
 export function FileDiffView({
@@ -108,7 +100,11 @@ export function FileDiffView({
     project?.syncedAt != null &&
     file._creationTime > project.syncedAt;
   const isStaged = file?.staged === true;
-  const { added, removed } = countLineDelta(original, modified);
+  const { added, removed } = useMemo(
+    () =>
+      countLineDiffStats(isNew ? "" : original, modified),
+    [isNew, original, modified],
+  );
   const hasChanges = original !== modified || isNew;
 
   const runAction = async (action: () => Promise<unknown>) => {
@@ -177,6 +173,16 @@ export function FileDiffView({
         </div>
 
         <div className="flex items-center gap-1">
+          <span
+            className={cn(
+              "mr-1 hidden rounded-sm px-1.5 py-0.5 text-[10px] font-medium sm:inline",
+              isStaged
+                ? "bg-ws-link/15 text-ws-link"
+                : "bg-ws-hover text-ws-text-muted",
+            )}
+          >
+            {isStaged ? "Staged" : "Unstaged"}
+          </span>
           <Button
             type="button"
             variant="ghost"

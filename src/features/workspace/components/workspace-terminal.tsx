@@ -196,15 +196,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   }, [isDark]);
 
   return (
-    <div className="flex h-full flex-col border-t border-ws-border-subtle bg-ws-panel">
-      <div className="flex h-7 shrink-0 items-center border-b border-ws-border-subtle bg-ws-panel px-3">
-        <p className="text-[11px] font-semibold tracking-wide text-ws-text">
-          Terminal
-        </p>
-        <p className="ml-2 text-[10px] text-ws-text-muted">
-          Tab · → suggest · ↑↓ history
-        </p>
-      </div>
+    <div className="flex h-full flex-col bg-ws-panel">
       <div
         ref={containerRef}
         className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 font-terminal [&_.xterm]:h-full [&_.xterm-viewport]:bg-transparent! [&_.xterm-screen]:h-full"

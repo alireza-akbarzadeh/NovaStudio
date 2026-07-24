@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
   MoonIcon,
@@ -20,6 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import {
   useWorkspaceStore,
   type LeftPanelView,
@@ -115,8 +117,10 @@ export function WorkspaceActivityBar() {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const { errorCount, warningCount } = useMonacoProblems();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -125,6 +129,7 @@ export function WorkspaceActivityBar() {
   );
 
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
+  const problemCount = errorCount + warningCount;
 
   const onSelect = (view: LeftPanelView) => {
     if (leftPanelView === view && sidebarOpen) {
@@ -136,11 +141,26 @@ export function WorkspaceActivityBar() {
 
   const utilityItems: UtilityItem[] = [
     {
+      id: "problems",
+      label: "Problems",
+      shortcut: "⌘⇧M",
+      icon: (
+        <span className="relative">
+          <CircleAlertIcon className="size-4" strokeWidth={1.75} />
+          {problemCount > 0 ? (
+            <span className="absolute -top-1 -right-1 size-1.5 rounded-full bg-ws-danger-bg" />
+          ) : null}
+        </span>
+      ),
+      active: terminalOpen && bottomPanelTab === "problems",
+      onClick: () => runCommand("showProblems"),
+    },
+    {
       id: "terminal",
       label: "Terminal",
       shortcut: "⌘J",
       icon: <SquareTerminalIcon className="size-4" strokeWidth={1.75} />,
-      active: terminalOpen,
+      active: terminalOpen && bottomPanelTab === "terminal",
       onClick: () => runCommand("toggleTerminal"),
     },
     {

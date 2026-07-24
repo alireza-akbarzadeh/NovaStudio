@@ -7,6 +7,7 @@ import {
 export type CommandId =
   | "toggleSidebar"
   | "toggleTerminal"
+  | "showProblems"
   | "toggleAiPanel"
   | "openSettings"
   | "toggleSettings"
@@ -60,6 +61,12 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+j",
     allowInInput: true,
     run: () => store().toggleTerminal(),
+  },
+  {
+    id: "showProblems",
+    shortcut: "mod+shift+m",
+    allowInInput: true,
+    run: () => store().showProblemsPanel(),
   },
   {
     id: "toggleAiPanel",

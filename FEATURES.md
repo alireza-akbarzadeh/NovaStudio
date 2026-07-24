@@ -27,9 +27,9 @@ These are the biggest daily-friction gaps you called out.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 1 | **Git Diff Viewer** | `done` | Monaco DiffEditor: working tree vs last sync. Open from Changes list. |
-| 2 | **Go to Definition / Click component → source** | `review` | ⌘/Ctrl-click JSX/imports jump to the defining file. |
-| 3 | **Git UX polish** | `todo` | Per-file +/− hunk counts, open file vs open diff, better empty/sync states, discard from diff. |
-| 4 | **Problems / Diagnostics panel** | `todo` | Errors & warnings list → click jumps to line. |
+| 2 | **Go to Definition / Click component → source** | `done` | ⌘/Ctrl-click JSX/imports jump to the defining file. |
+| 3 | **Git UX polish** | `done` | Per-file +/− hunk counts, open file vs open diff, better empty/sync states, discard from diff. |
+| 4 | **Problems / Diagnostics panel** | `review` | Errors & warnings list → click jumps to line. |
 | 5 | **Command palette (⌘K)** | `todo` | Files + commands + recent in one fuzzy palette. |
 
 ### Sprint B — Editor polish
@@ -101,7 +101,7 @@ These are the biggest daily-friction gaps you called out.
 - Route: `/projects/[id]/diff/...`
 - Coarse +/- line counts in the toolbar (true hunk stats come in Git UX polish)
 
-### 2. Go to Definition — ready for review
+### 2. Go to Definition — `done`
 
 - ⌘/Ctrl-click or **F12** on:
   - Import paths (`from "./Button"`)
@@ -110,3 +110,18 @@ These are the biggest daily-friction gaps you called out.
 - Resolves relative + `@/` aliases against project files
 - Opens the target file tab and reveals the export / definition line
 - Skips HTML tags and npm packages (`react`, `next/link`, …)
+
+### 3. Git UX polish — `done`
+
+- Real **+/- line counts** (LCS-based) on each change row and in the diff toolbar
+- Clearer rows: filename + parent folder, click → diff, file icon → edit
+- Empty states: “Working tree clean” and “Change tracking not ready” with CTA
+- Changes header: file count · staged/unstaged · hint
+- Diff toolbar shows Staged / Unstaged badge
+
+### 4. Problems / Diagnostics panel — ready for review
+
+- Bottom panel tabs: **Problems** · **Terminal**
+- Lists Monaco markers (errors / warnings / info) from open editors
+- Click a problem → opens file and jumps to the line
+- Status bar error/warning counts · activity bar · **⌘⇧M**

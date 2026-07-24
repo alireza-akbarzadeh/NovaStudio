@@ -58,9 +58,18 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
     );
   }
 
+  if (project === null) {
+    return (
+      <p className="px-3 py-4 text-[11px] text-ws-text-muted">
+        Project unavailable.
+      </p>
+    );
+  }
+
   const isGitHub = project.source === "github" && project.githubRepoUrl;
   const changeCount = changedFiles?.length ?? 0;
   const stagedCount = changedFiles?.filter((file) => file.staged).length ?? 0;
+  const unstagedCount = changeCount - stagedCount;
   const canPush =
     isGitHub &&
     stagedCount > 0 &&
@@ -202,13 +211,28 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
+            {changeCount > 0 && isGitHub ? (
+              <div className="flex items-center gap-2 border-b border-ws-border-subtle px-3 py-1.5 text-[10px] text-ws-text-muted">
+                <span>
+                  {changeCount} file{changeCount === 1 ? "" : "s"} changed
+                </span>
+                <span className="text-ws-border">·</span>
+                <span>
+                  {stagedCount} staged
+                  {unstagedCount > 0 ? ` · ${unstagedCount} unstaged` : ""}
+                </span>
+                <span className="ml-auto text-[10px] text-ws-text-muted">
+                  Click file → diff
+                </span>
+              </div>
+            ) : null}
             <WorkspaceChangeList
               projectId={projectId}
               interactive={Boolean(isGitHub)}
               emptyMessage={
                 isGitHub
-                  ? "No local changes since last GitHub sync"
-                  : "No modified files"
+                  ? "No local changes since last GitHub sync."
+                  : "Connect GitHub to track and push changes."
               }
             />
           </div>

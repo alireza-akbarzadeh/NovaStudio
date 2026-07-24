@@ -4,15 +4,17 @@ import { FileIcon } from "@react-symbols/icons/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
   FileTextIcon,
+  GitBranchIcon,
   Loader2Icon,
   MinusIcon,
   PlusIcon,
   Undo2Icon,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
@@ -22,10 +24,20 @@ import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useDiscardFileChanges,
+  useProjectFiles,
   useSetAllChangedStaged,
   useSetFileStaged,
 } from "@/features/workspace/hooks/use-project-files";
-import { clearFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
+import {
+  clearFileContentDraft,
+  loadFileContentDraft,
+  resolveSeedContent,
+} from "@/features/workspace/lib/file-content-drafts";
+import {
+  countLineDiffStats,
+  type LineDiffStats,
+} from "@/features/workspace/lib/line-diff-stats";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -51,8 +63,10 @@ export function WorkspaceChangeList({
 }: WorkspaceChangeListProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
+  const projectFiles = useProjectFiles(projectId);
   const pathname = usePathname();
   const { openTab } = useEditorTabs(projectId);
+  const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const setFileStaged = useSetFileStaged();
   const setAllChangedStaged = useSetAllChangedStaged();
   const discardFileChanges = useDiscardFileChanges();
@@ -60,6 +74,40 @@ export function WorkspaceChangeList({
   const [stagedOpen, setStagedOpen] = useState(true);
   const [unstagedOpen, setUnstagedOpen] = useState(true);
   const [busyPath, setBusyPath] = useState<string | null>(null);
+
+  const statsByPath = useMemo(() => {
+    const map = new Map<string, LineDiffStats>();
+    if (!changedFiles || !projectFiles) return map;
+
+    const byPath = new Map(
+      projectFiles
+        .filter((file) => file.kind === "file")
+        .map((file) => [file.path, file] as const),
+    );
+
+    for (const changed of changedFiles) {
+      const file = byPath.get(changed.path);
+      const original = file?.syncedContent ?? "";
+      const serverContent = file?.content ?? "";
+      const draft = loadFileContentDraft(projectId, changed.path);
+      const modified = resolveSeedContent(
+        serverContent,
+        file?.updatedAt,
+        draft,
+      );
+
+      if (changed.isNew) {
+        map.set(
+          changed.path,
+          countLineDiffStats("", modified),
+        );
+      } else {
+        map.set(changed.path, countLineDiffStats(original, modified));
+      }
+    }
+
+    return map;
+  }, [changedFiles, projectFiles, projectId]);
 
   if (project === undefined || changedFiles === undefined) {
     return (
@@ -70,18 +118,60 @@ export function WorkspaceChangeList({
     );
   }
 
-  if (project === null || !project.syncedAt) {
+  if (project === null) {
     return (
       <p className="px-3 py-4 text-[11px] leading-relaxed text-ws-text-muted">
-        Change tracking is not available for this project yet. Re-import from
-        GitHub or create a new project to enable the change list.
+        Project unavailable.
       </p>
+    );
+  }
+
+  if (!project.syncedAt) {
+    const isGitHub = project.source === "github" && project.githubRepoUrl;
+    return (
+      <div className="flex flex-col gap-3 px-3 py-5">
+        <div className="flex size-9 items-center justify-center rounded-md bg-ws-hover text-ws-text-muted">
+          <GitBranchIcon className="size-4" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[12px] font-medium text-ws-text">
+            Change tracking not ready
+          </p>
+          <p className="text-[11px] leading-relaxed text-ws-text-muted">
+            {isGitHub
+              ? "Pull from GitHub once to create a sync baseline, then edits will show up here with diffs."
+              : "Initialize a GitHub repository for this project to stage, diff, and push local changes."}
+          </p>
+        </div>
+        {!isGitHub ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={openGitInitDialog}
+            className="h-7 w-fit bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
+          >
+            Initialize Repository
+          </Button>
+        ) : null}
+      </div>
     );
   }
 
   if (changedFiles.length === 0) {
     return (
-      <p className="px-3 py-4 text-[11px] text-ws-text-muted">{emptyMessage}</p>
+      <div className="flex flex-col items-start gap-2 px-3 py-5">
+        <div className="flex size-9 items-center justify-center rounded-md bg-ws-success/15 text-ws-success">
+          <CheckCircle2Icon className="size-4" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[12px] font-medium text-ws-text">
+            Working tree clean
+          </p>
+          <p className="text-[11px] leading-relaxed text-ws-text-muted">
+            {emptyMessage}
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -93,7 +183,8 @@ export function WorkspaceChangeList({
             key={file._id}
             projectId={projectId}
             file={file}
-            active={isChangeActive(pathname, projectId, file.path)}
+            stats={statsByPath.get(file.path)}
+            activeMode={activeChangeMode(pathname, projectId, file.path)}
             onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
           />
         ))}
@@ -145,7 +236,8 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              active={isChangeActive(pathname, projectId, file.path)}
+              stats={statsByPath.get(file.path)}
+              activeMode={activeChangeMode(pathname, projectId, file.path)}
               interactive
               busy={busyPath === file.path}
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
@@ -192,7 +284,8 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              active={isChangeActive(pathname, projectId, file.path)}
+              stats={statsByPath.get(file.path)}
+              activeMode={activeChangeMode(pathname, projectId, file.path)}
               interactive
               busy={busyPath === file.path}
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
@@ -233,15 +326,20 @@ export function WorkspaceChangeList({
   );
 }
 
-function isChangeActive(
+function activeChangeMode(
   pathname: string,
   projectId: string,
   path: string,
-): boolean {
-  return (
-    pathname === `/projects/${projectId}/diff/${path}` ||
-    pathname === `/projects/${projectId}/files/${path}`
-  );
+): "diff" | "file" | null {
+  if (pathname === `/projects/${projectId}/diff/${path}`) return "diff";
+  if (pathname === `/projects/${projectId}/files/${path}`) return "file";
+  return null;
+}
+
+function parentDir(path: string): string {
+  const parts = path.split("/").filter(Boolean);
+  if (parts.length <= 1) return "";
+  return parts.slice(0, -1).join("/");
 }
 
 function ChangeSection({
@@ -300,10 +398,28 @@ function ChangeSection({
   );
 }
 
+function DiffStatBadges({ stats }: { stats?: LineDiffStats }) {
+  if (!stats) return null;
+  const { added, removed } = stats;
+  if (added === 0 && removed === 0) return null;
+
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[10px] tabular-nums">
+      {added > 0 ? (
+        <span className="text-ws-success">+{added}</span>
+      ) : null}
+      {removed > 0 ? (
+        <span className="text-ws-danger-soft">−{removed}</span>
+      ) : null}
+    </span>
+  );
+}
+
 function ChangeRow({
   projectId,
   file,
-  active,
+  stats,
+  activeMode,
   interactive = false,
   busy = false,
   onOpenDiff,
@@ -314,7 +430,8 @@ function ChangeRow({
 }: {
   projectId: string;
   file: ChangedFile;
-  active: boolean;
+  stats?: LineDiffStats;
+  activeMode: "diff" | "file" | null;
   interactive?: boolean;
   busy?: boolean;
   onOpenDiff?: () => void;
@@ -326,6 +443,8 @@ function ChangeRow({
   const href = `/projects/${projectId}/diff/${file.path}`;
   const marker = file.isNew ? "A" : "M";
   const markerColor = file.isNew ? "text-ws-link" : "text-ws-success";
+  const dir = parentDir(file.path);
+  const active = activeMode != null;
 
   return (
     <li
@@ -344,7 +463,7 @@ function ChangeRow({
           onOpenDiff();
         }}
         className="flex min-w-0 flex-1 items-center gap-1.5 py-0.5"
-        title="Open diff"
+        title={`Open diff · ${file.path}`}
       >
         <span
           className={cn(
@@ -357,7 +476,22 @@ function ChangeRow({
         <span className="size-3.5 shrink-0 [&_svg]:size-full">
           <FileIcon fileName={file.name} autoAssign />
         </span>
-        <span className="min-w-0 flex-1 truncate">{file.path}</span>
+        <span className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden">
+          <span
+            className={cn(
+              "shrink-0 font-medium",
+              activeMode === "diff" && "text-ws-text",
+            )}
+          >
+            {file.name}
+          </span>
+          {dir ? (
+            <span className="min-w-0 truncate text-[10px] text-ws-text-muted">
+              {dir}
+            </span>
+          ) : null}
+        </span>
+        <DiffStatBadges stats={stats} />
       </Link>
 
       {interactive ? (
@@ -374,7 +508,10 @@ function ChangeRow({
                   title="Open file"
                   aria-label={`Open ${file.path}`}
                   onClick={onOpenFile}
-                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
+                  className={cn(
+                    "size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text",
+                    activeMode === "file" && "opacity-100 text-ws-text",
+                  )}
                 >
                   <FileTextIcon className="size-3" />
                 </Button>

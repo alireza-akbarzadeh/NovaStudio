@@ -1,12 +1,19 @@
 "use client";
 
-import { GitBranchIcon, Loader2Icon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  CircleXIcon,
+  GitBranchIcon,
+  Loader2Icon,
+} from "lucide-react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
-import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
-import { getLanguageLabel } from "@/features/workspace/lib/editor-languages";
 import { WorkspaceBranchPicker } from "@/features/workspace/components/workspace-branch-picker";
+import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
+import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
+import { getLanguageLabel } from "@/features/workspace/lib/editor-languages";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { cn } from "@/lib/utils";
 
 type WorkspaceStatusBarProps = {
   projectId: string;
@@ -19,12 +26,18 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const branchPickerOpen = useWorkspaceStore((s) => s.branchPickerOpen);
   const setBranchPickerOpen = useWorkspaceStore((s) => s.setBranchPickerOpen);
+  const showProblemsPanel = useWorkspaceStore((s) => s.showProblemsPanel);
+  const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
+  const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const { errorCount, warningCount } = useMonacoProblems();
 
   const changeCount = changedFiles?.length ?? 0;
   const branch = project?.githubBranch ?? "main";
   const isGitHub = project?.source === "github" && project.githubRepoUrl;
   const isPushing = project?.exportStatus === "exporting";
   const language = getLanguageLabel(currentFilePath);
+  const problemsActive =
+    terminalOpen && bottomPanelTab === "problems";
 
   return (
     <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-ws-border-subtle bg-ws-panel px-2 text-[11px] text-ws-text-muted">
@@ -55,6 +68,35 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             <span>Initialize Repository</span>
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={showProblemsPanel}
+          title="Problems (⌘⇧M)"
+          className={cn(
+            "inline-flex items-center gap-2 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
+            problemsActive && "bg-ws-hover text-ws-text",
+          )}
+        >
+          <span
+            className={cn(
+              "inline-flex items-center gap-1",
+              errorCount > 0 ? "text-ws-danger-soft" : "text-ws-text-muted",
+            )}
+          >
+            <CircleXIcon className="size-3" />
+            {errorCount}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1",
+              warningCount > 0 ? "text-amber-500" : "text-ws-text-muted",
+            )}
+          >
+            <CircleAlertIcon className="size-3" />
+            {warningCount}
+          </span>
+        </button>
       </div>
 
       <div className="flex items-center gap-3">

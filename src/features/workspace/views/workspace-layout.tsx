@@ -15,12 +15,12 @@ import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-g
 import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
 import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
+import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-bottom-panel";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
-import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
@@ -176,7 +176,7 @@ export function WorkspaceLayout({
               defaultSize={`${terminalDefault}`}
               className="bg-ws-panel"
             >
-              <WorkspaceTerminal projectId={projectId} />
+              <WorkspaceBottomPanel projectId={projectId} />
             </ResizablePanel>
           </ResizablePanelGroup>
         </ResizablePanel>

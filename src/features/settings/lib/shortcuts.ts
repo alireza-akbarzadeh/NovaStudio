@@ -21,6 +21,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "user-json", label: "Open User JSON", keys: "⌘ ⇧ J" },
       { id: "sidebar", label: "Toggle project sidebar", keys: "⌘ B" },
       { id: "terminal", label: "Toggle terminal", keys: "⌘ J" },
+      { id: "problems", label: "Toggle problems", keys: "⌘ ⇧ M" },
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },
       { id: "goto", label: "Go to file", keys: "⌘ P" },
       { id: "clone", label: "Clone from GitHub", keys: "⌘ I" },

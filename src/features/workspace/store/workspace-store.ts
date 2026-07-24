@@ -10,6 +10,8 @@ export type LeftPanelView = "explorer" | "search" | "git";
 
 export type GitPanelTab = "changes" | "history" | "info";
 
+export type BottomPanelTab = "terminal" | "problems";
+
 export type BreadcrumbSegment = {
   label: string;
   href?: string;
@@ -61,6 +63,7 @@ type WorkspaceState = WorkspacePrefs & {
   branchPickerOpen: boolean;
   leftPanelView: LeftPanelView;
   gitPanelTab: GitPanelTab;
+  bottomPanelTab: BottomPanelTab;
   currentFilePath: string | null;
   editorTabs: EditorTab[];
   activeEditorTabId: string | null;
@@ -81,6 +84,8 @@ type WorkspaceState = WorkspacePrefs & {
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
+  showProblemsPanel: () => void;
+  setBottomPanelTab: (tab: BottomPanelTab) => void;
   toggleAiPanel: () => void;
   openSettings: () => void;
   closeSettings: () => void;
@@ -155,6 +160,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   branchPickerOpen: false,
   leftPanelView: "explorer",
   gitPanelTab: "changes",
+  bottomPanelTab: "terminal",
   currentFilePath: null,
   editorTabs: [],
   activeEditorTabId: null,
@@ -177,7 +183,22 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   searchPanelMode: "text",
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  toggleTerminal: () => set((s) => ({ terminalOpen: !s.terminalOpen })),
+  toggleTerminal: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "terminal") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "terminal" };
+    }),
+  showProblemsPanel: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "problems") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "problems" };
+    }),
+  setBottomPanelTab: (tab) =>
+    set({ bottomPanelTab: tab, terminalOpen: true }),
   toggleAiPanel: () => set((s) => ({ aiPanelOpen: !s.aiPanelOpen })),
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
@@ -279,7 +300,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   requestNewAiChat: () => set({ requestNewChat: true }),
   clearRequestNewChat: () => set({ requestNewChat: false }),
   requestTerminalCwd: (cwd) =>
-    set({ terminalCwdRequest: cwd, terminalOpen: true }),
+    set({
+      terminalCwdRequest: cwd,
+      terminalOpen: true,
+      bottomPanelTab: "terminal",
+    }),
   clearTerminalCwdRequest: () => set({ terminalCwdRequest: null }),
   setPendingEditorReveal: (target) => set({ pendingEditorReveal: target }),
   clearPendingEditorReveal: () => set({ pendingEditorReveal: null }),
