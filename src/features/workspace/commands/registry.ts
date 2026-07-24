@@ -15,6 +15,8 @@ export type CommandId =
   | "openUserJson"
   | "openGoToFile"
   | "closeGoToFile"
+  | "openCommandPalette"
+  | "closeCommandPalette"
   | "openCloneFromGitHub"
   | "openNewProject"
   | "showExplorer"
@@ -97,7 +99,8 @@ export const workspaceCommands: Command[] = [
     allowInInput: true,
     run: () => {
       const s = store();
-      if (s.settingsOpen) s.closeSettings();
+      if (s.commandPaletteOpen) s.closeCommandPalette();
+      else if (s.settingsOpen) s.closeSettings();
       else if (s.goToFileOpen) s.closeGoToFile();
       else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
     },
@@ -112,6 +115,17 @@ export const workspaceCommands: Command[] = [
     id: "closeGoToFile",
     allowInInput: true,
     run: () => store().closeGoToFile(),
+  },
+  {
+    id: "openCommandPalette",
+    shortcut: "mod+k",
+    allowInInput: true,
+    run: () => store().openCommandPalette(),
+  },
+  {
+    id: "closeCommandPalette",
+    allowInInput: true,
+    run: () => store().closeCommandPalette(),
   },
   {
     id: "openCloneFromGitHub",
@@ -222,7 +236,12 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
 
   if (command.id === "closeSettings") {
     const s = store();
-    if (!s.settingsOpen && !s.goToFileOpen && !s.cloneFromGitHubOpen) {
+    if (
+      !s.commandPaletteOpen &&
+      !s.settingsOpen &&
+      !s.goToFileOpen &&
+      !s.cloneFromGitHubOpen
+    ) {
       return false;
     }
   }

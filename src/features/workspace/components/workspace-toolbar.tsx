@@ -4,6 +4,7 @@ import {
   PanelBottomIcon,
   PanelLeftIcon,
   PanelRightIcon,
+  SearchIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -127,6 +128,20 @@ export function WorkspaceToolbar({
         <ProjectPresenceAvatars projectId={projectId} />
 
         <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => runCommand("openCommandPalette")}
+            className="mr-1 hidden h-7 items-center gap-2 rounded-sm border border-ws-border-subtle bg-ws-bg px-2 text-[11px] text-ws-text-muted transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text sm:inline-flex"
+            title="Command palette"
+          >
+            <SearchIcon className="size-3.5 opacity-70" />
+            <span>Search</span>
+            <KbdGroup className="gap-0.5 opacity-70">
+              <ModKey />
+              <ShortcutKey>K</ShortcutKey>
+            </KbdGroup>
+          </button>
+
           <ToolbarTooltipButton
             label="Project"
             pressed={sidebarOpen}

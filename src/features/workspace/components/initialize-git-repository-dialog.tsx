@@ -103,9 +103,21 @@ export function InitializeGitRepositoryDialog({
             Private repository
           </label>
           {!isConnected ? (
-            <p className="text-[11px] text-ws-text-muted">
-              Connect GitHub above before initializing a repository.
-            </p>
+            <div className="space-y-2">
+              <p className="text-[11px] text-ws-text-muted">
+                Connect GitHub above before initializing a repository.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                loading={isAuthorizing}
+                disabled={isAuthorizing}
+                onClick={() => void connect()}
+                className="h-7 bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
+              >
+                {isAuthorizing ? "Connecting…" : "Connect GitHub"}
+              </Button>
+            </div>
           ) : !hasRepoScope ? (
             <div className="space-y-2">
               <p className="text-[11px] text-ws-warning">

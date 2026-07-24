@@ -29,8 +29,8 @@ These are the biggest daily-friction gaps you called out.
 | 1 | **Git Diff Viewer** | `done` | Monaco DiffEditor: working tree vs last sync. Open from Changes list. |
 | 2 | **Go to Definition / Click component → source** | `done` | ⌘/Ctrl-click JSX/imports jump to the defining file. |
 | 3 | **Git UX polish** | `done` | Per-file +/− hunk counts, open file vs open diff, better empty/sync states, discard from diff. |
-| 4 | **Problems / Diagnostics panel** | `review` | Errors & warnings list → click jumps to line. |
-| 5 | **Command palette (⌘K)** | `todo` | Files + commands + recent in one fuzzy palette. |
+| 4 | **Problems / Diagnostics panel** | `done` | Errors & warnings list → click jumps to line. |
+| 5 | **Command palette (⌘K)** | `review` | Files + commands + recent in one fuzzy palette. |
 
 ### Sprint B — Editor polish
 
@@ -119,9 +119,16 @@ These are the biggest daily-friction gaps you called out.
 - Changes header: file count · staged/unstaged · hint
 - Diff toolbar shows Staged / Unstaged badge
 
-### 4. Problems / Diagnostics panel — ready for review
+### 4. Problems / Diagnostics panel — `done`
 
 - Bottom panel tabs: **Problems** · **Terminal**
 - Lists Monaco markers (errors / warnings / info) from open editors
 - Click a problem → opens file and jumps to the line
 - Status bar error/warning counts · activity bar · **⌘⇧M**
+
+### 5. Command palette — ready for review
+
+- **⌘K** opens a fuzzy palette
+- Groups: Recent · Open editors · Commands · Files
+- Run workspace actions or jump to any project file
+- Esc closes; ⌘P remains Go to File only

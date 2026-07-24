@@ -16,7 +16,7 @@ export function GitHubConnectionStatus({ className }: { className?: string }) {
     useGitHubConnection();
   const { connect, isConnecting, isReady } = useConnectGitHub();
 
-  if (isLoading) {
+  if (isLoading && !isConnecting) {
     return (
       <span
         className={cn(
@@ -52,7 +52,7 @@ export function GitHubConnectionStatus({ className }: { className?: string }) {
               type="button"
               variant="ghost"
               size="xs"
-              disabled={!isReady || isConnecting}
+              disabled={isConnecting}
               onClick={() => void connect()}
               className="h-6 px-2 text-[11px]"
             >
@@ -65,36 +65,47 @@ export function GitHubConnectionStatus({ className }: { className?: string }) {
   }
 
   return (
-    <div className={cn("inline-flex items-center gap-2", className)}>
-      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-        <Image
-          src="/images/github.png"
-          alt=""
-          width={12}
-          height={12}
-          className="size-3.5 opacity-70 dark:invert"
-        />
-        GitHub not connected
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        disabled={!isReady || isConnecting}
-        onClick={() => void connect()}
-        className="h-6 px-2 text-[11px]"
-      >
-        {isConnecting ? "Connecting…" : "Connect"}
-      </Button>
-      {syncError ? (
-        <span className="max-w-40 truncate text-[10px] text-destructive">
-          {syncError}
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <div className="inline-flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <Image
+            src="/images/github.png"
+            alt=""
+            width={12}
+            height={12}
+            className="size-3.5 opacity-70 dark:invert"
+          />
+          GitHub not connected
         </span>
+        <Button
+          type="button"
+          size="xs"
+          disabled={isConnecting}
+          onClick={() => void connect()}
+          className="h-7 bg-ws-accent px-2.5 text-[11px] text-white hover:bg-ws-accent-hover"
+        >
+          {isConnecting ? (
+            <>
+              <Loader2Icon className="size-3 animate-spin" />
+              Connecting…
+            </>
+          ) : (
+            "Connect GitHub"
+          )}
+        </Button>
+      </div>
+      {syncError ? (
+        <span className="text-[10px] text-destructive">{syncError}</span>
       ) : (
-        <span className="max-w-52 text-[10px] text-[#787878]">
+        <span className="text-[10px] text-ws-text-muted">
           {GITHUB_REPO_SCOPE_MESSAGE}
         </span>
       )}
+      {!isReady && !isConnecting ? (
+        <span className="text-[10px] text-ws-text-muted">
+          Waiting for your session to finish loading…
+        </span>
+      ) : null}
     </div>
   );
 }

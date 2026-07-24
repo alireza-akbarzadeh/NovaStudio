@@ -1,12 +1,12 @@
 "use client";
 
-import { useUser, useReverification } from "@clerk/nextjs";
+import { useReverification, useUser } from "@clerk/nextjs";
 import type {
   CreateExternalAccountParams,
   ExternalAccountResource,
   ReauthorizeExternalAccountParams,
 } from "@clerk/shared/types";
-import { useAction, useConvexAuth } from "convex/react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -15,6 +15,8 @@ import {
   GITHUB_REPO_SCOPES,
   hasGitHubRepoScope,
 } from "@/features/github/lib/github-scopes";
+
+const PENDING_CONNECT_KEY = "polaris:github-connect-pending";
 
 function getGitHubExternalAccount(user: ReturnType<typeof useUser>["user"]) {
   return user?.externalAccounts.find((account) => account.provider === "github");
@@ -27,8 +29,9 @@ function clerkErrorMessage(error: unknown): string {
     "errors" in error &&
     Array.isArray((error as { errors: unknown[] }).errors)
   ) {
-    const first = (error as { errors: Array<{ longMessage?: string; message?: string }> })
-      .errors[0];
+    const first = (
+      error as { errors: Array<{ longMessage?: string; message?: string }> }
+    ).errors[0];
     if (first?.longMessage) return first.longMessage;
     if (first?.message) return first.message;
   }
@@ -36,16 +39,35 @@ function clerkErrorMessage(error: unknown): string {
   return "Failed to connect GitHub";
 }
 
-function redirectToVerification(url: URL | string | null | undefined): boolean {
+function isProviderOAuthUrl(url: URL | string | null | undefined): boolean {
   if (!url) return false;
   const href = typeof url === "string" ? url : url.href;
-  if (!href) return false;
+  try {
+    const parsed = new URL(href);
+    const host = parsed.hostname;
+    return (
+      host === "github.com" ||
+      host.endsWith(".github.com") ||
+      host.includes("clerk.com") ||
+      host.includes("clerk.accounts") ||
+      host.endsWith(".clerk.accounts.dev") ||
+      host.endsWith(".accounts.dev")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function redirectToGitHubOAuth(url: URL | string | null | undefined): boolean {
+  if (!isProviderOAuthUrl(url)) return false;
+  const href = typeof url === "string" ? url : url!.href;
+  sessionStorage.setItem(PENDING_CONNECT_KEY, "1");
   window.location.assign(href);
   return true;
 }
 
 export function useGitHubConnection() {
-  const { user } = useUser();
+  const { user, isLoaded: isUserLoaded } = useUser();
   const { isAuthenticated, isLoading: isAuthLoading } = useConvexAuth();
   const connection = useQuery(
     api.github.getConnection,
@@ -55,6 +77,7 @@ export function useGitHubConnection() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const hasSyncedForUser = useRef<string | null>(null);
+  const handledPendingConnect = useRef(false);
 
   const githubAccount = getGitHubExternalAccount(user);
   const hasRepoScope = hasGitHubRepoScope(githubAccount?.approvedScopes);
@@ -95,22 +118,44 @@ export function useGitHubConnection() {
     }
   }, [isAuthenticated]);
 
-  // After returning from GitHub OAuth, re-sync once the tab is focused.
+  // After returning from GitHub OAuth, finish sync + show result.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isUserLoaded || !isAuthenticated || !user) return;
+    if (handledPendingConnect.current) return;
+    if (sessionStorage.getItem(PENDING_CONNECT_KEY) !== "1") return;
 
-    const onFocus = () => {
-      hasSyncedForUser.current = null;
-      void sync();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [isAuthenticated, sync]);
+    handledPendingConnect.current = true;
+    sessionStorage.removeItem(PENDING_CONNECT_KEY);
+
+    void (async () => {
+      try {
+        await user.reload();
+        const result = await sync();
+        if (result.connected) {
+          toast.success(
+            "username" in result && result.username
+              ? `Connected as @${result.username}`
+              : "GitHub connected",
+          );
+        } else {
+          const account = getGitHubExternalAccount(user);
+          const verifyError = account?.verification?.error?.longMessage;
+          toast.error(
+            verifyError ||
+              "GitHub connected in Clerk, but Polaris could not read a repo token. Reconnect and approve the “repo” permission (enable GitHub with custom credentials + repo scope in the Clerk Dashboard).",
+          );
+        }
+      } catch (error) {
+        toast.error(clerkErrorMessage(error));
+      }
+    })();
+  }, [isAuthenticated, isUserLoaded, sync, user]);
 
   return {
     connection: connection ?? null,
     isConnected: Boolean(connection),
     hasRepoScope,
+    clerkGitHubLinked: Boolean(githubAccount),
     isLoading:
       isAuthLoading ||
       (isAuthenticated && connection === undefined) ||
@@ -119,9 +164,6 @@ export function useGitHubConnection() {
     sync,
   };
 }
-
-// Need useQuery import - I removed it by accident in the write. Fix below.
-import { useQuery } from "convex/react";
 
 export function useConnectGitHub() {
   const { user, isLoaded } = useUser();
@@ -163,63 +205,85 @@ export function useConnectGitHub() {
 
     setIsConnecting(true);
     try {
-      const existing = getGitHubExternalAccount(user);
-      const returnUrl = window.location.href;
+      // Return to this exact page after GitHub — do NOT use /sso-callback
+      // (that route is for sign-in OAuth and will bounce immediately).
+      const redirectUrl = window.location.href;
+      let existing = getGitHubExternalAccount(user);
 
-      // Incomplete prior attempt — resume verification.
+      // Resume incomplete verification first.
       if (
         existing?.verification?.status &&
-        existing.verification.status !== "verified" &&
-        existing.verification.externalVerificationRedirectURL
+        existing.verification.status !== "verified"
       ) {
-        if (
-          redirectToVerification(
-            existing.verification.externalVerificationRedirectURL,
-          )
-        ) {
+        const pendingUrl = existing.verification.externalVerificationRedirectURL;
+        if (isProviderOAuthUrl(pendingUrl) && redirectToGitHubOAuth(pendingUrl)) {
           return;
         }
+        if (existing.verification.error?.longMessage) {
+          toast.error(existing.verification.error.longMessage);
+        }
       }
+
+      // Fresh Clerk user data before deciding create vs reauthorize.
+      await user.reload();
+      existing = getGitHubExternalAccount(user);
 
       if (existing) {
-        const account = await reauthorizeExternalAccount(existing, {
-          additionalScopes: [...GITHUB_REPO_SCOPES],
-          redirectUrl: returnUrl,
-        });
-        if (
-          redirectToVerification(
-            account.verification?.externalVerificationRedirectURL,
-          )
-        ) {
-          return;
+        const needsRepoScope = !hasGitHubRepoScope(existing.approvedScopes);
+
+        if (needsRepoScope || existing.verification?.status !== "verified") {
+          const account = await reauthorizeExternalAccount(existing, {
+            additionalScopes: [...GITHUB_REPO_SCOPES],
+            redirectUrl,
+            // Force GitHub to show the consent screen for `repo`.
+            oidcPrompt: "consent",
+          });
+
+          const oauthUrl = account.verification?.externalVerificationRedirectURL;
+          if (isProviderOAuthUrl(oauthUrl) && redirectToGitHubOAuth(oauthUrl)) {
+            return;
+          }
+
+          if (account.verification?.error?.longMessage) {
+            throw new Error(account.verification.error.longMessage);
+          }
         }
-      } else {
-        const account = await createExternalAccount({
-          strategy: "oauth_github",
-          redirectUrl: returnUrl,
-          additionalScopes: [...GITHUB_REPO_SCOPES],
-        });
-        if (
-          redirectToVerification(
-            account.verification?.externalVerificationRedirectURL,
-          )
-        ) {
-          return;
+
+        // Already linked in Clerk — just sync the Convex connection.
+        const result = await syncConnection({});
+        if (result.connected) {
+          toast.success(
+            result.username
+              ? `Connected as @${result.username}`
+              : "GitHub connected",
+          );
+        } else {
+          toast.error(
+            "Clerk has GitHub linked, but no access token was returned. In Clerk Dashboard → GitHub social connection, enable custom credentials and add the `repo` scope, then click Connect again.",
+          );
         }
+        return;
       }
 
-      const result = await syncConnection({});
-      if (result.connected) {
-        toast.success(
-          result.username
-            ? `Connected as @${result.username}`
-            : "GitHub connected",
-        );
-      } else {
-        toast.error(
-          "GitHub authorization did not finish. Try Connect again and approve repository access.",
-        );
+      const account = await createExternalAccount({
+        strategy: "oauth_github",
+        redirectUrl,
+        additionalScopes: [...GITHUB_REPO_SCOPES],
+        oidcPrompt: "consent",
+      });
+
+      const oauthUrl = account.verification?.externalVerificationRedirectURL;
+      if (isProviderOAuthUrl(oauthUrl) && redirectToGitHubOAuth(oauthUrl)) {
+        return;
       }
+
+      if (account.verification?.error?.longMessage) {
+        throw new Error(account.verification.error.longMessage);
+      }
+
+      toast.error(
+        "GitHub did not return an authorization URL. Enable the GitHub social connection in the Clerk Dashboard, then try again.",
+      );
     } catch (error) {
       toast.error(clerkErrorMessage(error));
     } finally {

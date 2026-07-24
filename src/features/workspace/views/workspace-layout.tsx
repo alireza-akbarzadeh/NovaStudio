@@ -16,6 +16,7 @@ import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-sett
 import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-bottom-panel";
+import { WorkspaceCommandPalette } from "@/features/workspace/components/workspace-command-palette";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
@@ -200,6 +201,7 @@ export function WorkspaceLayout({
       </ResizablePanelGroup>
 
       <WorkspaceSettingsDialog />
+      <WorkspaceCommandPalette projectId={projectId} />
       <WorkspaceGoToFileDialog projectId={projectId} />
       <InitializeGitRepositoryDialog projectId={projectId} />
       <CloneFromGitHubDialog

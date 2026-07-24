@@ -58,6 +58,7 @@ export type EditorTab = {
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   goToFileOpen: boolean;
+  commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
   cloneFromGitHubOpen: boolean;
   branchPickerOpen: boolean;
@@ -92,6 +93,8 @@ type WorkspaceState = WorkspacePrefs & {
   toggleSettings: () => void;
   openGoToFile: () => void;
   closeGoToFile: () => void;
+  openCommandPalette: () => void;
+  closeCommandPalette: () => void;
   openGitInitDialog: () => void;
   closeGitInitDialog: () => void;
   openCloneFromGitHub: () => void;
@@ -155,6 +158,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...DEFAULT_WORKSPACE_PREFS,
   settingsOpen: false,
   goToFileOpen: false,
+  commandPaletteOpen: false,
   gitInitDialogOpen: false,
   cloneFromGitHubOpen: false,
   branchPickerOpen: false,
@@ -205,6 +209,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
   openGoToFile: () => set({ goToFileOpen: true }),
   closeGoToFile: () => set({ goToFileOpen: false }),
+  openCommandPalette: () =>
+    set({
+      commandPaletteOpen: true,
+      goToFileOpen: false,
+      settingsOpen: false,
+    }),
+  closeCommandPalette: () => set({ commandPaletteOpen: false }),
   openGitInitDialog: () => set({ gitInitDialogOpen: true }),
   closeGitInitDialog: () => set({ gitInitDialogOpen: false }),
   openCloneFromGitHub: () => set({ cloneFromGitHubOpen: true }),

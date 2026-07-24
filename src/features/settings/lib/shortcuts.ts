@@ -24,6 +24,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "problems", label: "Toggle problems", keys: "⌘ ⇧ M" },
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },
       { id: "goto", label: "Go to file", keys: "⌘ P" },
+      { id: "command-palette", label: "Command palette", keys: "⌘ K" },
       { id: "clone", label: "Clone from GitHub", keys: "⌘ I" },
       { id: "explorer", label: "Show explorer", keys: "⌘ 1" },
       { id: "search", label: "Find in files", keys: "⌘ ⇧ F" },
@@ -37,7 +38,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: "projects",
     title: "Projects",
     shortcuts: [
-      { id: "command", label: "Open command palette", keys: "⌘ K" },
+      {
+        id: "command",
+        label: "Open projects picker",
+        keys: "⌘ K",
+        description: "On the projects dashboard",
+      },
       { id: "new", label: "New project", keys: "⌘ N", description: "Opens as an editor tab" },
     ],
   },
