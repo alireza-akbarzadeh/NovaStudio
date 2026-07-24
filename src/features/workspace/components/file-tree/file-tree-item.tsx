@@ -134,7 +134,6 @@ export function FileTreeItem({
               open={open}
               depth={depth}
               nodeName={node.name}
-              href={item.href}
               active={item.active}
               isFocused={isFocused}
               isCut={item.isCut}
@@ -146,6 +145,8 @@ export function FileTreeItem({
               onStartRename={item.startRename}
               onFocusItem={() => onFocusItem(node.id)}
               onToggleFolder={() => onToggleFolder(node.id)}
+              onOpenPreview={item.openPreview}
+              onOpenPermanent={item.openPermanent}
               renameInputRef={item.renameInputRef}
               focusProps={rowFocusProps}
               highlightQuery={highlightQuery}

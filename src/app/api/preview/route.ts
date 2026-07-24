@@ -11,12 +11,22 @@ const previewRequestSchema = z.object({
 export async function POST(request: Request) {
   try {
     const body = previewRequestSchema.parse(await request.json());
-    const html = await buildPreviewDocument({
+    const result = await buildPreviewDocument({
       files: body.files,
       activePath: body.activePath,
     });
 
-    return new NextResponse(html, {
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.error },
+        {
+          status: 422,
+          headers: { "Cache-Control": "no-store" },
+        },
+      );
+    }
+
+    return new NextResponse(result.html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",

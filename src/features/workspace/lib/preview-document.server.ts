@@ -2,12 +2,17 @@ import "server-only";
 
 import * as esbuild from "esbuild";
 
+import { PREVIEW_RUNTIME_BRIDGE_SCRIPT } from "@/features/workspace/lib/preview-runtime-bridge";
 import {
   findProjectEntryPath,
   normalizeProjectPath,
 } from "@/features/workspace/lib/preview-utils";
 
 export type PreviewFiles = Record<string, string>;
+
+export type PreviewBuildResult =
+  | { ok: true; html: string }
+  | { ok: false; error: string };
 
 type PreviewBuildInput = {
   files: PreviewFiles;
@@ -26,7 +31,7 @@ function loaderForPath(filePath: string): esbuild.Loader {
 }
 
 function htmlShell(body: string, styles = "") {
-  return `<!DOCTYPE html>
+  return withRuntimeBridge(`<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -40,18 +45,24 @@ function htmlShell(body: string, styles = "") {
     </style>
   </head>
   <body>${body}</body>
-</html>`;
+</html>`);
 }
 
-function previewErrorHtml(message: string) {
-  const escaped = message
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+/** Inject console / runtime-error bridge into a finished HTML document. */
+function withRuntimeBridge(html: string): string {
+  if (html.includes("__polarisPreviewBridge")) return html;
+  const tag = `<script>${PREVIEW_RUNTIME_BRIDGE_SCRIPT}</script>`;
+  if (/<\/head>/i.test(html)) {
+    return html.replace(/<\/head>/i, `${tag}</head>`);
+  }
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `${tag}</body>`);
+  }
+  return `${tag}${html}`;
+}
 
-  return htmlShell(
-    `<main style="padding:1.5rem;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:pre-wrap;color:#b91c1c">${escaped}</main>`,
-  );
+function previewBuildError(message: string): PreviewBuildResult {
+  return { ok: false, error: message };
 }
 
 function markdownToHtml(markdown: string) {
@@ -324,7 +335,9 @@ async function buildFromIndexHtml(
 
   const scripts = extractModuleScripts(html);
   if (scripts.length === 0) {
-    return html.includes("<html") ? html : htmlShell(html);
+    return html.includes("<html")
+      ? withRuntimeBridge(html)
+      : htmlShell(html);
   }
 
   const entry =
@@ -339,7 +352,7 @@ async function buildFromIndexHtml(
         })();
 
   const bundled = await bundleEntry(files, entry, aliases);
-  return injectScript(stripModuleScripts(html), bundled);
+  return withRuntimeBridge(injectScript(stripModuleScripts(html), bundled));
 }
 
 async function buildFromJsEntry(
@@ -421,7 +434,9 @@ function isNextPagePath(path: string) {
   return /(^|\/)app\/page\.(t|j)sx$/i.test(path);
 }
 
-export async function buildPreviewDocument(input: PreviewBuildInput) {
+export async function buildPreviewDocument(
+  input: PreviewBuildInput,
+): Promise<PreviewBuildResult> {
   const files = new Map<string, string>();
   for (const [path, content] of Object.entries(input.files)) {
     files.set(normalizeProjectPath(path), content);
@@ -437,39 +452,52 @@ export async function buildPreviewDocument(input: PreviewBuildInput) {
 
   try {
     if (entry === "index.html") {
-      return await buildFromIndexHtml(files, aliases);
+      return { ok: true, html: await buildFromIndexHtml(files, aliases) };
     }
 
     if (entry && isNextPagePath(entry)) {
-      return await buildNextAppPreview(files, entry, aliases);
+      return {
+        ok: true,
+        html: await buildNextAppPreview(files, entry, aliases),
+      };
     }
 
     if (entry && /\.(tsx?|jsx?)$/i.test(entry)) {
-      return await buildFromJsEntry(files, entry, aliases);
+      return {
+        ok: true,
+        html: await buildFromJsEntry(files, entry, aliases),
+      };
     }
 
     // Fallbacks for docs / single files when the project has no app entry.
     if (activePath && /\.html?$/i.test(activePath)) {
       const code = files.get(activePath) ?? "";
-      return code.includes("<html") ? code : htmlShell(code);
+      const html = code.includes("<html") ? withRuntimeBridge(code) : htmlShell(code);
+      return { ok: true, html };
     }
 
     if (activePath && /\.md$/i.test(activePath)) {
-      return markdownToHtml(files.get(activePath) ?? "");
+      return { ok: true, html: markdownToHtml(files.get(activePath) ?? "") };
     }
 
     if (activePath && /\.(tsx?|jsx?)$/i.test(activePath)) {
-      return await buildSingleComponentPreview(
-        files.get(activePath) ?? "",
-        activePath,
-        files,
-        aliases,
-      );
+      return {
+        ok: true,
+        html: await buildSingleComponentPreview(
+          files.get(activePath) ?? "",
+          activePath,
+          files,
+          aliases,
+        ),
+      };
     }
 
-    return htmlShell(
-      `<main style="padding:2rem;color:#666">No previewable project entry found. Add an <code>index.html</code>, <code>src/main.tsx</code>, or <code>src/app/page.tsx</code>.</main>`,
-    );
+    return {
+      ok: true,
+      html: htmlShell(
+        `<main style="padding:2rem;color:#666">No previewable project entry found. Add an <code>index.html</code>, <code>src/main.tsx</code>, or <code>src/app/page.tsx</code>.</main>`,
+      ),
+    };
   } catch (error) {
     if (
       error &&
@@ -481,11 +509,11 @@ export async function buildPreviewDocument(input: PreviewBuildInput) {
         .map((item) => item.text)
         .filter(Boolean)
         .join("\n");
-      return previewErrorHtml(details || "Preview build failed");
+      return previewBuildError(details || "Preview build failed");
     }
 
     const message =
       error instanceof Error ? error.message : "Preview build failed";
-    return previewErrorHtml(message);
+    return previewBuildError(message);
   }
 }

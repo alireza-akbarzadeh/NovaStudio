@@ -7,6 +7,8 @@ import {
   FileJsonIcon,
   FolderPlusIcon,
   KeyboardIcon,
+  PinIcon,
+  PinOffIcon,
   Settings2Icon,
   XIcon,
 } from "lucide-react";
@@ -74,6 +76,9 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
     closeTab,
     reorderTab,
     splitTab,
+    pinTab,
+    unpinTab,
+    keepOpen,
   } = useEditorTabs(projectId);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -125,10 +130,14 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
       aria-label="Editor tabs"
       className="flex h-7 shrink-0 items-stretch overflow-x-auto border-b border-ws-border-subtle bg-ws-panel"
     >
-      {tabs.map((tab) => {
+      {tabs.map((tab, index) => {
         const active = tab.id === activeTabId;
         const isDragging = draggingId === tab.id;
         const isDropTarget = dropTargetId === tab.id && draggingId !== tab.id;
+        const showPinnedDivider =
+          Boolean(tab.pinned) &&
+          !tabs[index + 1]?.pinned &&
+          tabs.some((t) => !t.pinned);
 
         return (
           <ContextMenu key={tab.id}>
@@ -152,16 +161,32 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                   isDragging && "opacity-50",
                   isDropTarget &&
                     "before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-0.5 before:bg-ws-accent",
+                  showPinnedDivider && "border-r-ws-border-strong",
                 )}
               >
                 <button
                   type="button"
                   onClick={() => selectTab(tab.id)}
+                  onDoubleClick={() => {
+                    if (tab.preview) keepOpen(tab.id);
+                  }}
                   className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
                   title={tab.path ?? tab.title}
                 >
-                  <TabIcon tab={tab} />
-                  <span className="truncate font-medium tracking-wide">
+                  {tab.pinned ? (
+                    <PinIcon className="size-3 shrink-0 text-ws-accent opacity-80" />
+                  ) : (
+                    <TabIcon tab={tab} />
+                  )}
+                  <span
+                    className={cn(
+                      "truncate tracking-wide",
+                      tab.preview
+                        ? "font-normal italic text-ws-text-secondary"
+                        : "font-medium",
+                      tab.preview && active && "text-ws-text",
+                    )}
+                  >
                     {tab.title}
                   </span>
                 </button>
@@ -182,6 +207,31 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
               </div>
             </ContextMenuTrigger>
             <ContextMenuContent className="min-w-48 rounded-md border-ws-border bg-ws-hover p-1 text-ws-text shadow-lg">
+              {tab.preview ? (
+                <ContextMenuItem
+                  className={TAB_MENU_ITEM}
+                  onClick={() => keepOpen(tab.id)}
+                >
+                  Keep Open
+                </ContextMenuItem>
+              ) : null}
+              {tab.pinned ? (
+                <ContextMenuItem
+                  className={TAB_MENU_ITEM}
+                  onClick={() => unpinTab(tab.id)}
+                >
+                  <PinOffIcon className="mr-2 size-3.5 opacity-70" />
+                  Unpin
+                </ContextMenuItem>
+              ) : (
+                <ContextMenuItem
+                  className={TAB_MENU_ITEM}
+                  onClick={() => pinTab(tab.id)}
+                >
+                  <PinIcon className="mr-2 size-3.5 opacity-70" />
+                  Pin
+                </ContextMenuItem>
+              )}
               <ContextMenuItem
                 className={TAB_MENU_ITEM}
                 onClick={() => splitTab(tab.id)}

@@ -1,9 +1,10 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import type { Id } from "@/convex/_generated/dataModel";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import type { FileTreeNode } from "@/features/workspace/lib/file-tree";
 
 import { buildItemMenuProps } from "./build-item-menu-props";
@@ -67,7 +68,7 @@ export function useFileTreeItem({
   onFocusItem,
 }: UseFileTreeItemParams) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { openTab } = useEditorTabs(projectId);
   const isCut =
     cutPath === node.path ||
     (cutPath !== null && node.path.startsWith(`${cutPath}/`));
@@ -132,14 +133,21 @@ export function useFileTreeItem({
     }
   };
 
+  const openPreview = () => {
+    openTab({ kind: "file", path: node.path }, { mode: "preview" });
+  };
+
+  const openPermanent = () => {
+    openTab({ kind: "file", path: node.path }, { mode: "permanent" });
+  };
+
   const menuProps = buildItemMenuProps({
     node,
     isFolder,
-    href,
     canPaste,
     canEdit,
     parentId,
-    router,
+    onOpenFile: openPermanent,
     onStartCreate,
     onCut,
     onCopy,
@@ -177,6 +185,8 @@ export function useFileTreeItem({
     focusProps,
     startRename,
     stopRename,
+    openPreview,
+    openPermanent,
     commitRename: () => {
       const value = renameValue;
       stopRename();

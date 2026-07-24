@@ -6,7 +6,6 @@ import {
   FolderIcon,
 } from "@react-symbols/icons/utils";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import Link from "next/link";
 
 import { HighlightedText } from "@/features/workspace/components/highlighted-text";
 import { cn } from "@/lib/utils";
@@ -18,7 +17,6 @@ type FileTreeItemRowProps = {
   open: boolean;
   depth: number;
   nodeName: string;
-  href: string;
   active: boolean;
   isFocused: boolean;
   isCut: boolean;
@@ -30,6 +28,8 @@ type FileTreeItemRowProps = {
   onStartRename: () => void;
   onFocusItem: () => void;
   onToggleFolder?: () => void;
+  onOpenPreview?: () => void;
+  onOpenPermanent?: () => void;
   renameInputRef: React.RefObject<HTMLInputElement | null>;
   focusProps: {
     "data-tree-item-id": string;
@@ -44,7 +44,6 @@ export function FileTreeItemRow({
   open,
   depth,
   nodeName,
-  href,
   active,
   isFocused,
   isCut,
@@ -56,6 +55,8 @@ export function FileTreeItemRow({
   onStartRename,
   onFocusItem,
   onToggleFolder,
+  onOpenPreview,
+  onOpenPermanent,
   renameInputRef,
   focusProps,
   highlightQuery,
@@ -125,16 +126,19 @@ export function FileTreeItemRow({
   }
 
   return (
-    <Link
-      href={href}
+    <button
+      type="button"
       {...focusProps}
-      onClick={onFocusItem}
+      onClick={() => {
+        onFocusItem();
+        onOpenPreview?.();
+      }}
       onDoubleClick={(e) => {
         e.preventDefault();
-        onStartRename();
+        onOpenPermanent?.();
       }}
       className={cn(
-        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-[12px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
+        "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
         active || isFocused
           ? "bg-ws-hover text-ws-text"
           : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
@@ -146,6 +150,6 @@ export function FileTreeItemRow({
         <FileIcon fileName={nodeName} autoAssign />
       </span>
       <HighlightedText text={nodeName} query={highlightQuery} />
-    </Link>
+    </button>
   );
 }

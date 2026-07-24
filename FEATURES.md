@@ -30,14 +30,14 @@ These are the biggest daily-friction gaps you called out.
 | 2 | **Go to Definition / Click component → source** | `done` | ⌘/Ctrl-click JSX/imports jump to the defining file. |
 | 3 | **Git UX polish** | `done` | Per-file +/− hunk counts, open file vs open diff, better empty/sync states, discard from diff. |
 | 4 | **Problems / Diagnostics panel** | `done` | Errors & warnings list → click jumps to line. |
-| 5 | **Command palette (⌘K)** | `review` | Files + commands + recent in one fuzzy palette. |
+| 5 | **Command palette (⌘K)** | `done` | Files + commands + recent in one fuzzy palette. |
 
 ### Sprint B — Editor polish (current focus)
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 6 | Outline / symbols sidebar | `review` | Jump to functions, classes, components in the open file. |
-| 7 | Preview chrome | `todo` | Device sizes, URL bar, console overlay, error overlay. |
+| 6 | Outline / symbols sidebar | `done` | Jump to functions, classes, components in the open file. |
+| 7 | Preview chrome | `review` | Device sizes, URL bar, console overlay, error overlay. |
 | 8 | Pin / preview tabs | `todo` | VS Code–style sticky + italic preview tabs. |
 | 9 | Drag-drop / upload files | `todo` | Drop onto file tree. |
 
@@ -126,17 +126,24 @@ These are the biggest daily-friction gaps you called out.
 - Click a problem → opens file and jumps to the line
 - Status bar error/warning counts · activity bar · **⌘⇧M**
 
-### 5. Command palette — ready for review
+### 5. Command palette — `done`
 
 - **⌘K** opens a fuzzy palette
 - Groups: Recent · Open editors · Commands · Files
 - Run workspace actions or jump to any project file
 - Esc closes; ⌘P remains Go to File only
 
-### 6. Outline / symbols sidebar — ready for review
+### 6. Outline / symbols sidebar — `done`
 
 - Activity bar **Outline** view (⌘⇧O) for the active file
 - Tree of functions, classes, components, and nested members
 - Click a symbol → jumps to its line; filter box narrows the list
 - Cursor-aware highlight of the enclosing symbol
 - TypeScript / JavaScript via Monaco language service; CSS / HTML via lightweight outline
+
+### 7. Preview chrome — ready for review
+
+- Device presets: Fit · Mobile · Tablet · Desktop (+ rotate for mobile/tablet)
+- Editable URL bar (Enter reloads preview)
+- Console overlay: captures `console.*` + uncaught errors from the iframe
+- Error overlay for build / runtime / network failures (Dismiss · Refresh)

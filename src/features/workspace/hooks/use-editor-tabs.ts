@@ -9,7 +9,15 @@ import {
   editorTabHref,
   type EditorTabInput,
 } from "@/features/workspace/lib/editor-tabs";
-import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import {
+  useWorkspaceStore,
+  type EditorTabOpenMode,
+} from "@/features/workspace/store/workspace-store";
+
+export type OpenTabOptions = {
+  /** Default: permanent. Only `file` tabs can open as preview. */
+  mode?: Exclude<EditorTabOpenMode, "preserve">;
+};
 
 /** Keeps open editor tabs in sync with the current workspace URL. */
 export function useEditorTabsSync(projectId: string) {
@@ -21,7 +29,8 @@ export function useEditorTabsSync(projectId: string) {
   useEffect(() => {
     const tab = editorTabFromPathname(projectId, pathname);
     if (!tab) return;
-    syncEditorTabFromRoute(projectId, tab);
+    // Preserve preview/pin when the route mirrors an existing tab.
+    syncEditorTabFromRoute(projectId, tab, { mode: "preserve" });
   }, [projectId, pathname, syncEditorTabFromRoute]);
 }
 
@@ -34,6 +43,9 @@ export function useEditorTabs(projectId: string) {
   const activateEditorTab = useWorkspaceStore((s) => s.activateEditorTab);
   const closeEditorTab = useWorkspaceStore((s) => s.closeEditorTab);
   const reorderEditorTabs = useWorkspaceStore((s) => s.reorderEditorTabs);
+  const pinEditorTab = useWorkspaceStore((s) => s.pinEditorTab);
+  const unpinEditorTab = useWorkspaceStore((s) => s.unpinEditorTab);
+  const promotePreviewTab = useWorkspaceStore((s) => s.promotePreviewTab);
   const openEditorSplit = useWorkspaceStore((s) => s.openEditorSplit);
   const closeEditorSplit = useWorkspaceStore((s) => s.closeEditorSplit);
   const syncEditorTabFromRoute = useWorkspaceStore(
@@ -41,9 +53,11 @@ export function useEditorTabs(projectId: string) {
   );
 
   const openTab = useCallback(
-    (input: EditorTabInput) => {
+    (input: EditorTabInput, options?: OpenTabOptions) => {
       const tab = createEditorTab(input);
-      syncEditorTabFromRoute(projectId, tab);
+      const mode =
+        input.kind === "file" ? (options?.mode ?? "permanent") : "permanent";
+      syncEditorTabFromRoute(projectId, tab, { mode });
       router.push(editorTabHref(projectId, tab));
     },
     [projectId, router, syncEditorTabFromRoute],
@@ -72,7 +86,7 @@ export function useEditorTabs(projectId: string) {
       }
 
       const welcome = createEditorTab({ kind: "welcome" });
-      syncEditorTabFromRoute(projectId, welcome);
+      syncEditorTabFromRoute(projectId, welcome, { mode: "permanent" });
       router.push(editorTabHref(projectId, welcome));
     },
     [
@@ -98,6 +112,27 @@ export function useEditorTabs(projectId: string) {
     [openEditorSplit],
   );
 
+  const pinTab = useCallback(
+    (id: string) => {
+      pinEditorTab(id);
+    },
+    [pinEditorTab],
+  );
+
+  const unpinTab = useCallback(
+    (id: string) => {
+      unpinEditorTab(id);
+    },
+    [unpinEditorTab],
+  );
+
+  const keepOpen = useCallback(
+    (id: string) => {
+      promotePreviewTab(id);
+    },
+    [promotePreviewTab],
+  );
+
   return {
     tabs: editorTabs,
     activeTabId: activeEditorTabId,
@@ -107,6 +142,9 @@ export function useEditorTabs(projectId: string) {
     closeTab,
     reorderTab,
     splitTab,
+    pinTab,
+    unpinTab,
+    keepOpen,
     closeSplit: closeEditorSplit,
   };
 }

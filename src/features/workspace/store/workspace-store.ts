@@ -53,7 +53,13 @@ export type EditorTab = {
   kind: EditorTabKind;
   title: string;
   path?: string;
+  /** Transient tab — italic; replaced by the next preview open. */
+  preview?: boolean;
+  /** Sticky tab — stays left; survives preview replacement. */
+  pinned?: boolean;
 };
+
+export type EditorTabOpenMode = "preview" | "permanent" | "preserve";
 
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
@@ -105,10 +111,18 @@ type WorkspaceState = WorkspacePrefs & {
   setGitPanelTab: (tab: GitPanelTab) => void;
   showGitPanel: (tab?: GitPanelTab) => void;
   setCurrentFilePath: (path: string | null) => void;
-  syncEditorTabFromRoute: (projectId: string, tab: EditorTab) => void;
+  syncEditorTabFromRoute: (
+    projectId: string,
+    tab: EditorTab,
+    options?: { mode?: EditorTabOpenMode },
+  ) => void;
   activateEditorTab: (id: string) => void;
   closeEditorTab: (id: string) => EditorTab | null;
   reorderEditorTabs: (fromId: string, toId: string) => void;
+  pinEditorTab: (id: string) => void;
+  unpinEditorTab: (id: string) => void;
+  promotePreviewTab: (id: string) => void;
+  promotePreviewTabByPath: (path: string) => void;
   openEditorSplit: (tabId: string) => void;
   closeEditorSplit: () => void;
   resetEditorTabs: (projectId: string) => void;
@@ -154,6 +168,75 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   git: "Git",
   outline: "Outline",
 };
+
+function lastPinnedIndex(tabs: EditorTab[]): number {
+  let index = -1;
+  for (let i = 0; i < tabs.length; i++) {
+    if (tabs[i]?.pinned) index = i;
+  }
+  return index;
+}
+
+function insertEditorTab(tabs: EditorTab[], tab: EditorTab): EditorTab[] {
+  const next = [...tabs];
+  if (tab.pinned) {
+    const insertAt = lastPinnedIndex(next) + 1;
+    next.splice(insertAt, 0, tab);
+    return next;
+  }
+  const insertAt = lastPinnedIndex(next) + 1;
+  // Preview tabs sit right after pinned (VS Code: one preview slot there).
+  next.splice(insertAt, 0, tab);
+  return next;
+}
+
+function openEditorTabs(
+  tabs: EditorTab[],
+  tab: EditorTab,
+  mode: EditorTabOpenMode,
+): EditorTab[] {
+  const existing = tabs.find((t) => t.id === tab.id);
+  if (existing) {
+    if (mode === "preserve") return tabs;
+    if (mode === "permanent") {
+      return tabs.map((t) =>
+        t.id === tab.id ? { ...t, preview: false } : t,
+      );
+    }
+    // preview mode on existing: keep permanent/pinned as-is
+    return tabs;
+  }
+
+  const canPreview = tab.kind === "file" && mode === "preview";
+  let next = tabs;
+  if (canPreview) {
+    next = tabs.filter((t) => !t.preview);
+  }
+
+  const opened: EditorTab = {
+    ...tab,
+    preview: canPreview,
+    pinned: false,
+  };
+  return insertEditorTab(next, opened);
+}
+
+function movePinnedTab(tabs: EditorTab[], id: string, pinned: boolean): EditorTab[] {
+  const current = tabs.find((t) => t.id === id);
+  if (!current || Boolean(current.pinned) === pinned) {
+    return tabs.map((t) =>
+      t.id === id ? { ...t, pinned, preview: pinned ? false : t.preview } : t,
+    );
+  }
+
+  const without = tabs.filter((t) => t.id !== id);
+  const updated: EditorTab = {
+    ...current,
+    pinned,
+    preview: pinned ? false : current.preview,
+  };
+  return insertEditorTab(without, updated);
+}
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...DEFAULT_WORKSPACE_PREFS,
@@ -233,14 +316,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       ...(tab ? { gitPanelTab: tab } : {}),
     }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
-  syncEditorTabFromRoute: (projectId, tab) =>
+  syncEditorTabFromRoute: (projectId, tab, options) =>
     set((s) => {
+      const mode = options?.mode ?? "preserve";
       const projectChanged = s.editorTabsProjectId !== projectId;
       const tabs = projectChanged ? [] : s.editorTabs;
-      const exists = tabs.some((t) => t.id === tab.id);
       return {
         editorTabsProjectId: projectId,
-        editorTabs: exists ? tabs : [...tabs, tab],
+        editorTabs: openEditorTabs(tabs, tab, mode),
         activeEditorTabId: tab.id,
         ...(projectChanged ? { editorSplitTabId: null } : {}),
       };
@@ -277,12 +360,36 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       const toIndex = s.editorTabs.findIndex((t) => t.id === toId);
       if (fromIndex === -1 || toIndex === -1) return s;
 
+      const fromTab = s.editorTabs[fromIndex];
+      const toTab = s.editorTabs[toIndex];
+      if (!fromTab || !toTab) return s;
+      // Keep pinned and unpinned groups separate.
+      if (Boolean(fromTab.pinned) !== Boolean(toTab.pinned)) return s;
+
       const nextTabs = [...s.editorTabs];
       const [moved] = nextTabs.splice(fromIndex, 1);
       if (!moved) return s;
       nextTabs.splice(toIndex, 0, moved);
       return { editorTabs: nextTabs };
     }),
+  pinEditorTab: (id) =>
+    set((s) => ({ editorTabs: movePinnedTab(s.editorTabs, id, true) })),
+  unpinEditorTab: (id) =>
+    set((s) => ({ editorTabs: movePinnedTab(s.editorTabs, id, false) })),
+  promotePreviewTab: (id) =>
+    set((s) => ({
+      editorTabs: s.editorTabs.map((t) =>
+        t.id === id ? { ...t, preview: false } : t,
+      ),
+    })),
+  promotePreviewTabByPath: (path) =>
+    set((s) => ({
+      editorTabs: s.editorTabs.map((t) =>
+        t.kind === "file" && t.path === path && t.preview
+          ? { ...t, preview: false }
+          : t,
+      ),
+    })),
   openEditorSplit: (tabId) => {
     const exists = get().editorTabs.some((t) => t.id === tabId);
     if (!exists) return;

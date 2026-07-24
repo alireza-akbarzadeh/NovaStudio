@@ -1,5 +1,3 @@
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
-
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FileTreeNode } from "@/features/workspace/lib/file-tree";
 
@@ -8,11 +6,10 @@ import type { FileTreeMenuContentProps } from "./types";
 type BuildItemMenuPropsParams = {
   node: FileTreeNode;
   isFolder: boolean;
-  href: string;
   canPaste: boolean;
   canEdit: boolean;
   parentId?: Id<"projectFiles">;
-  router: AppRouterInstance;
+  onOpenFile: () => void;
   onStartCreate: (kind: "file" | "folder", parentId?: Id<"projectFiles">) => void;
   onCut: (path: string) => void;
   onCopy: (path: string) => void;
@@ -31,11 +28,10 @@ type BuildItemMenuPropsParams = {
 export function buildItemMenuProps({
   node,
   isFolder,
-  href,
   canPaste,
   canEdit,
   parentId,
-  router,
+  onOpenFile,
   onStartCreate,
   onCut,
   onCopy,
@@ -60,7 +56,7 @@ export function buildItemMenuProps({
     onNewFolder: () => onStartCreate("folder", isFolder ? node.id : undefined),
     onOpen: () => {
       if (!isFolder) {
-        router.push(href);
+        onOpenFile();
       }
     },
     onOpenInTerminal: () => onOpenInTerminal(node.path),
