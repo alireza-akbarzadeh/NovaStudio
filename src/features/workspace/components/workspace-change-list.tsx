@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   ChevronDownIcon,
   ChevronRightIcon,
+  FileTextIcon,
   Loader2Icon,
   MinusIcon,
   PlusIcon,
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useDiscardFileChanges,
@@ -50,6 +52,7 @@ export function WorkspaceChangeList({
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
   const pathname = usePathname();
+  const { openTab } = useEditorTabs(projectId);
   const setFileStaged = useSetFileStaged();
   const setAllChangedStaged = useSetAllChangedStaged();
   const discardFileChanges = useDiscardFileChanges();
@@ -67,7 +70,7 @@ export function WorkspaceChangeList({
     );
   }
 
-  if (!project.syncedAt) {
+  if (project === null || !project.syncedAt) {
     return (
       <p className="px-3 py-4 text-[11px] leading-relaxed text-ws-text-muted">
         Change tracking is not available for this project yet. Re-import from
@@ -90,7 +93,8 @@ export function WorkspaceChangeList({
             key={file._id}
             projectId={projectId}
             file={file}
-            active={pathname === `/projects/${projectId}/files/${file.path}`}
+            active={isChangeActive(pathname, projectId, file.path)}
+            onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
           />
         ))}
       </ul>
@@ -141,9 +145,11 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              active={pathname === `/projects/${projectId}/files/${file.path}`}
+              active={isChangeActive(pathname, projectId, file.path)}
               interactive
               busy={busyPath === file.path}
+              onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
+              onOpenFile={() => openTab({ kind: "file", path: file.path })}
               onUnstage={() =>
                 void runAction(file.path, () =>
                   setFileStaged({
@@ -186,9 +192,11 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              active={pathname === `/projects/${projectId}/files/${file.path}`}
+              active={isChangeActive(pathname, projectId, file.path)}
               interactive
               busy={busyPath === file.path}
+              onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
+              onOpenFile={() => openTab({ kind: "file", path: file.path })}
               onStage={() =>
                 void runAction(file.path, () =>
                   setFileStaged({
@@ -222,6 +230,17 @@ export function WorkspaceChangeList({
         )}
       </ChangeSection>
     </div>
+  );
+}
+
+function isChangeActive(
+  pathname: string,
+  projectId: string,
+  path: string,
+): boolean {
+  return (
+    pathname === `/projects/${projectId}/diff/${path}` ||
+    pathname === `/projects/${projectId}/files/${path}`
   );
 }
 
@@ -287,6 +306,8 @@ function ChangeRow({
   active,
   interactive = false,
   busy = false,
+  onOpenDiff,
+  onOpenFile,
   onStage,
   onUnstage,
   onDiscard,
@@ -296,11 +317,13 @@ function ChangeRow({
   active: boolean;
   interactive?: boolean;
   busy?: boolean;
+  onOpenDiff?: () => void;
+  onOpenFile?: () => void;
   onStage?: () => void;
   onUnstage?: () => void;
   onDiscard?: () => void;
 }) {
-  const href = `/projects/${projectId}/files/${file.path}`;
+  const href = `/projects/${projectId}/diff/${file.path}`;
   const marker = file.isNew ? "A" : "M";
   const markerColor = file.isNew ? "text-ws-link" : "text-ws-success";
 
@@ -315,9 +338,20 @@ function ChangeRow({
     >
       <Link
         href={href}
+        onClick={(event) => {
+          if (!onOpenDiff) return;
+          event.preventDefault();
+          onOpenDiff();
+        }}
         className="flex min-w-0 flex-1 items-center gap-1.5 py-0.5"
+        title="Open diff"
       >
-        <span className={cn("size-3.5 shrink-0 text-center text-[11px] font-medium", markerColor)}>
+        <span
+          className={cn(
+            "size-3.5 shrink-0 text-center text-[11px] font-medium",
+            markerColor,
+          )}
+        >
           {marker}
         </span>
         <span className="size-3.5 shrink-0 [&_svg]:size-full">
@@ -332,6 +366,19 @@ function ChangeRow({
             <Loader2Icon className="size-3.5 animate-spin text-ws-text-muted" />
           ) : (
             <>
+              {onOpenFile ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  title="Open file"
+                  aria-label={`Open ${file.path}`}
+                  onClick={onOpenFile}
+                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
+                >
+                  <FileTextIcon className="size-3" />
+                </Button>
+              ) : null}
               {onStage ? (
                 <Button
                   type="button"

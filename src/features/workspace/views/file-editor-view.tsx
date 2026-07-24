@@ -30,6 +30,7 @@ import { CollaborativeCodeEditor } from "@/features/workspace/components/collabo
 import { PrettierIcon } from "@/features/workspace/components/prettier-icon";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useProjectFile,
   useProjectFiles,
@@ -44,6 +45,7 @@ import {
   loadFileContentDraft,
   resolveSeedContent,
 } from "@/features/workspace/lib/file-content-drafts";
+import type { DefinitionTarget } from "@/features/workspace/lib/monaco-go-to-definition";
 import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
@@ -348,9 +350,21 @@ function FileEditorContent({
   );
   const [content, setContent] = useState(seedContent);
   const projectFiles = useProjectFiles(projectId);
-  const projectPaths = (projectFiles ?? [])
-    .filter((file) => file.kind === "file")
-    .map((file) => file.path);
+  const { openTab } = useEditorTabs(projectId);
+  const setPendingEditorReveal = useWorkspaceStore(
+    (s) => s.setPendingEditorReveal,
+  );
+  const definitionFiles = useMemo(
+    () =>
+      (projectFiles ?? [])
+        .filter((file) => file.kind === "file")
+        .map((file) => ({
+          path: file.path,
+          content: file.content ?? "",
+        })),
+    [projectFiles],
+  );
+  const projectPaths = definitionFiles.map((file) => file.path);
   const previewAvailable =
     isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
 
@@ -363,6 +377,15 @@ function FileEditorContent({
       setContent(seedContent);
     }
   }, [content, draft?.content, seedContent]);
+
+  const onGoToDefinition = (target: DefinitionTarget) => {
+    setPendingEditorReveal({
+      path: target.path,
+      line: target.line,
+      column: target.column,
+    });
+    openTab({ kind: "file", path: target.path });
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -392,6 +415,8 @@ function FileEditorContent({
             serverUpdatedAt={serverUpdatedAt}
             readOnly={readOnly}
             onContentChange={setContent}
+            definitionFiles={definitionFiles}
+            onGoToDefinition={onGoToDefinition}
           />
         </div>
         {activeTab === "preview" ? (

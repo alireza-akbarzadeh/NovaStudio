@@ -61,6 +61,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description: "Prettier formatter (also ⌘ ⇧ I)",
       },
       {
+        id: "go-to-definition",
+        label: "Go to definition",
+        keys: "F12",
+        description: "Also ⌘-click a component or import",
+      },
+      {
         id: "ai-accept",
         label: "Accept AI suggestion",
         keys: "Tab",

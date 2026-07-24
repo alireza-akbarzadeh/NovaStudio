@@ -2,6 +2,7 @@
 
 import {
   Columns2Icon,
+  FileDiffIcon,
   FileIcon,
   FileJsonIcon,
   FolderPlusIcon,
@@ -31,6 +32,7 @@ import { NewProjectForm } from "@/features/projects/components/new-project-form"
 import { ShortcutsPanel } from "@/features/settings/components/shortcuts-panel";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import type { EditorTab } from "@/features/workspace/store/workspace-store";
+import { FileDiffView } from "@/features/workspace/views/file-diff-view";
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
@@ -51,6 +53,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
       return <FileJsonIcon className="size-3 shrink-0 opacity-70" />;
     case "new-project":
       return <FolderPlusIcon className="size-3 shrink-0 opacity-70" />;
+    case "diff":
+      return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
     case "file":
       return <FileIcon className="size-3 shrink-0 opacity-70" />;
     default:
@@ -211,6 +215,14 @@ function SplitPaneContent({
     case "file":
       return (
         <FileEditorView
+          projectId={projectId}
+          filePath={tab.path ?? ""}
+          syncWorkspaceChrome={false}
+        />
+      );
+    case "diff":
+      return (
+        <FileDiffView
           projectId={projectId}
           filePath={tab.path ?? ""}
           syncWorkspaceChrome={false}

@@ -40,6 +40,7 @@ export type SearchPanelMode = "text" | "file";
 export type EditorTabKind =
   | "welcome"
   | "file"
+  | "diff"
   | "settings"
   | "shortcuts"
   | "user-json"

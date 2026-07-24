@@ -6,9 +6,10 @@ export type EditorTabInput =
   | { kind: "shortcuts" }
   | { kind: "user-json" }
   | { kind: "new-project" }
-  | { kind: "file"; path: string };
+  | { kind: "file"; path: string }
+  | { kind: "diff"; path: string };
 
-const SPECIAL_TITLES: Record<Exclude<EditorTabKind, "file">, string> = {
+const SPECIAL_TITLES: Record<Exclude<EditorTabKind, "file" | "diff">, string> = {
   welcome: "Welcome",
   settings: "Settings",
   shortcuts: "Shortcuts",
@@ -16,15 +17,23 @@ const SPECIAL_TITLES: Record<Exclude<EditorTabKind, "file">, string> = {
   "new-project": "New Project",
 };
 
+function fileNameFromPath(path: string) {
+  const name = path.split("/").filter(Boolean).pop();
+  return name || path || "Untitled";
+}
+
 export function editorTabId(input: EditorTabInput): string {
   if (input.kind === "file") return `file:${input.path}`;
+  if (input.kind === "diff") return `diff:${input.path}`;
   return input.kind;
 }
 
 export function editorTabTitle(input: EditorTabInput): string {
   if (input.kind === "file") {
-    const name = input.path.split("/").filter(Boolean).pop();
-    return name || input.path || "Untitled";
+    return fileNameFromPath(input.path);
+  }
+  if (input.kind === "diff") {
+    return `${fileNameFromPath(input.path)} (Diff)`;
   }
   return SPECIAL_TITLES[input.kind];
 }
@@ -34,7 +43,9 @@ export function createEditorTab(input: EditorTabInput): EditorTab {
     id: editorTabId(input),
     kind: input.kind,
     title: editorTabTitle(input),
-    ...(input.kind === "file" ? { path: input.path } : {}),
+    ...(input.kind === "file" || input.kind === "diff"
+      ? { path: input.path }
+      : {}),
   };
 }
 
@@ -52,6 +63,8 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/new`;
     case "file":
       return `/projects/${projectId}/files/${tab.path ?? ""}`;
+    case "diff":
+      return `/projects/${projectId}/diff/${tab.path ?? ""}`;
   }
 }
 
@@ -83,6 +96,15 @@ export function editorTabFromPathname(
     return createEditorTab({ kind: "file", path });
   }
   if (pathname === `${base}/files`) {
+    return createEditorTab({ kind: "welcome" });
+  }
+  const diffPrefix = `${base}/diff/`;
+  if (pathname.startsWith(diffPrefix)) {
+    const path = decodeURIComponent(pathname.slice(diffPrefix.length));
+    if (!path) return createEditorTab({ kind: "welcome" });
+    return createEditorTab({ kind: "diff", path });
+  }
+  if (pathname === `${base}/diff`) {
     return createEditorTab({ kind: "welcome" });
   }
   return null;

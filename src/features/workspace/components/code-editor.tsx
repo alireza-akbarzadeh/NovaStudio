@@ -14,6 +14,11 @@ import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-mona
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import {
+  registerGoToDefinition,
+  type DefinitionTarget,
+  type GoToDefinitionContext,
+} from "@/features/workspace/lib/monaco-go-to-definition";
+import {
   configureMonacoLanguages,
   monacoModelPath,
 } from "@/features/workspace/lib/monaco-languages";
@@ -25,6 +30,7 @@ import {
   POLARIS_THEME_LIGHT,
   registerPolarisThemes,
 } from "@/features/workspace/lib/monaco-theme";
+import type { ProjectFileEntry } from "@/features/workspace/lib/resolve-import-path";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 function fileNameFromPath(filePath: string) {
@@ -40,6 +46,9 @@ type CodeEditorProps = {
   /** When true, React does not own the document — Yjs / MonacoBinding does. */
   collaborative?: boolean;
   onCreateEditor?: (editor: editor.IStandaloneCodeEditor) => void;
+  /** Project files used to resolve import / JSX go-to-definition. */
+  definitionFiles?: ProjectFileEntry[];
+  onGoToDefinition?: (target: DefinitionTarget) => void;
 };
 
 export function CodeEditor({
@@ -49,6 +58,8 @@ export function CodeEditor({
   readOnly = false,
   collaborative = false,
   onCreateEditor,
+  definitionFiles,
+  onGoToDefinition,
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
   const { resolvedTheme } = useTheme();
@@ -60,6 +71,12 @@ export function CodeEditor({
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const disposablesRef = useRef<IDisposable[]>([]);
+  const definitionFilesRef = useRef(definitionFiles);
+  const onGoToDefinitionRef = useRef(onGoToDefinition);
+  const filePathRef = useRef(filePath);
+  definitionFilesRef.current = definitionFiles;
+  onGoToDefinitionRef.current = onGoToDefinition;
+  filePathRef.current = filePath;
 
   const pendingReveal = useWorkspaceStore((s) => s.pendingEditorReveal);
   const clearPendingEditorReveal = useWorkspaceStore(
@@ -186,6 +203,18 @@ export function CodeEditor({
 
     const autoClose = registerJsxAutoCloseTags(ed, filePath);
     if (autoClose) disposablesRef.current.push(autoClose);
+
+    disposablesRef.current.push(
+      registerGoToDefinition(monaco, ed, (): GoToDefinitionContext | null => {
+        const navigate = onGoToDefinitionRef.current;
+        if (!navigate) return null;
+        return {
+          currentPath: filePathRef.current,
+          files: definitionFilesRef.current ?? [],
+          onNavigate: navigate,
+        };
+      }),
+    );
 
     editorRef.current = ed;
     onCreateEditor?.(ed);

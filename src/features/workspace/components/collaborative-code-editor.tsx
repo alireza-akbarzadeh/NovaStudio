@@ -31,6 +31,12 @@ type CollaborativeCodeEditorProps = {
   serverUpdatedAt?: number;
   readOnly?: boolean;
   onContentChange?: (content: string) => void;
+  definitionFiles?: Array<{ path: string; content?: string }>;
+  onGoToDefinition?: (target: {
+    path: string;
+    line: number;
+    column: number;
+  }) => void;
 };
 
 function replaceYText(ydoc: Y.Doc, ytext: Y.Text, next: string) {
@@ -55,6 +61,8 @@ function LiveblocksCollaborativeEditor({
   serverUpdatedAt,
   readOnly = false,
   onContentChange,
+  definitionFiles,
+  onGoToDefinition,
 }: CollaborativeCodeEditorProps) {
   const room = useRoom();
   const status = useStatus();
@@ -507,6 +515,8 @@ function LiveblocksCollaborativeEditor({
         readOnly={readOnly}
         collaborative={ready && !reconnecting}
         onChange={ready && !reconnecting ? undefined : fallbackOnChange}
+        definitionFiles={definitionFiles}
+        onGoToDefinition={onGoToDefinition}
         onCreateEditor={(ed) => {
           editorRef.current = ed;
           if (ready) {
