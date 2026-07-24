@@ -384,7 +384,7 @@ function FileEditorContent({
       line: target.line,
       column: target.column,
     });
-    openTab({ kind: "file", path: target.path });
+    openTab({ kind: "file", path: target.path }, { mode: "preview" });
   };
 
   return (

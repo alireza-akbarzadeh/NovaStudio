@@ -3,11 +3,11 @@
 import { FileIcon } from "@react-symbols/icons/utils";
 import { Loader2Icon, SearchIcon, XIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/features/workspace/components/highlighted-text";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import {
   searchFilesByName,
@@ -32,7 +32,7 @@ const SEARCH_TABS: { id: SearchPanelMode; label: string }[] = [
 
 export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
   const files = useProjectFiles(projectId);
-  const router = useRouter();
+  const { openTab } = useEditorTabs(projectId);
   const mode = useWorkspaceStore((s) => s.searchPanelMode);
   const setSearchPanelMode = useWorkspaceStore((s) => s.setSearchPanelMode);
   const folderScope = useWorkspaceStore((s) => s.searchFolderScope);
@@ -74,11 +74,11 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
       column: match.column,
       matchLength: match.matchEnd - match.matchStart,
     });
-    router.push(`/projects/${projectId}/files/${match.path}`);
+    openTab({ kind: "file", path: match.path }, { mode: "preview" });
   };
 
   const onSelectFileMatch = (match: FileNameMatch) => {
-    router.push(`/projects/${projectId}/files/${match.path}`);
+    openTab({ kind: "file", path: match.path }, { mode: "preview" });
   };
 
   if (files === undefined) {

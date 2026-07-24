@@ -21,6 +21,7 @@ import {
   shouldReseedLiveblocks,
 } from "@/features/workspace/lib/file-content-drafts";
 import { MonacoBinding } from "@/features/workspace/lib/y-monaco-binding";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { useRoom, useStatus, useUpdateMyPresence } from "@/liveblocks.config";
 
 type CollaborativeCodeEditorProps = {
@@ -162,6 +163,7 @@ function LiveblocksCollaborativeEditor({
     const known = knownContent();
     if (!content && known) return;
 
+    useWorkspaceStore.getState().promotePreviewTabByPath(filePath);
     pendingContentRef.current = content;
     const epoch = saveEpochRef.current;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);

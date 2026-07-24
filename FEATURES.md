@@ -37,8 +37,8 @@ These are the biggest daily-friction gaps you called out.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 6 | Outline / symbols sidebar | `done` | Jump to functions, classes, components in the open file. |
-| 7 | Preview chrome | `review` | Device sizes, URL bar, console overlay, error overlay. |
-| 8 | Pin / preview tabs | `todo` | VS Code–style sticky + italic preview tabs. |
+| 7 | Preview chrome | `done` | Device sizes, URL bar, console overlay, error overlay. |
+| 8 | Pin / preview tabs | `review` | VS Code–style sticky + italic preview tabs. |
 | 9 | Drag-drop / upload files | `todo` | Drop onto file tree. |
 
 ### Sprint C — Runtime (StackBlitz parity)
@@ -141,9 +141,16 @@ These are the biggest daily-friction gaps you called out.
 - Cursor-aware highlight of the enclosing symbol
 - TypeScript / JavaScript via Monaco language service; CSS / HTML via lightweight outline
 
-### 7. Preview chrome — ready for review
+### 7. Preview chrome — `done`
 
 - Device presets: Fit · Mobile · Tablet · Desktop (+ rotate for mobile/tablet)
 - Editable URL bar (Enter reloads preview)
 - Console overlay: captures `console.*` + uncaught errors from the iframe
 - Error overlay for build / runtime / network failures (Dismiss · Refresh)
+
+### 8. Pin / preview tabs — ready for review
+
+- Single-click explorer / search / go-to-file / problems / definition → **italic preview** tab (one at a time)
+- Double-click explorer (or edit / Keep Open / Pin) → permanent tab
+- Right-click tab: Pin · Unpin · Keep Open · Split · Close
+- Pinned tabs stay on the left with a pin icon

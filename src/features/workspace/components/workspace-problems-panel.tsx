@@ -55,7 +55,7 @@ export function WorkspaceProblemsPanel({
       column: problem.column,
       matchLength: Math.max(1, problem.endColumn - problem.column),
     });
-    openTab({ kind: "file", path: problem.path });
+    openTab({ kind: "file", path: problem.path }, { mode: "preview" });
   };
 
   const groups = groupByFile(problems);
