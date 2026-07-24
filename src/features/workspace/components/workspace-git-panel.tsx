@@ -228,7 +228,6 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             ) : null}
             <WorkspaceChangeList
               projectId={projectId}
-              interactive={Boolean(isGitHub)}
               emptyMessage={
                 isGitHub
                   ? "No local changes since last GitHub sync."

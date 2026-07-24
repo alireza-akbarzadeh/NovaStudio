@@ -4,6 +4,7 @@ import {
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
+  ListTreeIcon,
   MoonIcon,
   SearchIcon,
   SettingsIcon,
@@ -62,6 +63,12 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
     label: "Git",
     icon: <GitBranchIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘9",
+  },
+  {
+    view: "outline",
+    label: "Outline",
+    icon: <ListTreeIcon className="size-4" strokeWidth={1.75} />,
+    shortcut: "⌘⇧O",
   },
 ];
 

@@ -49,6 +49,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘9",
   },
   {
+    id: "showOutline",
+    label: "Show Outline",
+    keywords: "symbols functions classes components outline",
+    shortcut: "⌘⇧O",
+  },
+  {
     id: "showGitChanges",
     label: "Git: Changes",
     keywords: "stage commit diff",

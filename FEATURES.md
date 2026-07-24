@@ -20,7 +20,7 @@ We implement **one feature at a time**, review UI + behavior together, then move
 
 ## Sprint order
 
-### Sprint A — Git & navigation (current focus)
+### Sprint A — Git & navigation
 
 These are the biggest daily-friction gaps you called out.
 
@@ -32,11 +32,11 @@ These are the biggest daily-friction gaps you called out.
 | 4 | **Problems / Diagnostics panel** | `done` | Errors & warnings list → click jumps to line. |
 | 5 | **Command palette (⌘K)** | `review` | Files + commands + recent in one fuzzy palette. |
 
-### Sprint B — Editor polish
+### Sprint B — Editor polish (current focus)
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 6 | Outline / symbols sidebar | `todo` | Jump to functions, classes, components in the open file. |
+| 6 | Outline / symbols sidebar | `review` | Jump to functions, classes, components in the open file. |
 | 7 | Preview chrome | `todo` | Device sizes, URL bar, console overlay, error overlay. |
 | 8 | Pin / preview tabs | `todo` | VS Code–style sticky + italic preview tabs. |
 | 9 | Drag-drop / upload files | `todo` | Drop onto file tree. |
@@ -132,3 +132,11 @@ These are the biggest daily-friction gaps you called out.
 - Groups: Recent · Open editors · Commands · Files
 - Run workspace actions or jump to any project file
 - Esc closes; ⌘P remains Go to File only
+
+### 6. Outline / symbols sidebar — ready for review
+
+- Activity bar **Outline** view (⌘⇧O) for the active file
+- Tree of functions, classes, components, and nested members
+- Click a symbol → jumps to its line; filter box narrows the list
+- Cursor-aware highlight of the enclosing symbol
+- TypeScript / JavaScript via Monaco language service; CSS / HTML via lightweight outline

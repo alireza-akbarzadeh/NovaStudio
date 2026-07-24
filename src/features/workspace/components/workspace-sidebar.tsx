@@ -3,6 +3,7 @@
 import { WorkspaceActivityBar } from "@/features/workspace/components/workspace-activity-bar";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceGitPanel } from "@/features/workspace/components/workspace-git-panel";
+import { WorkspaceOutlinePanel } from "@/features/workspace/components/workspace-outline-panel";
 import { WorkspaceSearchPanel } from "@/features/workspace/components/workspace-search-panel";
 import {
   LEFT_PANEL_LABELS,
@@ -35,6 +36,7 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
           {leftPanelView === "git" ? (
             <WorkspaceGitPanel projectId={projectId} />
           ) : null}
+          {leftPanelView === "outline" ? <WorkspaceOutlinePanel /> : null}
         </div>
       </aside>
     </div>

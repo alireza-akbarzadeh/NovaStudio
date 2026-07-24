@@ -6,7 +6,7 @@ export type PanelSizes = {
   ai: number;
 };
 
-export type LeftPanelView = "explorer" | "search" | "git";
+export type LeftPanelView = "explorer" | "search" | "git" | "outline";
 
 export type GitPanelTab = "changes" | "history" | "info";
 
@@ -152,6 +152,7 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   explorer: "Explorer",
   search: "Find in Files",
   git: "Git",
+  outline: "Outline",
 };
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({

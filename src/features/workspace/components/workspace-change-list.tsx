@@ -53,13 +53,11 @@ type ChangedFile = {
 type WorkspaceChangeListProps = {
   projectId: string;
   emptyMessage?: string;
-  interactive?: boolean;
 };
 
 export function WorkspaceChangeList({
   projectId,
   emptyMessage = "No modified files",
-  interactive = false,
 }: WorkspaceChangeListProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
@@ -175,23 +173,6 @@ export function WorkspaceChangeList({
     );
   }
 
-  if (!interactive) {
-    return (
-      <ul className="space-y-0.5 p-1.5">
-        {changedFiles.map((file) => (
-          <ChangeRow
-            key={file._id}
-            projectId={projectId}
-            file={file}
-            stats={statsByPath.get(file.path)}
-            activeMode={activeChangeMode(pathname, projectId, file.path)}
-            onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
-          />
-        ))}
-      </ul>
-    );
-  }
-
   const staged = changedFiles.filter((file) => file.staged);
   const unstaged = changedFiles.filter((file) => !file.staged);
 
@@ -238,7 +219,6 @@ export function WorkspaceChangeList({
               file={file}
               stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
-              interactive
               busy={busyPath === file.path}
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
               onOpenFile={() => openTab({ kind: "file", path: file.path })}
@@ -286,7 +266,6 @@ export function WorkspaceChangeList({
               file={file}
               stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
-              interactive
               busy={busyPath === file.path}
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
               onOpenFile={() => openTab({ kind: "file", path: file.path })}
@@ -420,7 +399,6 @@ function ChangeRow({
   file,
   stats,
   activeMode,
-  interactive = false,
   busy = false,
   onOpenDiff,
   onOpenFile,
@@ -432,7 +410,6 @@ function ChangeRow({
   file: ChangedFile;
   stats?: LineDiffStats;
   activeMode: "diff" | "file" | null;
-  interactive?: boolean;
   busy?: boolean;
   onOpenDiff?: () => void;
   onOpenFile?: () => void;
@@ -445,6 +422,7 @@ function ChangeRow({
   const markerColor = file.isNew ? "text-ws-link" : "text-ws-success";
   const dir = parentDir(file.path);
   const active = activeMode != null;
+  const hasHoverActions = Boolean(onOpenFile || onStage || onUnstage || onDiscard);
 
   return (
     <li
@@ -491,74 +469,92 @@ function ChangeRow({
             </span>
           ) : null}
         </span>
-        <DiffStatBadges stats={stats} />
       </Link>
 
-      {interactive ? (
-        <div className="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
-          {busy ? (
-            <Loader2Icon className="size-3.5 animate-spin text-ws-text-muted" />
-          ) : (
-            <>
-              {onOpenFile ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Open file"
-                  aria-label={`Open ${file.path}`}
-                  onClick={onOpenFile}
-                  className={cn(
-                    "size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text",
-                    activeMode === "file" && "opacity-100 text-ws-text",
-                  )}
-                >
-                  <FileTextIcon className="size-3" />
-                </Button>
-              ) : null}
-              {onStage ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Stage"
-                  aria-label={`Stage ${file.path}`}
-                  onClick={onStage}
-                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
-                >
-                  <PlusIcon className="size-3" />
-                </Button>
-              ) : null}
-              {onUnstage ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Unstage"
-                  aria-label={`Unstage ${file.path}`}
-                  onClick={onUnstage}
-                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
-                >
-                  <MinusIcon className="size-3" />
-                </Button>
-              ) : null}
-              {onDiscard ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  title="Discard Changes"
-                  aria-label={`Discard changes to ${file.path}`}
-                  onClick={onDiscard}
-                  className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-danger-soft"
-                >
-                  <Undo2Icon className="size-3" />
-                </Button>
-              ) : null}
-            </>
+      <div
+        className={cn(
+          "relative flex h-5 shrink-0 items-center justify-end",
+          hasHoverActions && "min-w-[60px]",
+        )}
+      >
+        {/* Idle: mini +/- line stats */}
+        <div
+          className={cn(
+            "flex items-center px-0.5 transition-opacity",
+            hasHoverActions &&
+              "group-hover:pointer-events-none group-hover:opacity-0 group-focus-within:pointer-events-none group-focus-within:opacity-0",
           )}
+        >
+          <DiffStatBadges stats={stats} />
         </div>
-      ) : null}
+
+        {/* Hover: go to file · stage(+) / unstage(−) · discard */}
+        {hasHoverActions ? (
+          <div className="absolute inset-y-0 right-0 flex items-center opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            {busy ? (
+              <Loader2Icon className="size-3.5 animate-spin text-ws-text-muted" />
+            ) : (
+              <>
+                {onOpenFile ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Open file"
+                    aria-label={`Open ${file.path}`}
+                    onClick={onOpenFile}
+                    className={cn(
+                      "size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text",
+                      activeMode === "file" && "text-ws-text",
+                    )}
+                  >
+                    <FileTextIcon className="size-3" />
+                  </Button>
+                ) : null}
+                {onStage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Stage"
+                    aria-label={`Stage ${file.path}`}
+                    onClick={onStage}
+                    className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
+                  >
+                    <PlusIcon className="size-3" />
+                  </Button>
+                ) : null}
+                {onUnstage ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Unstage"
+                    aria-label={`Unstage ${file.path}`}
+                    onClick={onUnstage}
+                    className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-text"
+                  >
+                    <MinusIcon className="size-3" />
+                  </Button>
+                ) : null}
+                {onDiscard ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    title="Discard Changes"
+                    aria-label={`Discard changes to ${file.path}`}
+                    onClick={onDiscard}
+                    className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-panel hover:text-ws-danger-soft"
+                  >
+                    <Undo2Icon className="size-3" />
+                  </Button>
+                ) : null}
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
     </li>
   );
 }
