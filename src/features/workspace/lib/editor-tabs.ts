@@ -4,6 +4,7 @@ export type EditorTabInput =
   | { kind: "welcome" }
   | { kind: "settings" }
   | { kind: "shortcuts" }
+  | { kind: "user-json" }
   | { kind: "new-project" }
   | { kind: "file"; path: string };
 
@@ -11,6 +12,7 @@ const SPECIAL_TITLES: Record<Exclude<EditorTabKind, "file">, string> = {
   welcome: "Welcome",
   settings: "Settings",
   shortcuts: "Shortcuts",
+  "user-json": "User JSON",
   "new-project": "New Project",
 };
 
@@ -44,6 +46,8 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/settings`;
     case "shortcuts":
       return `/projects/${projectId}/shortcuts`;
+    case "user-json":
+      return `/projects/${projectId}/user-json`;
     case "new-project":
       return `/projects/${projectId}/new`;
     case "file":
@@ -65,6 +69,9 @@ export function editorTabFromPathname(
   }
   if (pathname === `${base}/shortcuts`) {
     return createEditorTab({ kind: "shortcuts" });
+  }
+  if (pathname === `${base}/user-json`) {
+    return createEditorTab({ kind: "user-json" });
   }
   if (pathname === `${base}/new`) {
     return createEditorTab({ kind: "new-project" });

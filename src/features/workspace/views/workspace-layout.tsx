@@ -23,7 +23,7 @@ import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-st
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
-import { useEditorTabsSync, useNewProjectTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
+import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
@@ -47,6 +47,7 @@ export function WorkspaceLayout({
   useEditorSettingsSync();
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
+  useUserJsonTabShortcut(projectId);
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);

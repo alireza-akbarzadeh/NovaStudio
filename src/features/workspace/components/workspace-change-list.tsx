@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import {
@@ -52,6 +53,7 @@ export function WorkspaceChangeList({
   const setFileStaged = useSetFileStaged();
   const setAllChangedStaged = useSetAllChangedStaged();
   const discardFileChanges = useDiscardFileChanges();
+  const confirm = useConfirm();
   const [stagedOpen, setStagedOpen] = useState(true);
   const [unstagedOpen, setUnstagedOpen] = useState(true);
   const [busyPath, setBusyPath] = useState<string | null>(null);
@@ -198,11 +200,21 @@ export function WorkspaceChangeList({
               }
               onDiscard={() =>
                 void runAction(file.path, async () => {
+                  const ok = await confirm({
+                    title: "Discard changes?",
+                    description: `Changes you made to “${file.path}” will not be saved. This cannot be undone.`,
+                    confirmLabel: "Discard",
+                    cancelLabel: "Keep editing",
+                    tone: "danger",
+                  });
+                  if (!ok) return;
+
                   await discardFileChanges({
                     projectId: projectId as Id<"projects">,
                     path: file.path,
                   });
                   clearFileContentDraft(projectId, file.path);
+                  toast.success(`Discarded changes to ${file.path}`);
                 })
               }
             />

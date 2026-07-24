@@ -18,6 +18,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     title: "Workspace",
     shortcuts: [
       { id: "settings", label: "Open command settings", keys: "⌘ ," },
+      { id: "user-json", label: "Open User JSON", keys: "⌘ ⇧ J" },
       { id: "sidebar", label: "Toggle project sidebar", keys: "⌘ B" },
       { id: "terminal", label: "Toggle terminal", keys: "⌘ J" },
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },

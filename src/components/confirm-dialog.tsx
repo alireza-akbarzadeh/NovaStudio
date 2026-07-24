@@ -81,6 +81,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
+            {/* Plain Buttons avoid AlertDialogAction/Cancel racing onOpenChange. */}
             <Button
               type="button"
               variant="outline"

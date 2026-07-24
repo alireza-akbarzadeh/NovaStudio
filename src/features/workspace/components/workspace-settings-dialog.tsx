@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FileJsonIcon,
   FolderPlusIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -47,7 +48,7 @@ export function WorkspaceSettingsDialog() {
   };
 
   const openEditorPage = (
-    kind: "settings" | "shortcuts" | "new-project",
+    kind: "settings" | "shortcuts" | "user-json" | "new-project",
   ) => {
     closeSettings();
     if (!projectId) return;
@@ -74,6 +75,14 @@ export function WorkspaceSettingsDialog() {
           >
             <Settings2Icon />
             <span>Advanced Settings</span>
+          </CommandItem>
+          <CommandItem
+            value="user json user settings settings.json monaco config vscode preferences editor json setting"
+            onSelect={() => openEditorPage("user-json")}
+          >
+            <FileJsonIcon />
+            <span>User JSON</span>
+            <CommandShortcut>⌘⇧J</CommandShortcut>
           </CommandItem>
           <CommandItem
             value="keyboard shortcuts keymap format document formatter prettier"

@@ -123,3 +123,16 @@ export function useNewProjectTabShortcut(projectId: string) {
     openTab({ kind: "new-project" });
   }, [request, openTab]);
 }
+
+/** Handles ⌘⇧J → open User JSON settings editor tab. */
+export function useUserJsonTabShortcut(projectId: string) {
+  const request = useWorkspaceStore((s) => s.userJsonRequest);
+  const { openTab } = useEditorTabs(projectId);
+  const lastHandled = useRef(0);
+
+  useEffect(() => {
+    if (request === 0 || request === lastHandled.current) return;
+    lastHandled.current = request;
+    openTab({ kind: "user-json" });
+  }, [request, openTab]);
+}

@@ -3,6 +3,7 @@
 import {
   Columns2Icon,
   FileIcon,
+  FileJsonIcon,
   FolderPlusIcon,
   KeyboardIcon,
   Settings2Icon,
@@ -33,6 +34,7 @@ import type { EditorTab } from "@/features/workspace/store/workspace-store";
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
+import { WorkspaceUserJsonView } from "@/features/workspace/views/workspace-user-json-view";
 import { cn } from "@/lib/utils";
 
 type WorkspaceEditorTabsProps = {
@@ -45,6 +47,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
       return <Settings2Icon className="size-3 shrink-0 opacity-70" />;
     case "shortcuts":
       return <KeyboardIcon className="size-3 shrink-0 opacity-70" />;
+    case "user-json":
+      return <FileJsonIcon className="size-3 shrink-0 opacity-70" />;
     case "new-project":
       return <FolderPlusIcon className="size-3 shrink-0 opacity-70" />;
     case "file":
@@ -214,6 +218,8 @@ function SplitPaneContent({
       );
     case "settings":
       return <WorkspaceSettingsView projectId={projectId} />;
+    case "user-json":
+      return <WorkspaceUserJsonView />;
     case "shortcuts":
       return (
         <div className="h-full overflow-auto px-6 py-8">

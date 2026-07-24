@@ -4,11 +4,12 @@ import { useEffect, useRef } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
+import { mergeEditorIntoSettingsJson } from "@/features/settings/lib/settings-json";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 
 const SAVE_DEBOUNCE_MS = 400;
 
-/** Hydrate editor settings from Convex and debounce-save changes. */
+/** Hydrate editor settings from Convex and debounce-save form changes. */
 export function useEditorSettingsSync() {
   const { isAuthenticated } = useConvexAuth();
   const prefs = useQuery(
@@ -41,7 +42,11 @@ export function useEditorSettingsSync() {
       return;
     }
 
-    hydrate(prefs?.editor ?? null);
+    hydrate(
+      prefs
+        ? { ...prefs.editor, settingsJson: prefs.settingsJson ?? null }
+        : null,
+    );
     hasHydratedFromServer.current = true;
     skipNextSave.current = true;
   }, [prefs, hydrate]);
@@ -55,16 +60,24 @@ export function useEditorSettingsSync() {
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
+      const state = useEditorSettingsStore.getState();
+      const editor = {
+        fontSize: state.fontSize,
+        tabSize: state.tabSize,
+        wordWrap: state.wordWrap,
+        lineNumbers: state.lineNumbers,
+        highlightActiveLine: state.highlightActiveLine,
+        bracketMatching: state.bracketMatching,
+        lineHeight: state.lineHeight,
+      };
+      const json = mergeEditorIntoSettingsJson(state.settingsJson, editor);
+      // Keep local JSON text aligned when form controls change.
+      if (json !== state.settingsJson) {
+        state.setSettingsJsonDraft(json);
+      }
       void upsertEditor({
-        editor: {
-          fontSize,
-          tabSize,
-          wordWrap,
-          lineNumbers,
-          highlightActiveLine,
-          bracketMatching,
-          lineHeight,
-        },
+        editor,
+        settingsJson: json,
       });
     }, SAVE_DEBOUNCE_MS);
 

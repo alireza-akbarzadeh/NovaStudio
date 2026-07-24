@@ -89,6 +89,8 @@ export default defineSchema({
         lineHeight: v.number(),
       }),
     ),
+    /** VS Code–style user settings.json (flat key/value JSON string). */
+    settingsJson: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 

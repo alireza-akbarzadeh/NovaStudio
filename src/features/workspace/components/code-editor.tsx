@@ -17,6 +17,7 @@ import {
   configureMonacoLanguages,
   monacoModelPath,
 } from "@/features/workspace/lib/monaco-languages";
+import { registerJsxAutoCloseTags } from "@/features/workspace/lib/monaco-jsx-autoclose";
 import { registerJsxSyntaxHighlight } from "@/features/workspace/lib/monaco-jsx-highlight";
 import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
@@ -74,6 +75,7 @@ export function CodeEditor({
   );
   const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
+  const monacoOverrides = useEditorSettingsStore((s) => s.monacoOverrides);
 
   const language = useMemo(
     () => monacoLanguageForPath(filePath),
@@ -95,6 +97,7 @@ export function CodeEditor({
           lineHeight,
         },
         readOnly,
+        monacoOverrides,
       ),
     [
       bracketMatching,
@@ -102,6 +105,7 @@ export function CodeEditor({
       highlightActiveLine,
       lineHeight,
       lineNumbers,
+      monacoOverrides,
       readOnly,
       tabSize,
       wordWrap,
@@ -179,6 +183,9 @@ export function CodeEditor({
     // Monaco validates JSX but does not color tags — decorate .tsx/.jsx.
     const jsxHighlight = registerJsxSyntaxHighlight(monaco, ed, filePath);
     if (jsxHighlight) disposablesRef.current.push(jsxHighlight);
+
+    const autoClose = registerJsxAutoCloseTags(ed, filePath);
+    if (autoClose) disposablesRef.current.push(autoClose);
 
     editorRef.current = ed;
     onCreateEditor?.(ed);

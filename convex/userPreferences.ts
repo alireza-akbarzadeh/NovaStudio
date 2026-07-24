@@ -19,6 +19,8 @@ export const editorSettingsValidator = v.object({
   lineHeight: v.number(),
 });
 
+const SETTINGS_JSON_MAX_CHARS = 32_000;
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -71,19 +73,33 @@ export const upsert = mutation({
 export const upsertEditor = mutation({
   args: {
     editor: editorSettingsValidator,
+    /** When provided, keeps settings.json in sync with the form. */
+    settingsJson: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
+    if (
+      args.settingsJson !== undefined &&
+      args.settingsJson.length > SETTINGS_JSON_MAX_CHARS
+    ) {
+      throw new Error("settings.json is too large");
+    }
+
     const existing = await ctx.db
       .query("userPreferences")
       .withIndex("by_user", (q) => q.eq("userId", identity.subject))
       .unique();
 
+    const patch = {
+      editor: args.editor,
+      ...(args.settingsJson !== undefined
+        ? { settingsJson: args.settingsJson }
+        : {}),
+      updatedAt: Date.now(),
+    };
+
     if (existing) {
-      await ctx.db.patch(existing._id, {
-        editor: args.editor,
-        updatedAt: Date.now(),
-      });
+      await ctx.db.patch(existing._id, patch);
       return existing._id;
     }
 
@@ -94,6 +110,51 @@ export const upsertEditor = mutation({
       aiPanelOpen: true,
       panelSizes: { sidebar: 18, terminal: 28, ai: 28 },
       editor: args.editor,
+      ...(args.settingsJson !== undefined
+        ? { settingsJson: args.settingsJson }
+        : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+/** Save a VS Code–style settings.json document for the signed-in user. */
+export const upsertSettingsJson = mutation({
+  args: {
+    settingsJson: v.string(),
+    /** Parsed known keys applied to typed editor prefs. */
+    editor: v.optional(editorSettingsValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    if (args.settingsJson.length > SETTINGS_JSON_MAX_CHARS) {
+      throw new Error("settings.json is too large (max 32KB)");
+    }
+
+    const existing = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    const patch = {
+      settingsJson: args.settingsJson,
+      ...(args.editor ? { editor: args.editor } : {}),
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+      return existing._id;
+    }
+
+    return await ctx.db.insert("userPreferences", {
+      userId: identity.subject,
+      sidebarOpen: true,
+      terminalOpen: false,
+      aiPanelOpen: true,
+      panelSizes: { sidebar: 18, terminal: 28, ai: 28 },
+      settingsJson: args.settingsJson,
+      ...(args.editor ? { editor: args.editor } : {}),
       updatedAt: Date.now(),
     });
   },

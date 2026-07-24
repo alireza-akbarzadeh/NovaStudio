@@ -380,46 +380,46 @@
   color: #2b2d30;
 }
 
-/* JSX/TSX decorations from monaco-jsx-syntax-highlight (Monaco has no built-in JSX colors) */
+/* JSX/TSX decorations from monaco-jsx-syntax-highlight (override Monaco token colors) */
 .polaris-monaco .jsx-tag-name {
-  color: #d5b778;
+  color: #d5b778 !important;
 }
 .polaris-monaco .jsx-tag-angle-bracket {
-  color: #808080;
+  color: #808080 !important;
 }
 .polaris-monaco .jsx-tag-attribute-key {
-  color: #c77dbb;
+  color: #c77dbb !important;
 }
 .polaris-monaco .jsx-expression-braces {
-  color: #cf8e6d;
+  color: #cf8e6d !important;
 }
 .polaris-monaco .jsx-text {
-  color: #bcbec4;
+  color: #bcbec4 !important;
 }
 
 :root:not(.dark) .polaris-monaco .jsx-tag-name {
-  color: #0033b3;
+  color: #0033b3 !important;
 }
 :root:not(.dark) .polaris-monaco .jsx-tag-angle-bracket {
-  color: #5a5d63;
+  color: #5a5d63 !important;
 }
 :root:not(.dark) .polaris-monaco .jsx-tag-attribute-key {
-  color: #871094;
+  color: #871094 !important;
 }
 :root:not(.dark) .polaris-monaco .jsx-expression-braces {
-  color: #0033b3;
+  color: #0033b3 !important;
 }
 :root:not(.dark) .polaris-monaco .jsx-text {
-  color: #080808;
+  color: #080808 !important;
 }
 
 /* Nested tag depth accents */
-.polaris-monaco .jsx-tag-order-1 { color: #56a8f5; }
-.polaris-monaco .jsx-tag-order-2 { color: #6aab73; }
-.polaris-monaco .jsx-tag-order-3 { color: #c77dbb; }
-:root:not(.dark) .polaris-monaco .jsx-tag-order-1 { color: #00627a; }
-:root:not(.dark) .polaris-monaco .jsx-tag-order-2 { color: #007e1f; }
-:root:not(.dark) .polaris-monaco .jsx-tag-order-3 { color: #871094; }
+.polaris-monaco .jsx-tag-order-1 { color: #56a8f5 !important; }
+.polaris-monaco .jsx-tag-order-2 { color: #6aab73 !important; }
+.polaris-monaco .jsx-tag-order-3 { color: #c77dbb !important; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-1 { color: #00627a !important; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-2 { color: #007e1f !important; }
+:root:not(.dark) .polaris-monaco .jsx-tag-order-3 { color: #871094 !important; }
 
 /* y-monaco remote cursors / selections */
 .yRemoteSelection {

@@ -7,6 +7,7 @@ import {
   ChevronRightIcon,
   DownloadIcon,
   ExternalLinkIcon,
+  FileJsonIcon,
   FolderPlusIcon,
   GiftIcon,
   InfoIcon,
@@ -339,6 +340,18 @@ export function WorkspaceSwitcher({
             onClick={() => {
               close();
               runCommand("openSettings");
+            }}
+          />
+
+          <MenuRow
+            icon={<FileJsonIcon />}
+            label="User JSON"
+            trailing={
+              <span className="text-[11px] text-ws-text-muted">⌘⇧J</span>
+            }
+            onClick={() => {
+              close();
+              runCommand("openUserJson");
             }}
           />
 

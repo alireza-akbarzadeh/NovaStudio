@@ -11,6 +11,7 @@ export type CommandId =
   | "openSettings"
   | "toggleSettings"
   | "closeSettings"
+  | "openUserJson"
   | "openGoToFile"
   | "closeGoToFile"
   | "openCloneFromGitHub"
@@ -71,6 +72,12 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+,",
     allowInInput: true,
     run: () => store().openSettings(),
+  },
+  {
+    id: "openUserJson",
+    shortcut: "mod+shift+j",
+    allowInInput: true,
+    run: () => store().requestOpenUserJson(),
   },
   {
     id: "toggleSettings",

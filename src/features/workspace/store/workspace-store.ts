@@ -42,6 +42,7 @@ export type EditorTabKind =
   | "file"
   | "settings"
   | "shortcuts"
+  | "user-json"
   | "new-project";
 
 export type EditorTab = {
@@ -66,6 +67,7 @@ type WorkspaceState = WorkspacePrefs & {
   /** Tab shown in the secondary editor pane when split is open. */
   editorSplitTabId: string | null;
   newProjectRequest: number;
+  userJsonRequest: number;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
   treeClipboard: TreeClipboard | null;
@@ -102,6 +104,7 @@ type WorkspaceState = WorkspacePrefs & {
   closeEditorSplit: () => void;
   resetEditorTabs: (projectId: string) => void;
   requestOpenNewProject: () => void;
+  requestOpenUserJson: () => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   setTreeClipboard: (clipboard: TreeClipboard | null) => void;
@@ -157,6 +160,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   editorTabsProjectId: null,
   editorSplitTabId: null,
   newProjectRequest: 0,
+  userJsonRequest: 0,
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -260,6 +264,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }),
   requestOpenNewProject: () =>
     set((s) => ({ newProjectRequest: s.newProjectRequest + 1 })),
+  requestOpenUserJson: () =>
+    set((s) => ({ userJsonRequest: s.userJsonRequest + 1 })),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },

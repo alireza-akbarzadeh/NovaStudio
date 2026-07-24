@@ -1,6 +1,7 @@
 import type { editor } from "monaco-editor";
 
 import type { EditorSettings } from "@/features/settings/lib/editor-settings";
+import type { MonacoJsonOverrides } from "@/features/settings/lib/settings-json";
 
 const EDITOR_FONT =
   "var(--font-editor-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
@@ -20,13 +21,14 @@ export type MonacoEditorSettings = Pick<
 export function buildMonacoOptions(
   settings: MonacoEditorSettings,
   readOnly: boolean,
+  overrides: MonacoJsonOverrides = {},
 ): editor.IStandaloneEditorConstructionOptions {
   return {
     readOnly,
     fontFamily: EDITOR_FONT,
     fontSize: settings.fontSize,
     lineHeight: Math.round(settings.fontSize * settings.lineHeight),
-    fontLigatures: true,
+    fontLigatures: overrides.fontLigatures ?? true,
     letterSpacing: 0.2,
     tabSize: settings.tabSize,
     insertSpaces: true,
@@ -48,7 +50,7 @@ export function buildMonacoOptions(
       highlightActiveIndentation: true,
     },
     minimap: {
-      enabled: true,
+      enabled: overrides.minimapEnabled ?? true,
       maxColumn: 80,
       renderCharacters: false,
       showSlider: "mouseover",
@@ -65,8 +67,8 @@ export function buildMonacoOptions(
     overviewRulerBorder: false,
     hideCursorInOverviewRuler: true,
     padding: { top: 10, bottom: 16 },
-    smoothScrolling: true,
-    cursorBlinking: "smooth",
+    smoothScrolling: overrides.smoothScrolling ?? true,
+    cursorBlinking: overrides.cursorBlinking ?? "smooth",
     cursorSmoothCaretAnimation: "on",
     cursorStyle: "line",
     cursorWidth: 2,
@@ -76,6 +78,8 @@ export function buildMonacoOptions(
     automaticLayout: true,
     scrollBeyondLastLine: false,
     linkedEditing: true,
+    autoClosingBrackets: "languageDefined",
+    autoClosingQuotes: "languageDefined",
     formatOnPaste: false,
     formatOnType: false,
     quickSuggestions: {
