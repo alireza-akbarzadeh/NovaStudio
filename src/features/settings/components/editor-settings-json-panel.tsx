@@ -24,7 +24,12 @@ import {
  * VS Code–style settings.json editor.
  * Saves to Convex `userPreferences.settingsJson` for the signed-in user.
  */
-export function EditorSettingsJsonPanel() {
+export function EditorSettingsJsonPanel({
+  fillHeight = false,
+}: {
+  /** Stretch the Monaco editor to fill remaining vertical space. */
+  fillHeight?: boolean;
+}) {
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -81,14 +86,20 @@ export function EditorSettingsJsonPanel() {
   }, [applySettingsJson, settingsJson, upsertSettingsJson]);
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <div
+      className={
+        fillHeight
+          ? "flex h-full min-h-0 flex-col gap-3"
+          : "space-y-3"
+      }
+    >
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <FileJsonIcon className="size-3.5 shrink-0 text-muted-foreground" />
+          <div className="flex items-center gap-2 text-sm font-medium text-ws-text">
+            <FileJsonIcon className="size-3.5 shrink-0 text-ws-text-muted" />
             settings.json
           </div>
-          <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-[13px] leading-relaxed text-ws-text-muted">
             VS Code–style user settings for this account. Saved to your profile
             and restored on every device when you sign in. Supported keys include{" "}
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.fontSize}</code>,{" "}
@@ -113,8 +124,14 @@ export function EditorSettingsJsonPanel() {
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-border/70 bg-ws-bg">
-        <div className="h-70">
+      <div
+        className={
+          fillHeight
+            ? "min-h-0 flex-1 overflow-hidden rounded-md border border-ws-border bg-ws-bg"
+            : "overflow-hidden rounded-md border border-ws-border bg-ws-bg"
+        }
+      >
+        <div className={fillHeight ? "h-full min-h-90" : "h-70"}>
           <Editor
             height="100%"
             language="json"
@@ -130,7 +147,7 @@ export function EditorSettingsJsonPanel() {
               registerPolarisThemes(monaco);
             }}
             options={{
-              minimap: { enabled: false },
+              minimap: { enabled: fillHeight },
               fontSize: 13,
               lineNumbers: "on",
               wordWrap: "on",
@@ -146,9 +163,9 @@ export function EditorSettingsJsonPanel() {
       </div>
 
       {error ? (
-        <p className="text-[12px] text-destructive">{error}</p>
+        <p className="shrink-0 text-[12px] text-destructive">{error}</p>
       ) : (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="shrink-0 text-[11px] text-ws-text-muted">
           Tip: edit the JSON, click Save JSON, then reopen a file — Monaco picks
           up the new options.
         </p>

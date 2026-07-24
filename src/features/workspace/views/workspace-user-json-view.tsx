@@ -18,8 +18,8 @@ export function WorkspaceUserJsonView() {
   useWorkspaceBreadcrumb([...USER_JSON_BREADCRUMB]);
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-8 md:px-8">
-      <header className="mb-6">
+    <div className="flex h-full min-h-0 w-full flex-col px-4 py-5 md:px-6">
+      <header className="mb-4 shrink-0">
         <h1
           className={cn(
             display.className,
@@ -33,7 +33,9 @@ export function WorkspaceUserJsonView() {
           sign-in. Shortcut: ⌘ ⇧ J
         </p>
       </header>
-      <EditorSettingsJsonPanel />
+      <div className="min-h-0 flex-1">
+        <EditorSettingsJsonPanel fillHeight />
+      </div>
     </div>
   );
 }
