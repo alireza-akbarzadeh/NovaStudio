@@ -24,7 +24,7 @@ export function parseConvexErrorMessage(
 }
 
 function cleanConvexMessage(message: string): string {
-  const uncaughtMatch = message.match(/Uncaught Error:\s*(.+)$/s);
+  const uncaughtMatch = message.match(/Uncaught Error:\s*([\s\S]+)$/);
   if (uncaughtMatch?.[1]) {
     return uncaughtMatch[1].trim();
   }
