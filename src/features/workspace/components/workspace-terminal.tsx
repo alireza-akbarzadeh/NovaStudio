@@ -168,13 +168,14 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const letterSpacing = resolveTerminalLetterSpacing();
 
     const term = new Terminal({
-      cursorBlink: true,
+      // Blinking + per-keystroke paints reads as flashy; steady bar feels calmer.
+      cursorBlink: false,
       cursorStyle: "bar",
       cursorWidth: 1,
       fontFamily,
       fontSize: 13,
       fontWeight: "400",
-      lineHeight: 1.25,
+      lineHeight: 1.2,
       letterSpacing,
       theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
       scrollback: 5000,
@@ -185,19 +186,27 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     term.loadAddon(fitAddon);
     term.open(container);
     term.options.letterSpacing = letterSpacing;
-    fitAddon.fit();
+
+    /** Only refit when cols/rows actually change — thrashing fit() flashes the screen. */
+    const fitTerminal = () => {
+      const proposed = fitAddon.proposeDimensions();
+      if (!proposed || proposed.cols < 2 || proposed.rows < 1) return;
+      if (proposed.cols === term.cols && proposed.rows === term.rows) return;
+      fitAddon.fit();
+    };
+
+    fitTerminal();
     terminalRef.current = term;
 
     void document.fonts.ready.then(() => {
       if (terminalRef.current !== term) return;
       term.options.fontFamily = resolveTerminalFontFamily();
       term.options.letterSpacing = resolveTerminalLetterSpacing();
-      fitAddon.fit();
-      term.refresh(0, term.rows - 1);
+      fitTerminal();
     });
 
     const writePrompt = (t: Terminal, newline = false) => {
-      writeShellPrompt(t, {
+      const cols = writeShellPrompt(t, {
         projectName: projectNameRef.current,
         cwd: cwdRef.current,
         branch: branchRef.current,
@@ -205,15 +214,30 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
         isDark: isDarkRef.current,
         newline,
       });
+      editorRef.current?.setPromptCols(cols);
+      return cols;
     };
 
+    // Cache parsed scripts — avoid JSON.parse(package.json) on every keystroke.
+    let scriptsCacheKey = "";
+    let scriptsCache: string[] = [];
     const getCompleteContext = (): CompleteContext => {
       const files = filesRef.current ?? [];
+      const cwd = cwdRef.current;
+      const pkgs = files
+        .filter((f) => f.kind === "file" && f.path.endsWith("package.json"))
+        .map((f) => `${f.path}:${(f.content ?? "").length}:${(f.content ?? "").slice(0, 48)}`)
+        .join("|");
+      const key = `${cwd}::${pkgs}`;
+      if (key !== scriptsCacheKey) {
+        scriptsCacheKey = key;
+        scriptsCache = getPackageScripts(files, cwd);
+      }
       return {
-        cwd: cwdRef.current,
+        cwd,
         files,
         history: historyRef.current,
-        scripts: getPackageScripts(files, cwdRef.current),
+        scripts: scriptsCache,
       };
     };
 
@@ -343,7 +367,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     term.writeln(
       statusBannerLine(wc?.status ?? "idle", wc?.error ?? null),
     );
-    writePrompt(term, true);
+    editor.setPromptCols(writePrompt(term, true));
 
     // Consume any command queued before the terminal finished mounting.
     const pending = useWorkspaceStore.getState().terminalCommandRequest;
@@ -365,10 +389,15 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     };
     container.addEventListener("paste", onPaste, true);
 
-    const resizeObserver = new ResizeObserver(() => fitAddon.fit());
+    let resizeRaf = 0;
+    const resizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(fitTerminal);
+    });
     resizeObserver.observe(container);
 
     return () => {
+      cancelAnimationFrame(resizeRaf);
       dataDisposable.dispose();
       container.removeEventListener("paste", onPaste, true);
       resizeObserver.disconnect();

@@ -352,6 +352,17 @@ function EditorPrimarySurface({
     activeTab?.kind === "file" &&
     fileTabs.some((tab) => tab.id === activeTab.id);
 
+  if (tabs.length === 0) {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-ws-bg px-6 text-center">
+        <p className="text-sm text-ws-text-muted">No open editors</p>
+        <p className="text-[12px] text-ws-text-muted/80">
+          Open a file from the explorer to start editing
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative h-full min-h-0">
       {/* Keep open file editors mounted so tab switches do not tear down

@@ -13,7 +13,8 @@ function printableText(data: string): string {
   return data.replace(/[\x00-\x1f\x7f]/g, "");
 }
 
-export type PromptWriter = (term: Terminal, newline?: boolean) => void;
+/** Prompt writer returns visible column width of what it printed. */
+export type PromptWriter = (term: Terminal, newline?: boolean) => number;
 
 /**
  * Owns the current input line, ghost suggestion, and key handling.
@@ -24,6 +25,8 @@ export class TerminalLineEditor {
   private ghost = "";
   private suggestion: string | null = null;
   private busy = false;
+  /** Visible width of the last written prompt (for ghost truncation). */
+  private promptCols = 0;
   /** When set, keystrokes go to a running process stdin (interactive prompts). */
   private stdinWrite: ((data: string) => void) | null = null;
 
@@ -37,6 +40,11 @@ export class TerminalLineEditor {
 
   get value() {
     return this.buffer;
+  }
+
+  /** Keep prompt width in sync when the shell writes a prompt outside redraw(). */
+  setPromptCols(cols: number) {
+    this.promptCols = cols;
   }
 
   setBusy(busy: boolean) {
@@ -87,7 +95,7 @@ export class TerminalLineEditor {
       this.buffer = "";
       this.clearSuggestion();
       this.history.resetCursor();
-      this.writePrompt(this.term, true);
+      this.promptCols = this.writePrompt(this.term, true);
       return;
     }
 
@@ -99,7 +107,7 @@ export class TerminalLineEditor {
 
     if (data === "\x0c") {
       this.term.clear();
-      this.writePrompt(this.term, false);
+      this.promptCols = this.writePrompt(this.term, false);
       this.redraw();
       return;
     }
@@ -181,7 +189,7 @@ export class TerminalLineEditor {
 
     // Overwrite in place (avoid clear-then-write flash), then commit the line.
     this.term.write("\r");
-    this.writePrompt(this.term, false);
+    this.promptCols = this.writePrompt(this.term, false);
     this.term.write(`${ERASE_EOL}${command}\r\n`);
 
     try {
@@ -218,14 +226,41 @@ export class TerminalLineEditor {
     this.ghost = "";
   }
 
-  /** Append at end of line without blanking the prompt (typing / paste hot path). */
+  /** Cap ghost so prompt+buffer+ghost never wraps (wrap + backspace looks jumpy). */
+  private visibleGhost(): string {
+    if (!this.ghost) return "";
+    const room = this.term.cols - this.promptCols - this.buffer.length;
+    if (room <= 0) return "";
+    return this.ghost.length > room ? this.ghost.slice(0, room) : this.ghost;
+  }
+
+  /**
+   * Append at end of line.
+   * When typing along an existing ghost suggestion, advance through it in place —
+   * do NOT erase/repaint (that flash is the jumpy feel).
+   */
   private appendText(text: string) {
+    const oldGhost = this.ghost;
     this.buffer += text;
     this.history.resetCursor();
     this.refreshSuggestion();
-    // Cursor sits at end of buffer; new chars overwrite any leftover ghost cells.
-    this.term.write(`${text}${ERASE_EOL}`);
-    this.paintGhost();
+
+    // Continuing the same suggestion: chars already shown as ghost — just walk into them.
+    if (
+      oldGhost.startsWith(text) &&
+      this.ghost === oldGhost.slice(text.length)
+    ) {
+      this.term.write(text);
+      return;
+    }
+
+    // Suggestion changed or appeared — one atomic write (no intermediate paints).
+    const ghost = this.visibleGhost();
+    let out = `${text}${ERASE_EOL}`;
+    if (ghost) {
+      out += `${DIM}${ghost}${RESET}\x1b[${ghost.length}D`;
+    }
+    this.term.write(out);
   }
 
   private backspace() {
@@ -233,15 +268,13 @@ export class TerminalLineEditor {
     this.buffer = this.buffer.slice(0, -1);
     this.history.resetCursor();
     this.refreshSuggestion();
-    // Move left one cell, erase to EOL (drops char + old ghost), then ghost again.
-    this.term.write(`\b${ERASE_EOL}`);
-    this.paintGhost();
-  }
 
-  private paintGhost() {
-    if (!this.ghost) return;
-    this.term.write(`${DIM}${this.ghost}${RESET}`);
-    this.term.write("\b".repeat(this.ghost.length));
+    const ghost = this.visibleGhost();
+    let out = `\b${ERASE_EOL}`;
+    if (ghost) {
+      out += `${DIM}${ghost}${RESET}\x1b[${ghost.length}D`;
+    }
+    this.term.write(out);
   }
 
   /**
@@ -250,9 +283,12 @@ export class TerminalLineEditor {
    */
   private redraw() {
     this.term.write("\r");
-    this.writePrompt(this.term, false);
-    this.term.write(ERASE_EOL);
-    this.term.write(this.buffer);
-    this.paintGhost();
+    this.promptCols = this.writePrompt(this.term, false);
+    const ghost = this.visibleGhost();
+    let out = `${ERASE_EOL}${this.buffer}`;
+    if (ghost) {
+      out += `${DIM}${ghost}${RESET}\x1b[${ghost.length}D`;
+    }
+    this.term.write(out);
   }
 }

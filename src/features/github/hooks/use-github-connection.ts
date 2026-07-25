@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   GITHUB_REPO_SCOPES,
   hasGitHubRepoScope,
@@ -308,36 +309,72 @@ export function useConnectGitHub() {
 
 export function useCloneFromGitHub() {
   const cloneFromGitHub = useAction(api.githubImport.cloneFromGitHub);
+  const processCloneJob = useAction(api.githubImport.processCloneJob);
   const [isCloning, setIsCloning] = useState(false);
 
   const clone = useCallback(
     async (args: { repoUrl: string; branch?: string; name?: string }) => {
       setIsCloning(true);
       try {
+        // Project is created first — import runs in the background after this.
         const { projectId, importJobToken } = await cloneFromGitHub(args);
 
-        const response = await fetch("/api/github/clone", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectId, jobToken: importJobToken }),
+        // Best-effort queue. Never fail the UI once the project exists.
+        await enqueueCloneJob({
+          projectId,
+          jobToken: importJobToken,
+          processCloneJob,
         });
-
-        if (!response.ok) {
-          const payload = (await response.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          throw new Error(
-            payload?.error ?? "Failed to start background clone job",
-          );
-        }
 
         return projectId;
       } finally {
         setIsCloning(false);
       }
     },
-    [cloneFromGitHub],
+    [cloneFromGitHub, processCloneJob],
   );
 
   return { clone, isCloning };
+}
+
+/**
+ * Prefer Inngest via `/api/github/clone`. If that request fails (common
+ * "Failed to fetch" in local/dev), fall back to the Convex import action so
+ * cloning still completes without an error toast.
+ */
+async function enqueueCloneJob(args: {
+  projectId: string;
+  jobToken: string;
+  processCloneJob: (args: {
+    projectId: Id<"projects">;
+    jobToken: string;
+  }) => Promise<unknown>;
+}) {
+  const { projectId, jobToken, processCloneJob } = args;
+
+  try {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 10_000);
+    try {
+      const response = await fetch("/api/github/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, jobToken }),
+        signal: controller.signal,
+      });
+      if (response.ok) return;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  } catch {
+    // Network / abort — fall through to Convex.
+  }
+
+  // Fire-and-forget so the dialog can close immediately.
+  void processCloneJob({
+    projectId: projectId as Id<"projects">,
+    jobToken,
+  }).catch(() => {
+    // processCloneJob marks the project failed on its own.
+  });
 }

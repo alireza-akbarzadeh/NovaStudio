@@ -21,11 +21,19 @@ function directoryLabel(projectName: string, cwd: string) {
   return segments[segments.length - 1] ?? projectName;
 }
 
+function stripAnsi(text: string) {
+  return text.replace(/\x1b\[[0-9;]*m/g, "");
+}
+
 /**
  * Starship-style prompt using ASCII-safe markers so cell widths stay even.
  * Example: `at polaris on main *`
  */
-export function writeShellPrompt(term: Terminal, options: PromptOptions) {
+export function formatShellPrompt(options: PromptOptions): {
+  text: string;
+  /** Visible cell count of the prompt (excl. leading newline). */
+  cols: number;
+} {
   const {
     projectName,
     cwd,
@@ -42,14 +50,27 @@ export function writeShellPrompt(term: Terminal, options: PromptOptions) {
   const label = directoryLabel(projectName, cwd);
   const lead = newline ? "\r\n" : "";
 
-  let prompt = `${lead}${DIM}at${RESET} ${dirColor}${label}${RESET}`;
+  let body = `${DIM}at${RESET} ${dirColor}${label}${RESET}`;
 
   if (branch) {
-    prompt += ` ${DIM}on${RESET} ${branchColor}${branch}${RESET}`;
+    body += ` ${DIM}on${RESET} ${branchColor}${branch}${RESET}`;
     if (dirty) {
-      prompt += ` ${dirtyColor}*${RESET}`;
+      body += ` ${dirtyColor}*${RESET}`;
     }
   }
 
-  term.write(`${prompt} `);
+  body += " ";
+  return { text: `${lead}${body}`, cols: stripAnsi(body).length };
+}
+
+/**
+ * Write the shell prompt. Returns visible column width (for input layout).
+ */
+export function writeShellPrompt(
+  term: Terminal,
+  options: PromptOptions,
+): number {
+  const { text, cols } = formatShellPrompt(options);
+  term.write(text);
+  return cols;
 }

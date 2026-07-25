@@ -30,17 +30,34 @@ export const RenameInput = ({
   };
 
   useEffect(() => {
-    if (selectOnFocus) {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    } else {
-      inputRef.current?.focus();
-    }
+    let cancelled = false;
+
+    const focusInput = () => {
+      if (cancelled) return;
+      const el = inputRef.current;
+      if (!el) return;
+      el.focus();
+      if (selectOnFocus) el.select();
+      el.scrollIntoView({ block: "nearest" });
+    };
+
+    // Defer past the creating click — the toolbar/menu button otherwise
+    // keeps focus in the same frame and the input never receives it.
+    const outer = window.requestAnimationFrame(() => {
+      focusInput();
+      window.requestAnimationFrame(focusInput);
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(outer);
+    };
   }, [selectOnFocus]);
 
   return (
     <Input
       ref={mergedRef}
+      autoFocus
       data-tree-rename-input="true"
       value={value}
       onChange={(e) => onChange(e.target.value)}

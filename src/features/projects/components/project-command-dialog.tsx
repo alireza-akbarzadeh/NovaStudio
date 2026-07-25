@@ -2,7 +2,6 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRightIcon, FolderOpenIcon } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 import {
   CommandDialog,
@@ -17,6 +16,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { ProjectListSkeleton } from "@/features/projects/components/project-list-loading";
 import { getProjectsIcons } from "@/features/projects/components/project-row";
 import { useImportStatusLabel } from "@/features/projects/hooks/use-import-status-label";
+import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 
 interface ProjectCommandDialogProps {
@@ -51,11 +51,11 @@ export function ProjectCommandDialog({
   onOpenChange,
 }: ProjectCommandDialogProps) {
   const projects = useProjects();
-  const router = useRouter();
+  const { openProject } = useOpenWorkspaceProject();
 
   const onOpenProject = (project: Doc<"projects">) => {
-    router.push(`/projects/${project._id}`);
     onOpenChange(false);
+    openProject(project);
   };
 
   const latest = projects?.[0];

@@ -3,13 +3,16 @@
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRightIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { ProjectListSkeleton } from "@/features/projects/components/project-list-loading";
-import { getProjectsIcons, ProjectRow } from "@/features/projects/components/project-row";
+import {
+  getProjectsIcons,
+  ProjectRow,
+} from "@/features/projects/components/project-row";
 import { useImportStatusLabel } from "@/features/projects/hooks/use-import-status-label";
+import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useProjectPartial } from "@/features/projects/hooks/use-projects";
 import { IMPORT_ETA_MS } from "@/features/projects/lib/import-status";
 import { cn } from "@/lib/utils";
@@ -21,9 +24,11 @@ interface ProjectListProps {
 function ContinueCard({
   project,
   onOpen,
+  opening,
 }: {
   project: Doc<"projects">;
   onOpen: (project: Doc<"projects">) => void;
+  opening?: boolean;
 }) {
   const status = useImportStatusLabel(project);
   const isImporting = project.importStatus === "importing";
@@ -57,14 +62,14 @@ function ContinueCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         onClick={() => {
-          if (isImporting) return;
+          if (isImporting || opening) return;
           onOpen(project);
         }}
-        disabled={isImporting}
+        disabled={isImporting || opening}
         className={cn(
           "group flex w-full items-center gap-3.5 rounded-sm border border-border/60 bg-background/40 px-3 py-3 text-left outline-none",
           "transition-colors duration-150",
-          isImporting
+          isImporting || opening
             ? "cursor-default"
             : "hover:border-ring/30 hover:bg-foreground/6 focus-visible:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring/40",
         )}
@@ -77,8 +82,10 @@ function ContinueCard({
             {project.name}
           </span>
           <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
-            {status ??
-              `Updated ${formatDistanceToNow(project.updatedAt, { addSuffix: true })}`}
+            {opening
+              ? "Opening…"
+              : (status ??
+                `Updated ${formatDistanceToNow(project.updatedAt, { addSuffix: true })}`)}
           </span>
           {progress !== null ? (
             <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-foreground/8">
@@ -91,7 +98,7 @@ function ContinueCard({
         </span>
         {!isImporting ? (
           <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground transition-colors group-hover:text-foreground">
-            Resume
+            {opening ? "Opening" : "Resume"}
             <ArrowRightIcon className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
           </span>
         ) : null}
@@ -101,12 +108,8 @@ function ContinueCard({
 }
 
 export function ProjectList({ onViewAll }: ProjectListProps) {
-  const router = useRouter();
   const projects = useProjectPartial({ limit: 6 });
-
-  const onOpenProject = (project: Doc<"projects">) => {
-    router.push(`/projects/${project._id}`);
-  };
+  const { openProject, isPending } = useOpenWorkspaceProject();
 
   if (projects === undefined) {
     return (
@@ -124,7 +127,9 @@ export function ProjectList({ onViewAll }: ProjectListProps) {
   if (projects.length === 0) {
     return (
       <div className="flex min-h-55 flex-1 flex-col items-center justify-center px-6 text-center">
-        <p className="text-[13px] font-medium text-foreground/80">No projects yet</p>
+        <p className="text-[13px] font-medium text-foreground/80">
+          No projects yet
+        </p>
         <p className="mt-1 max-w-55 text-[12px] leading-relaxed text-muted-foreground">
           Create a workspace or pull one from GitHub to get started.
         </p>
@@ -132,13 +137,19 @@ export function ProjectList({ onViewAll }: ProjectListProps) {
     );
   }
 
-  const importing = projects.find((project) => project.importStatus === "importing");
+  const importing = projects.find(
+    (project) => project.importStatus === "importing",
+  );
   const latest = importing ?? projects[0]!;
   const rest = projects.filter((project) => project._id !== latest._id);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <ContinueCard project={latest} onOpen={onOpenProject} />
+      <ContinueCard
+        project={latest}
+        onOpen={openProject}
+        opening={isPending}
+      />
 
       {rest.length > 0 ? (
         <>
@@ -160,7 +171,7 @@ export function ProjectList({ onViewAll }: ProjectListProps) {
                 key={project._id}
                 project={project}
                 index={index}
-                onOpen={onOpenProject}
+                onOpen={openProject}
               />
             ))}
           </div>

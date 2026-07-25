@@ -47,6 +47,7 @@ import {
   type GitHubRepository,
 } from "@/features/github/hooks/use-github-repos";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { cn } from "@/lib/utils";
 
 interface CloneFromGitHubDialogProps {
@@ -58,6 +59,7 @@ export function CloneFromGitHubDialog({
   open,
   onOpenChange,
 }: CloneFromGitHubDialogProps) {
+  const { closeProjects } = useProjectsDialog();
   const { isConnected, isLoading } = useGitHubConnection();
   const { connect, isConnecting } = useConnectGitHub();
   const { clone, isCloning } = useCloneFromGitHub();
@@ -200,7 +202,9 @@ export function CloneFromGitHubDialog({
       toast.success("Import started — watch the project card for progress");
       resetForm();
       onOpenChange(false);
+      closeProjects();
     } catch (error) {
+      // Only real create failures reach here — enqueue errors are swallowed.
       toast.error(
         parseConvexErrorMessage(error, "Failed to clone repository"),
       );

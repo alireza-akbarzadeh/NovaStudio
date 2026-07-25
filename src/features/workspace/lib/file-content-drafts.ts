@@ -87,13 +87,15 @@ export function clearFileContentDraft(
 }
 
 /**
- * Prefer a local draft when it is newer than the server copy, or when the
- * server is empty and the draft still has text (lost autosave on refresh).
- * Never prefer an empty draft over non-empty server content (AI writes).
+ * Prefer a local draft when it differs from the server copy.
+ *
+ * IMPORTANT: do NOT prefer server solely because `serverUpdatedAt` is newer.
+ * Autosave echoes often land with a newer timestamp than subsequent keystrokes,
+ * and that used to rewind the open editor (cursor jump + dropped characters).
  */
 export function resolveSeedContent(
   serverContent: string,
-  serverUpdatedAt: number | undefined,
+  _serverUpdatedAt: number | undefined,
   draft: FileContentDraft | null,
 ): string {
   if (!draft) return serverContent;
@@ -102,16 +104,13 @@ export function resolveSeedContent(
     return serverContent;
   }
 
-  // Empty Liveblocks pulse must not beat a real Convex/AI write.
+  // Empty Liveblocks/draft pulse must not beat a real Convex/AI write.
   if (!draft.content && serverContent) {
     return serverContent;
   }
 
-  if (
-    serverUpdatedAt === undefined ||
-    draft.updatedAt >= serverUpdatedAt ||
-    (!serverContent && draft.content)
-  ) {
+  // Non-empty differing draft = in-progress local/AI buffer. Keep it.
+  if (draft.content) {
     return draft.content;
   }
 
@@ -134,6 +133,10 @@ export function shouldReseedLiveblocks(
 /**
  * Whether an external Convex write (AI tool, another client) should replace
  * the current Liveblocks buffer.
+ *
+ * Peer edits flow through Yjs — this path is only for reseeds and intentional
+ * external writes (AI). Never treat an autosave echo as authoritative while
+ * the live buffer has already moved on.
  */
 export function shouldApplyExternalContent(args: {
   ytextContent: string;
@@ -141,27 +144,20 @@ export function shouldApplyExternalContent(args: {
   serverUpdatedAt: number | undefined;
   draft: FileContentDraft | null;
 }): boolean {
-  const { ytextContent, serverContent, serverUpdatedAt, draft } = args;
+  const { ytextContent, serverContent, draft } = args;
   if (!serverContent) return false;
   if (serverContent === ytextContent) return false;
 
   // Empty Liveblocks room with real server content — always apply.
   if (!ytextContent) return true;
 
-  // Fresh AI/tool draft matching server — force into the open editor.
+  // Intentional external write (AI tool): draft was stamped with the incoming
+  // server payload before/when Convex updated. Safe to push into the editor.
   if (draft && draft.content === serverContent) {
     return true;
   }
 
-  // Local edits newer than this server snapshot win.
-  if (
-    draft &&
-    draft.content !== serverContent &&
-    serverUpdatedAt !== undefined &&
-    draft.updatedAt > serverUpdatedAt
-  ) {
-    return false;
-  }
-
-  return true;
+  // Live Yjs/draft already differs — clobbering it causes cursor jumps and
+  // dropped characters (classic Monaco ↔ persistence race).
+  return false;
 }

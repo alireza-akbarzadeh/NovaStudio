@@ -114,7 +114,7 @@ function ProjectsDialog({
           }}
         />
 
-        <DialogHeader className="relative z-10 shrink-0 border-b border-border/60 px-6 py-5 text-left sm:px-8">
+        <DialogHeader className="relative z-10 shrink-0 border-b border-border/60 py-5 pr-12 pl-6 text-left sm:pl-8">
           <DialogTitle
             className={cn(
               display.className,

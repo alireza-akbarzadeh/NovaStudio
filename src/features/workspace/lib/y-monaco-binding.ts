@@ -201,7 +201,9 @@ export class MonacoBinding {
               pos.column,
             );
             const insert = op.insert as string;
-            monacoModel.applyEdits([{ range, text: insert }]);
+            monacoModel.applyEdits([
+              { range, text: insert, forceMoveMarkers: true },
+            ]);
             index += insert.length;
           } else if (op.delete !== undefined) {
             const pos = monacoModel.getPositionAt(index);
@@ -212,7 +214,9 @@ export class MonacoBinding {
               endPos.lineNumber,
               endPos.column,
             );
-            monacoModel.applyEdits([{ range, text: "" }]);
+            monacoModel.applyEdits([
+              { range, text: "", forceMoveMarkers: true },
+            ]);
           } else {
             unexpectedCase();
           }

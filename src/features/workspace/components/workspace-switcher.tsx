@@ -22,7 +22,6 @@ import {
 import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useEffect,
   useRef,
@@ -51,6 +50,7 @@ import {
   useProjects,
   useUpdateProject,
 } from "@/features/projects/hooks/use-projects";
+import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { exportProjectAsZip } from "@/features/workspace/lib/export-project-zip";
@@ -119,11 +119,11 @@ export function WorkspaceSwitcher({
   projectId,
   projectName,
 }: WorkspaceSwitcherProps) {
-  const router = useRouter();
   const projects = useProjects();
   const project = useProject({ projectId });
   const projectFiles = useProjectFiles(projectId);
   const updateProject = useUpdateProject();
+  const { openProject, leaveToProjectsHub } = useOpenWorkspaceProject();
   const { isLoaded, isPro } = useBilling();
   const { openPricing } = usePricingDialog();
   const { isConnected, connection } = useGitHubConnection();
@@ -239,10 +239,10 @@ export function WorkspaceSwitcher({
         <div className="flex flex-col p-1.5">
           <MenuRow
             icon={<ArrowLeftIcon />}
-            label="Go to Projects"
+            label="Close project"
             onClick={() => {
               close();
-              router.push("/projects");
+              leaveToProjectsHub();
             }}
           />
         </div>
@@ -463,8 +463,8 @@ export function WorkspaceSwitcher({
                 key={item._id}
                 type="button"
                 onClick={() => {
-                  router.push(`/projects/${item._id}`);
                   close();
+                  openProject(item._id);
                 }}
                 className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-ws-hover"
               >

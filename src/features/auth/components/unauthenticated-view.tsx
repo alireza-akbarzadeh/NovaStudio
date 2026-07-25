@@ -22,25 +22,106 @@ const display = Manrope({
 
 const FEATURES = [
   {
-    id: "engine",
-    label: "01 // Reasoning",
-    title: "Logic-First Completions",
+    id: "ai",
+    label: "01 // AI",
+    title: "Ask Polaris in context",
     description:
-      "Ask, edit, and explain in context of your open files — not a blank chat window bolted on the side.",
+      "Chat against open files, the project tree, and diffs. Explain, refactor, or create — without leaving the editor.",
   },
   {
-    id: "context",
-    label: "02 // Context",
-    title: "Deep Repo Indexing",
+    id: "ide",
+    label: "02 // IDE",
+    title: "Full browser workspace",
     description:
-      "The assistant sees your project structure, open tabs, and diffs so suggestions stay grounded in real code.",
+      "Monaco editor, file explorer, multi-file tabs, and a real terminal — the whole loop runs in the browser.",
   },
   {
-    id: "performance",
-    label: "03 // Workflow",
-    title: "Git, Terminal, Editor",
+    id: "projects",
+    label: "03 // Projects",
+    title: "Hub for every workspace",
     description:
-      "Status, history, publish, and a workspace terminal live next to your work — one browser IDE, zero hop.",
+      "Search, pin, share, and continue where you left off. Import from GitHub or start fresh in one click.",
+  },
+  {
+    id: "git",
+    label: "04 // Git",
+    title: "Status to publish",
+    description:
+      "Inspect changes, commit, and publish from the same surface you edit in — no context switch.",
+  },
+  {
+    id: "terminal",
+    label: "05 // Terminal",
+    title: "Shell beside the code",
+    description:
+      "Install packages, run scripts, and debug failures next to the editor with live workspace sync.",
+  },
+  {
+    id: "team",
+    label: "06 // Team",
+    title: "Invite and collaborate",
+    description:
+      "Share projects, manage members, and keep notifications and shortcuts within reach.",
+  },
+] as const;
+
+const SHOWCASES = [
+  {
+    id: "workspace",
+    eyebrow: "Workspace",
+    title: "Editor, terminal, and AI on one surface.",
+    description:
+      "Open a file, ask Polaris to change it, run the command that fails, and fix it — without hopping tools.",
+    bullets: [
+      "Monaco editor with multi-file tabs",
+      "Integrated terminal for install, run, and debug",
+      "Ask Polaris with project-aware suggestions",
+    ],
+    image: "/code.png",
+    imageAlt:
+      "Polaris workspace showing the code editor, file tree, terminal, and Ask Polaris assistant",
+  },
+  {
+    id: "hub",
+    eyebrow: "Projects hub",
+    title: "Every project, one command center.",
+    description:
+      "Find what you were working on, pin what matters, import repos, and jump back into a workspace in seconds.",
+    bullets: [
+      "Pinned, recent, shared, and community views",
+      "Search across projects, tech, and owners",
+      "New project and GitHub import in one place",
+    ],
+    image: "/project-panel.png",
+    imageAlt:
+      "Polaris projects dashboard with project cards, filters, and workspace shortcuts",
+  },
+] as const;
+
+const COMING_SOON = [
+  {
+    label: "Live multiplayer",
+    description: "Shared cursors and presence so teammates edit the same file in real time.",
+  },
+  {
+    label: "One-click deploy",
+    description: "Ship previews and production from the workspace without leaving Polaris.",
+  },
+  {
+    label: "Branch & PR review",
+    description: "Open diffs, comment inline, and push review-ready branches from the hub.",
+  },
+  {
+    label: "Custom agents",
+    description: "Specialized Polaris agents for tests, refactors, migrations, and docs.",
+  },
+  {
+    label: "Template marketplace",
+    description: "Start from community starters — Vue, React, Next, and more — ready to fork.",
+  },
+  {
+    label: "Mobile companion",
+    description: "Review diffs, approve AI patches, and check builds from your phone.",
   },
 ] as const;
 
@@ -65,13 +146,6 @@ const WORKFLOW_STEPS = [
     t: "Ship from the browser",
     d: "Commit, publish, and run commands in the workspace terminal — same surface end to end.",
   },
-] as const;
-
-const CAPABILITIES = [
-  { k: "AI chat", v: "Context from open files & project tree" },
-  { k: "Code editor", v: "Monaco with multi-file tabs" },
-  { k: "Git", v: "Status, history, commit, publish" },
-  { k: "Terminal", v: "Workspace shell next to the editor" },
 ] as const;
 
 const FAQS = [
@@ -136,14 +210,17 @@ function Nav() {
           </span>
         </Link>
         <div className="hidden items-center gap-8 text-[13px] font-medium text-[#9a9a9a] md:flex">
-          <a href="#engine" className="transition-colors hover:text-white">
-            Engine
+          <a href="#features" className="transition-colors hover:text-white">
+            Features
+          </a>
+          <a href="#product" className="transition-colors hover:text-white">
+            Product
+          </a>
+          <a href="#roadmap" className="transition-colors hover:text-white">
+            Roadmap
           </a>
           <a href="#workflow" className="transition-colors hover:text-white">
             Workflow
-          </a>
-          <a href="#faq" className="transition-colors hover:text-white">
-            FAQ
           </a>
           <PricingLink className="transition-colors hover:text-white">
             Pricing
@@ -188,7 +265,7 @@ function Hero() {
   const { openProjects } = useProjectsDialog();
 
   return (
-    <section className="relative overflow-hidden pt-20 pb-28 md:pt-24 md:pb-40">
+    <section className="relative overflow-hidden pt-16 pb-20 md:pt-20 md:pb-28">
       <div
         aria-hidden
         className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[1200px] -translate-x-1/2 rounded-full bg-ws-accent/20 opacity-50 blur-[160px]"
@@ -208,11 +285,11 @@ function Hero() {
             Ship code{" "}
             <span className="text-[#8b8e96]">at the speed of</span> thought.
           </h1>
-          <p className="mx-auto mb-12 max-w-2xl text-balance text-base font-medium leading-relaxed text-[#8b8e96] md:mb-16 md:text-xl">
-            The AI workspace for building software. Context-aware editing, Git,
-            and terminal — zero config, in the browser.
+          <p className="mx-auto mb-10 max-w-2xl text-balance text-base font-medium leading-relaxed text-[#8b8e96] md:mb-12 md:text-xl">
+            The AI workspace for building software. Editor, terminal, Git, and
+            Ask Polaris — zero install, in the browser.
           </p>
-          <div className="mb-14 flex flex-wrap items-center justify-center gap-3 md:mb-16">
+          <div className="mb-12 flex flex-wrap items-center justify-center gap-3 md:mb-14">
             <Show when="signed-out">
               <SignUpButton mode="modal" forceRedirectUrl="/projects">
                 <button
@@ -255,137 +332,28 @@ function Hero() {
             className="absolute -inset-1 rounded-2xl bg-gradient-to-b from-white/15 to-transparent opacity-10 blur-sm"
           />
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0C0C0E] shadow-[0_48px_100px_-20px_rgba(0,0,0,0.8)]">
-            <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.03] px-5 py-3.5">
-              <div className="flex w-24 gap-2">
-                <div className="size-3 rounded-full bg-white/10" />
-                <div className="size-3 rounded-full bg-white/10" />
-                <div className="size-3 rounded-full bg-white/10" />
+            <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.03] px-4 py-3 md:px-5">
+              <div className="flex w-20 gap-1.5 md:w-24 md:gap-2">
+                <div className="size-2.5 rounded-full bg-white/10 md:size-3" />
+                <div className="size-2.5 rounded-full bg-white/10 md:size-3" />
+                <div className="size-2.5 rounded-full bg-white/10 md:size-3" />
               </div>
-              <div className="font-mono text-[11px] tracking-widest text-[#9a9a9a] uppercase opacity-60">
-                src/app/page.tsx — Polaris
+              <div className="font-mono text-[10px] tracking-widest text-[#9a9a9a] uppercase opacity-60 md:text-[11px]">
+                workspace — Polaris
               </div>
-              <div className="flex w-24 justify-end">
-                <div className="size-4 rounded-sm bg-white/10" />
-              </div>
-            </div>
-
-            <div className="grid h-[420px] md:h-[540px] md:grid-cols-[220px_1fr]">
-              <div className="hidden space-y-4 border-r border-white/5 p-5 text-left font-mono text-[11px] opacity-40 md:block">
-                <div className="space-y-2">
-                  <div className="font-bold tracking-wider text-white/80 uppercase">
-                    Explorer
-                  </div>
-                  <div className="pl-2 text-white">polaris</div>
-                  <div className="pl-2">▾ src</div>
-                  <div className="pl-6 font-bold text-ws-accent-soft">page.tsx</div>
-                  <div className="pl-6">workspace.tsx</div>
-                  <div className="pl-6">types.d.ts</div>
-                  <div className="pl-2">▸ components</div>
-                  <div className="pl-2">▸ features</div>
-                </div>
-                <div className="space-y-2 pt-4">
-                  <div className="font-bold tracking-wider text-white/80 uppercase">
-                    Context
-                  </div>
-                  <div className="pl-2">open_files</div>
-                  <div className="pl-2">git_status</div>
-                </div>
-              </div>
-
-              <div className="relative p-6 text-left font-mono text-[13px] leading-relaxed md:p-8">
-                <div className="mb-1 flex gap-6">
-                  <div className="w-6 select-none text-right text-white/20">
-                    102
-                  </div>
-                  <div className="font-medium text-zinc-500">
-                    <span className="text-[#c4b5fd]">import</span> {"{"}{" "}
-                    <span className="text-[#7dd3fc]">Workspace</span> {"}"}{" "}
-                    <span className="text-[#c4b5fd]">from</span>{" "}
-                    <span className="text-[#c3e88d]">
-                      &quot;@polaris/core&quot;
-                    </span>
-                    ;
-                  </div>
-                </div>
-                <div className="mb-1 flex gap-6">
-                  <div className="w-6 select-none text-right text-white/20">
-                    103
-                  </div>
-                  <div className="text-zinc-500" />
-                </div>
-                <div className="mb-1 flex gap-6">
-                  <div className="w-6 select-none text-right text-white/20">
-                    104
-                  </div>
-                  <div className="font-medium text-zinc-500">
-                    <span className="text-[#c4b5fd]">export default function</span>{" "}
-                    <span className="text-[#7dd3fc]">Home</span>() {"{"}
-                  </div>
-                </div>
-
-                <div className="group -mx-6 mb-1 flex gap-6 bg-ws-accent/10 px-6 py-1 ring-1 ring-ws-accent/25 md:-mx-8 md:px-8">
-                  <div className="w-6 select-none text-right text-ws-accent-soft/50">
-                    105
-                  </div>
-                  <div className="font-medium text-white">
-                    <span className="text-[#c4b5fd]">return</span>{" "}
-                    <span className="text-[#c4b5fd]">&lt;</span>
-                    <span className="text-[#7dd3fc]">Workspace</span>{" "}
-                    project=
-                    <span className="text-[#c3e88d]">&quot;polaris&quot;</span>{" "}
-                    ai=
-                    <span className="text-[#ffcb6b]">true</span>{" "}
-                    <span className="text-[#c4b5fd]">/&gt;</span>
-                    <span className="cursor-blink ml-1 inline-block h-4 w-[2px] bg-ws-accent align-middle" />
-                  </div>
-                </div>
-
-                <div className="mb-1 flex gap-6">
-                  <div className="w-6 select-none text-right text-white/20">
-                    106
-                  </div>
-                  <div className="pl-4 text-white/40 italic">
-                    {"// AI, git, and terminal — one workspace"}
-                  </div>
-                </div>
-                <div className="mb-1 flex gap-6">
-                  <div className="w-6 select-none text-right text-white/20">
-                    107
-                  </div>
-                  <div className="text-zinc-500">{"}"}</div>
-                </div>
-
-                <div
-                  className="animate-float absolute right-4 bottom-4 w-72 rounded-lg border border-white/10 bg-zinc-900 p-5 shadow-2xl md:right-8 md:bottom-8 md:w-80"
-                  style={{ animationDelay: "800ms" }}
-                >
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-ws-accent" />
-                    <span className="text-[10px] font-bold tracking-wider text-[#9a9a9a] uppercase">
-                      Polaris AI
-                    </span>
-                  </div>
-                  <p className="mb-4 text-[12px] leading-snug text-white/90">
-                    Based on this file, keep Polaris as the hero brand and pair
-                    one primary CTA with the full-bleed editor preview.
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="flex-1 rounded bg-ws-accent py-1.5 text-[11px] font-bold text-white"
-                    >
-                      Apply Fix
-                    </button>
-                    <button
-                      type="button"
-                      className="flex-1 rounded border border-white/5 bg-white/5 py-1.5 text-[11px] font-bold text-white"
-                    >
-                      Explain
-                    </button>
-                  </div>
-                </div>
+              <div className="flex w-20 justify-end md:w-24">
+                <div className="size-3.5 rounded-sm bg-white/10 md:size-4" />
               </div>
             </div>
+            <Image
+              src="/code.png"
+              alt="Polaris AI workspace with code editor, terminal, and Ask Polaris assistant"
+              width={1919}
+              height={1076}
+              priority
+              className="h-auto w-full"
+              sizes="(max-width: 1152px) 100vw, 1152px"
+            />
           </div>
         </div>
       </div>
@@ -395,11 +363,14 @@ function Hero() {
 
 function Features() {
   return (
-    <section className="border-t border-white/5 bg-white/[0.01] py-24">
+    <section
+      id="features"
+      className="scroll-mt-24 border-t border-white/5 bg-white/[0.01] py-24"
+    >
       <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="mx-auto mb-16 max-w-2xl text-center">
           <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
-            Principles
+            Features
           </div>
           <h2
             className={cn(
@@ -407,20 +378,24 @@ function Features() {
               "text-3xl font-bold tracking-tight text-white md:text-5xl",
             )}
           >
-            Engineered for the compiler in your head.
+            Everything you need to ship in the browser.
           </h2>
+          <p className="mt-5 text-balance text-base leading-relaxed text-[#8b8e96] md:text-lg">
+            From the first file open to the last commit — AI, IDE, Git, and
+            project hub in one workspace.
+          </p>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-px overflow-hidden rounded-2xl border border-white/5 bg-white/5 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
             <div
               key={feature.id}
               id={feature.id}
-              className="scroll-mt-24 rounded-2xl border border-white/5 bg-zinc-900/50 p-8 transition-all hover:border-white/10 md:p-10"
+              className="scroll-mt-24 bg-[#121316] p-8 transition-colors hover:bg-white/[0.02] md:p-9"
             >
-              <div className="mb-6 font-mono text-[10px] font-bold tracking-widest text-ws-accent-soft uppercase">
+              <div className="mb-5 font-mono text-[10px] font-bold tracking-widest text-ws-accent-soft uppercase">
                 {feature.label}
               </div>
-              <h3 className="mb-4 text-xl font-bold text-white">
+              <h3 className="mb-3 text-lg font-bold text-white">
                 {feature.title}
               </h3>
               <p className="text-[14px] leading-relaxed text-[#8b8e96]">
@@ -434,82 +409,126 @@ function Features() {
   );
 }
 
-function EngineDeepDive() {
+function ProductShowcases() {
   return (
-    <section className="border-t border-white/5 py-24 md:py-32">
-      <div className="mx-auto grid max-w-6xl gap-16 px-6 md:grid-cols-2 md:items-center md:px-8">
-        <div>
+    <section id="product" className="scroll-mt-24 border-t border-white/5">
+      {SHOWCASES.map((item, index) => {
+        const imageFirst = index % 2 === 1;
+        return (
+          <div
+            key={item.id}
+            className={cn(
+              "border-b border-white/5 py-24 last:border-b-0 md:py-32",
+              index % 2 === 1 && "bg-white/[0.01]",
+            )}
+          >
+            <div
+              className={cn(
+                "mx-auto grid max-w-6xl items-center gap-12 px-6 md:grid-cols-2 md:gap-16 md:px-8",
+              )}
+            >
+              <div className={cn(imageFirst && "md:order-2")}>
+                <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
+                  {item.eyebrow}
+                </div>
+                <h2
+                  className={cn(
+                    display.className,
+                    "mb-5 text-3xl font-bold tracking-tight text-white md:text-4xl md:leading-[1.15]",
+                  )}
+                >
+                  {item.title}
+                </h2>
+                <p className="mb-8 text-base leading-relaxed text-[#8b8e96] md:text-lg">
+                  {item.description}
+                </p>
+                <ul className="space-y-3">
+                  {item.bullets.map((bullet) => (
+                    <li
+                      key={bullet}
+                      className="flex items-start gap-3 text-[14px] text-[#bcbec4]"
+                    >
+                      <span
+                        aria-hidden
+                        className="mt-1.5 size-1.5 shrink-0 rounded-full bg-ws-accent"
+                      />
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className={cn("relative", imageFirst && "md:order-1")}>
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-8 rounded-full bg-ws-accent/15 blur-[90px]"
+                />
+                <div
+                  className="animate-float relative overflow-hidden rounded-xl border border-white/10 bg-[#0C0C0E] shadow-[0_32px_80px_-24px_rgba(0,0,0,0.75)]"
+                  style={{ animationDelay: `${index * 400}ms` }}
+                >
+                  <Image
+                    src={item.image}
+                    alt={item.imageAlt}
+                    width={1919}
+                    height={1078}
+                    className="h-auto w-full"
+                    sizes="(max-width: 768px) 100vw, 560px"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+function Roadmap() {
+  return (
+    <section
+      id="roadmap"
+      className="scroll-mt-24 border-t border-white/5 bg-white/[0.01] py-24 md:py-32"
+    >
+      <div className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="mx-auto mb-14 max-w-2xl text-center md:mb-16">
           <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
-            04 // Native workspace
+            Coming soon
           </div>
           <h2
             className={cn(
               display.className,
-              "mb-6 text-3xl font-bold tracking-tight text-white md:text-5xl md:leading-[1.1]",
+              "text-3xl font-bold tracking-tight text-white md:text-5xl",
             )}
           >
-            An AI workspace that lives{" "}
-            <span className="text-[#8b8e96]">inside</span> the browser.
+            More on the way.
           </h2>
-          <p className="mb-8 text-base leading-relaxed text-[#8b8e96] md:text-lg">
-            No separate chat app, no desktop install. Polaris keeps the editor,
-            assistant, Git, and terminal on one surface so you stay in flow.
+          <p className="mt-5 text-balance text-base leading-relaxed text-[#8b8e96] md:text-lg">
+            We&apos;re building the next layer of Polaris — collaboration,
+            deploy, and agents that meet you where you already work.
           </p>
-          <div className="space-y-4">
-            {CAPABILITIES.map((row) => (
-              <div
-                key={row.k}
-                className="flex items-baseline justify-between gap-4 border-b border-white/5 pb-3"
-              >
-                <span className="font-mono text-[11px] tracking-widest text-[#9a9a9a] uppercase">
-                  {row.k}
-                </span>
-                <span className="text-right text-sm font-medium text-white">
-                  {row.v}
-                </span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="relative">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -inset-10 rounded-full bg-ws-accent/15 blur-[100px]"
-          />
-          <div className="relative rounded-2xl border border-white/10 bg-zinc-950 p-8 font-mono text-[12px] leading-relaxed">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-[10px] tracking-widest text-[#9a9a9a] uppercase">
-                workspace_trace.log
-              </span>
-              <span className="rounded bg-ws-accent/20 px-2 py-0.5 text-[10px] font-bold text-ws-accent-soft">
-                LIVE
-              </span>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {COMING_SOON.map((item) => (
+            <div
+              key={item.label}
+              className="group relative border border-white/5 bg-[#121316]/80 p-6 transition-colors hover:border-white/10 md:p-7"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-[15px] font-bold text-white">
+                  {item.label}
+                </h3>
+                <span className="shrink-0 rounded-sm border border-ws-accent/30 bg-ws-accent/10 px-2 py-0.5 font-mono text-[9px] font-bold tracking-wider text-ws-accent-soft uppercase">
+                  Soon
+                </span>
+              </div>
+              <p className="text-[13px] leading-relaxed text-[#8b8e96]">
+                {item.description}
+              </p>
             </div>
-            <div className="space-y-2 text-zinc-400">
-              <div>
-                <span className="text-ws-accent-soft">→</span> open: page.tsx{" "}
-                <span className="text-[#9a9a9a]">(ready)</span>
-              </div>
-              <div>
-                <span className="text-ws-accent-soft">→</span> context: 3 tabs + git
-                status
-              </div>
-              <div>
-                <span className="text-ws-accent-soft">→</span> assist: refactor Hero
-                CTA
-              </div>
-              <div className="text-emerald-400">
-                ✓ patch ready{" "}
-                <span className="text-[#9a9a9a]">(apply in editor)</span>
-              </div>
-              <div className="mt-4 border-t border-white/5 pt-3 text-white/60">
-                <span className="text-[#c4b5fd]">const</span> workspace ={" "}
-                <span className="text-[#c4b5fd]">await</span> Polaris.
-                <span className="text-[#7dd3fc]">boot</span>();
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </section>
@@ -614,7 +633,7 @@ function Cta() {
           </h2>
           <p className="relative mb-10 text-balance text-base text-[#8b8e96] md:text-lg">
             Create a free account, open a workspace, and start editing with AI,
-            Git, and terminal in one place.
+            Git, and terminal — then grow into what&apos;s coming next.
           </p>
 
           <div className="relative flex flex-wrap items-center justify-center gap-3">
@@ -669,6 +688,12 @@ function Footer() {
           </span>
         </div>
         <div className="flex gap-10 font-mono text-[10px] font-bold tracking-widest text-[#9a9a9a] uppercase">
+          <a href="#features" className="transition-colors hover:text-white">
+            Features
+          </a>
+          <a href="#roadmap" className="transition-colors hover:text-white">
+            Roadmap
+          </a>
           <PricingLink className="transition-colors hover:text-white">
             Pricing
           </PricingLink>
@@ -717,7 +742,8 @@ export function LandingView() {
       <Nav />
       <Hero />
       <Features />
-      <EngineDeepDive />
+      <ProductShowcases />
+      <Roadmap />
       <WorkflowSteps />
       <PricingSection />
       <FaqSection />

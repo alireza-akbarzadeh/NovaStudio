@@ -29,7 +29,19 @@ export function useEditorTabsSync(projectId: string) {
   useEffect(() => {
     const tab = editorTabFromPathname(projectId, pathname);
     if (!tab) return;
-    // Preserve preview/pin when the route mirrors an existing tab.
+
+    // Welcome is optional — don't force it back open after the user closes it.
+    if (tab.kind === "welcome") {
+      const { editorTabs, editorTabsProjectId } =
+        useWorkspaceStore.getState();
+      const switchedProject = editorTabsProjectId !== projectId;
+      const welcomeStillOpen = editorTabs.some((t) => t.kind === "welcome");
+
+      // New project context → open Welcome once.
+      // Same project with Welcome closed → leave tab bar alone (empty is OK).
+      if (!switchedProject && !welcomeStillOpen) return;
+    }
+
     syncEditorTabFromRoute(projectId, tab, { mode: "preserve" });
   }, [projectId, pathname, syncEditorTabFromRoute]);
 }
@@ -85,17 +97,9 @@ export function useEditorTabs(projectId: string) {
         return;
       }
 
-      const welcome = createEditorTab({ kind: "welcome" });
-      syncEditorTabFromRoute(projectId, welcome, { mode: "permanent" });
-      router.push(editorTabHref(projectId, welcome));
+      // Last tab closed — leave an empty editor. Do not force Welcome back open.
     },
-    [
-      activeEditorTabId,
-      closeEditorTab,
-      projectId,
-      router,
-      syncEditorTabFromRoute,
-    ],
+    [activeEditorTabId, closeEditorTab, projectId, router],
   );
 
   const reorderTab = useCallback(

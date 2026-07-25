@@ -30,7 +30,7 @@ export function createPendingCreateRenderer(
 
     return (
       <PendingCreateRow
-        key="pending-create"
+        key={`pending-create-${pendingCreate.kind}-${parentId ?? "root"}`}
         depth={depth}
         kind={pendingCreate.kind}
         defaultName={defaultName}

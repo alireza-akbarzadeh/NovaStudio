@@ -8,10 +8,10 @@ import {
   Share2Icon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
+import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ export function ContinueProjectCard({
   project,
   index,
 }: ContinueProjectCardProps) {
-  const router = useRouter();
+  const { openProject, isPending } = useOpenWorkspaceProject();
 
   return (
     <motion.article
@@ -115,9 +115,10 @@ export function ContinueProjectCard({
         <Button
           size="sm"
           className="rounded-xl"
-          onClick={() => router.push(`/projects/${project.id}`)}
+          disabled={isPending}
+          onClick={() => openProject(project.id)}
         >
-          Open Project
+          {isPending ? "Opening…" : "Open Project"}
         </Button>
       </div>
     </motion.article>
