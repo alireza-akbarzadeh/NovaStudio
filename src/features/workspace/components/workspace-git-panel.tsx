@@ -21,6 +21,7 @@ import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-c
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
+import { WorkspaceGitReviews } from "@/features/workspace/components/workspace-git-reviews";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import {
   useWorkspaceStore,
@@ -35,6 +36,7 @@ type WorkspaceGitPanelProps = {
 const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "changes", label: "Changes" },
   { id: "history", label: "History" },
+  { id: "reviews", label: "Reviews" },
   { id: "info", label: "Info" },
 ];
 
@@ -241,6 +243,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           projectId={projectId}
           enabled={Boolean(isGitHub)}
         />
+      ) : activeTab === "reviews" ? (
+        <WorkspaceGitReviews projectId={projectId} enabled />
       ) : (
         <GitInfoTab
           project={project}

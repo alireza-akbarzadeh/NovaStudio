@@ -61,6 +61,12 @@ export function useStagedCommitContext(projectId: string) {
   });
 }
 
+export function useChangedCommitContext(projectId: string) {
+  return useQuery(api.projectFiles.listChangedCommitContext, {
+    projectId: asProjectId(projectId),
+  });
+}
+
 export function useWriteFileAtPath() {
   return useMutation(api.projectFiles.writeFileAtPath);
 }

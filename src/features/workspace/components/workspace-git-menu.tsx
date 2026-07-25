@@ -6,6 +6,7 @@ import {
   GitCommitHorizontalIcon,
   HistoryIcon,
   PlusIcon,
+  SparklesIcon,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -124,6 +125,13 @@ export function WorkspaceGitMenu({ projectId }: WorkspaceGitMenuProps) {
               Git History
               <DropdownMenuShortcut>⇧⌘H</DropdownMenuShortcut>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+              onClick={() => showGitPanel("reviews")}
+            >
+              <SparklesIcon className="size-3.5" />
+              AI Reviews
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-ws-border" />
             <DropdownMenuItem
               className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
@@ -160,13 +168,22 @@ export function WorkspaceGitMenu({ projectId }: WorkspaceGitMenuProps) {
             </DropdownMenuItem>
           </>
         ) : (
-          <DropdownMenuItem
-            className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
-            onClick={openGitInitDialog}
-          >
-            <PlusIcon className="size-3.5" />
-            Initialize Repository
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+              onClick={() => showGitPanel("reviews")}
+            >
+              <SparklesIcon className="size-3.5" />
+              AI Reviews
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
+              onClick={openGitInitDialog}
+            >
+              <PlusIcon className="size-3.5" />
+              Initialize Repository
+            </DropdownMenuItem>
+          </>
         )}
 
         <DropdownMenuSeparator className="bg-ws-border" />

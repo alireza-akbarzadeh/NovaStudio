@@ -27,6 +27,7 @@ export type CommandId =
   | "showExtensions"
   | "showGitChanges"
   | "showGitHistory"
+  | "showGitReviews"
   | "findInFiles"
   | "formatDocument";
 
@@ -201,6 +202,11 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+h",
     allowInInput: true,
     run: () => showGitTab("history"),
+  },
+  {
+    id: "showGitReviews",
+    allowInInput: true,
+    run: () => showGitTab("reviews"),
   },
   {
     id: "findInFiles",

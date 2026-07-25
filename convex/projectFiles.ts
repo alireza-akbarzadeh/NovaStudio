@@ -110,6 +110,39 @@ export const listStagedCommitContext = query({
   },
 });
 
+/** All local changes (staged or not) — used as AI review fallback. */
+export const listChangedCommitContext = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await verifyProjectAccess(ctx, args.projectId);
+    if (!project.syncedAt) {
+      return [];
+    }
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return files
+      .filter(
+        (file) =>
+          file.kind === "file" && isProjectFileChanged(file, project.syncedAt),
+      )
+      .map((file) => ({
+        path: file.path,
+        isNew:
+          file.syncedContent === undefined &&
+          file._creationTime > project.syncedAt!,
+        content: truncateForCommitContext(file.content),
+        syncedContent: truncateForCommitContext(file.syncedContent),
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path));
+  },
+});
+
 export const setFileStaged = mutation({
   args: {
     projectId: v.id("projects"),

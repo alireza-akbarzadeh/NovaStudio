@@ -79,6 +79,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘⇧H",
   },
   {
+    id: "showGitReviews",
+    label: "Git: AI Reviews",
+    keywords: "ai code review suggestions apply patches",
+  },
+  {
     id: "toggleTerminal",
     label: "Toggle Terminal",
     keywords: "shell console bottom",

@@ -15,6 +15,39 @@ Staged changes:
 {stagedChanges}
 `;
 
+export const CODE_REVIEW_PROMPT = `You are a senior code reviewer inside a cloud IDE (Polaris).
+
+Review the local file changes below for real bugs, security issues, React/TypeScript pitfalls, and clear correctness problems. Do not nitpick style.
+
+Project: {projectName}
+
+Changes:
+{stagedChanges}
+
+Return ONLY valid JSON (no markdown fences, no commentary) with this shape:
+{
+  "findings": [
+    {
+      "id": "unique-short-id",
+      "path": "exact/file/path from the changes",
+      "severity": "error" | "warning" | "info",
+      "title": "short title ≤80 chars",
+      "message": "1–3 sentence explanation of the issue and why it matters",
+      "startLine": 12,
+      "endLine": 18,
+      "suggestedContent": "FULL file contents after applying your fix, or omit if you cannot safely propose a full-file fix"
+    }
+  ]
+}
+
+Rules:
+- Prefer 0–8 high-signal findings. Return {"findings":[]} if nothing important.
+- path must match a file in the changes exactly.
+- startLine/endLine are 1-based line numbers in the AFTER version of the file when possible.
+- Only include suggestedContent when you can produce the complete corrected file text.
+- Do not invent files or APIs that are not in the context.
+`;
+
 export const SUGGESTION_PROMPT = `You are a code suggestion assistant that writes Copilot-style inline completions.
 
 <context>

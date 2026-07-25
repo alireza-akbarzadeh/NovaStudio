@@ -57,6 +57,7 @@ These are the biggest daily-friction gaps you called out.
 | 14 | Inline AI edit (⌘K in editor) | `todo` | Selection → rewrite → Accept / Reject. |
 | 15 | Multi-file AI apply with diffs | `todo` | Per-file diff cards, Apply all / Reject. |
 | 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
+| 16b | **In-editor AI code review** | `review` | Git → Reviews: review local diffs, Apply / Dismiss patches in the editor (no GitHub redirect). |
 
 ### Later / hard infrastructure
 
@@ -202,3 +203,10 @@ These are the biggest daily-friction gaps you called out.
 - Starters: **React**, **Vite**, **Next.js**, **Node**, **Static**, plus TanStack Start and Empty
 - Cards show tags + selection state; project name + Create opens the seeded workspace
 - Seeds live in Convex (`projectTemplates`); `package.json` scripts work with WebContainer install / preview
+
+### 16b. In-editor AI code review — ready for review
+
+- Git panel **Reviews** tab: **Review changes** runs Polaris AI on staged (or all local) diffs
+- Findings list with severity, explanation, jump-to-file
+- **Apply** writes the suggested full-file patch and keeps the file staged; **Dismiss** hides the finding
+- No redirect to GitHub — suggestions stay inside the cloud editor

@@ -14,7 +14,7 @@ export type LeftPanelView =
   | "dependencies"
   | "extensions";
 
-export type GitPanelTab = "changes" | "history" | "info";
+export type GitPanelTab = "changes" | "history" | "reviews" | "info";
 
 export type BottomPanelTab = "terminal" | "problems";
 

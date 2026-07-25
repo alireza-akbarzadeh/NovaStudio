@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ChevronDownIcon,
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -14,9 +15,14 @@ import {
   SunIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
@@ -48,7 +54,7 @@ type UtilityItem = {
   onClick: () => void;
 };
 
-const ACTIVITY_ITEMS: ActivityItem[] = [
+const PRIMARY_ITEMS: ActivityItem[] = [
   {
     view: "explorer",
     label: "Explorer",
@@ -70,6 +76,9 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
     icon: <GitBranchIcon className="size-3.5" strokeWidth={1.75} />,
     shortcut: "⌘9",
   },
+];
+
+const OVERFLOW_ITEMS: ActivityItem[] = [
   {
     view: "outline",
     label: "Outline",
@@ -93,13 +102,58 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
   },
 ];
 
+function ViewTabButton({
+  item,
+  active,
+  onSelect,
+}: {
+  item: ActivityItem;
+  active: boolean;
+  onSelect: (view: LeftPanelView) => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={item.label}
+          aria-pressed={active}
+          onClick={() => onSelect(item.view)}
+          className={cn(
+            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium transition-colors",
+            active
+              ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35"
+              : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+          )}
+        >
+          {item.icon}
+          <span>{item.shortLabel}</span>
+        </button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="bottom"
+        sideOffset={6}
+        className="flex items-center gap-2 border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
+      >
+        <span className="text-xs">{item.label}</span>
+        <span className="text-[10px] text-ws-text-muted">{item.shortcut}</span>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 /** Horizontal view switcher — replaces the VS Code-style activity rail. */
 export function WorkspaceViewSwitcher() {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const [overflowOpen, setOverflowOpen] = useState(false);
+
+  const overflowActive =
+    sidebarOpen && OVERFLOW_ITEMS.some((item) => item.view === leftPanelView);
 
   const onSelect = (view: LeftPanelView) => {
+    setOverflowOpen(false);
     if (leftPanelView === view && sidebarOpen) {
       runCommand("toggleSidebar");
     } else {
@@ -113,40 +167,79 @@ export function WorkspaceViewSwitcher() {
         aria-label="Sidebar views"
         className="flex items-center gap-0.5 overflow-x-auto px-1.5 py-1"
       >
-        {ACTIVITY_ITEMS.map((item) => {
-          const active = sidebarOpen && leftPanelView === item.view;
-          return (
-            <Tooltip key={item.view}>
-              <TooltipTrigger asChild>
+        {PRIMARY_ITEMS.map((item) => (
+          <ViewTabButton
+            key={item.view}
+            item={item}
+            active={sidebarOpen && leftPanelView === item.view}
+            onSelect={onSelect}
+          />
+        ))}
+
+        <Popover open={overflowOpen} onOpenChange={setOverflowOpen}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
                 <button
                   type="button"
-                  aria-label={item.label}
-                  aria-pressed={active}
-                  onClick={() => onSelect(item.view)}
+                  aria-label="More views"
+                  aria-pressed={overflowActive}
                   className={cn(
-                    "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium transition-colors",
-                    active
+                    "inline-flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors",
+                    overflowActive
                       ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35"
                       : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
                   )}
                 >
-                  {item.icon}
-                  <span className="hidden min-[220px]:inline">{item.shortLabel}</span>
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-3.5 transition-transform duration-150",
+                      overflowOpen && "rotate-180",
+                    )}
+                    strokeWidth={1.75}
+                  />
                 </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                sideOffset={6}
-                className="flex items-center gap-2 border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
-              >
-                <span className="text-xs">{item.label}</span>
-                <span className="text-[10px] text-ws-text-muted">
-                  {item.shortcut}
-                </span>
-              </TooltipContent>
-            </Tooltip>
-          );
-        })}
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              sideOffset={6}
+              className="border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
+            >
+              <span className="text-xs">More views</span>
+            </TooltipContent>
+          </Tooltip>
+
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            className="w-52 border-ws-border bg-ws-panel p-1 text-ws-text shadow-lg"
+          >
+            {OVERFLOW_ITEMS.map((item) => {
+              const active = sidebarOpen && leftPanelView === item.view;
+              return (
+                <button
+                  key={item.view}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => onSelect(item.view)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors",
+                    active
+                      ? "bg-ws-accent/15 text-ws-text"
+                      : "text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text",
+                  )}
+                >
+                  {item.icon}
+                  <span className="flex-1">{item.label}</span>
+                  <span className="text-[10px] text-ws-text-muted">
+                    {item.shortcut}
+                  </span>
+                </button>
+              );
+            })}
+          </PopoverContent>
+        </Popover>
       </nav>
     </TooltipProvider>
   );
