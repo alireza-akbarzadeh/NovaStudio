@@ -1,4 +1,5 @@
-/** Deep link shell — `ProjectsDialogProvider` opens the modal when path is `/projects`. */
+import { ProjectsPageView } from "@/features/projects/views/projects-page-view";
+
 export default function ProjectsPage() {
-  return <div className="min-h-screen bg-background" aria-hidden />;
+  return <ProjectsPageView />;
 }

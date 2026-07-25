@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { NewProjectForm } from "@/features/projects/components/new-project-form";
-import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -18,11 +17,9 @@ const display = Manrope({
 
 export function NewProjectView() {
   const router = useRouter();
-  const { openProjects } = useProjectsDialog();
 
   const goBack = () => {
-    router.replace("/");
-    openProjects();
+    router.replace("/projects");
   };
 
   return (

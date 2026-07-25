@@ -1,0 +1,84 @@
+"use client";
+
+import { ActivityFeedSection } from "@/features/projects/components/workspace/activity-feed-section";
+import { CollectionsSection } from "@/features/projects/components/workspace/collections-section";
+import { CommunityProjectsSection } from "@/features/projects/components/workspace/community-projects-section";
+import { ContinueWorkingSection } from "@/features/projects/components/workspace/continue-working-section";
+import { PinnedProjectsSection } from "@/features/projects/components/workspace/pinned-projects-section";
+import { ProjectsEmptyState } from "@/features/projects/components/workspace/projects-empty-state";
+import { ProjectsFiltersBar } from "@/features/projects/components/workspace/projects-filters-bar";
+import { ProjectsPageHeader } from "@/features/projects/components/workspace/projects-page-header";
+import { ProjectsStatsRow } from "@/features/projects/components/workspace/projects-stats-row";
+import { TrendingProjectsSection } from "@/features/projects/components/workspace/trending-projects-section";
+import type {
+  ProjectFilter,
+  WorkspaceProject,
+} from "@/features/projects/lib/projects-workspace-types";
+
+type ProjectsWorkspaceMainProps = {
+  projects: WorkspaceProject[];
+  search: string;
+  onSearchChange: (value: string) => void;
+  filter: ProjectFilter;
+  onFilterChange: (filter: ProjectFilter) => void;
+  sort: string;
+  onSortChange: (sort: string) => void;
+  onImport: () => void;
+  onRequestAccess: (project: WorkspaceProject) => void;
+  isEmptyCatalog: boolean;
+};
+
+export function ProjectsWorkspaceMain({
+  projects,
+  search,
+  onSearchChange,
+  filter,
+  onFilterChange,
+  sort,
+  onSortChange,
+  onImport,
+  onRequestAccess,
+  isEmptyCatalog,
+}: ProjectsWorkspaceMainProps) {
+  return (
+    <div className="min-w-0 flex-1 space-y-8">
+      <ProjectsPageHeader
+        search={search}
+        onSearchChange={onSearchChange}
+        onImport={onImport}
+      />
+
+      {isEmptyCatalog ? (
+        <ProjectsEmptyState onImport={onImport} />
+      ) : (
+        <>
+          <ProjectsFiltersBar
+            filter={filter}
+            onFilterChange={onFilterChange}
+            sort={sort}
+            onSortChange={onSortChange}
+          />
+          {projects.length === 0 ? (
+            <div className="rounded-[22px] border border-dashed border-border/70 bg-card/60 px-6 py-12 text-center text-sm text-muted-foreground backdrop-blur">
+              No projects match your filters. Try another search or reset the
+              filter chips.
+            </div>
+          ) : (
+            <>
+              <ProjectsStatsRow />
+              <PinnedProjectsSection projects={projects} />
+              <ContinueWorkingSection projects={projects} />
+              <CommunityProjectsSection
+                projects={projects}
+                onRequestAccess={onRequestAccess}
+              />
+              <TrendingProjectsSection projects={projects} />
+              <CollectionsSection />
+              <ActivityFeedSection />
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

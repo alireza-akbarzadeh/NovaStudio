@@ -3,7 +3,6 @@
 
 import { useConvexAuth } from "convex/react";
 import { Manrope } from "next/font/google";
-import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -50,25 +49,19 @@ export function useProjectsDialog() {
 }
 
 export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
   // Clerk signed-in ≠ Convex authenticated. Only open after Convex has a valid JWT.
   const { isAuthenticated } = useConvexAuth();
   const [open, setOpen] = useState(false);
   useAcceptPendingInvites();
 
-  // Auto-open on the `/projects` deep link, and force-close only when auth is lost.
-  // We intentionally do NOT close on `/projects/*` so the dialog can overlay a
-  // workspace when opened via the switcher.
+  // `/projects` is a full page now — keep the dialog for in-app switcher only.
+  // Force-close when auth is lost. Do NOT close on `/projects/*` so the dialog
+  // can still overlay a workspace when opened via the switcher.
   useEffect(() => {
     if (!isAuthenticated) {
       setOpen(false);
-      return;
     }
-    if (pathname === "/projects") {
-      setOpen(true);
-    }
-  }, [pathname, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const openProjects = useCallback(() => {
     if (!isAuthenticated) return;
@@ -79,15 +72,9 @@ export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
     setOpen(false);
   }, []);
 
-  const handleOpenChange = useCallback(
-    (next: boolean) => {
-      setOpen(next);
-      if (!next && pathname === "/projects") {
-        router.replace("/");
-      }
-    },
-    [pathname, router],
-  );
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next);
+  }, []);
 
   const value = useMemo(
     () => ({ open, openProjects, closeProjects }),
