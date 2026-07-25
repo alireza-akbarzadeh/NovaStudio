@@ -34,6 +34,11 @@ type UseFileTreeKeyboardParams = {
   cutItem: (path: string) => void;
   copyItem: (path: string) => void;
   pasteInto: (targetParentId?: Id<"projectFiles">) => Promise<void>;
+  canEdit: boolean;
+  startCreate: (
+    kind: "file" | "folder",
+    parentId?: Id<"projectFiles">,
+  ) => void;
 };
 
 export function useFileTreeKeyboard({
@@ -54,6 +59,8 @@ export function useFileTreeKeyboard({
   cutItem,
   copyItem,
   pasteInto,
+  canEdit,
+  startCreate,
 }: UseFileTreeKeyboardParams) {
   const handleTreeKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLElement>) => {
@@ -65,9 +72,6 @@ export function useFileTreeKeyboard({
         filteredTree ?? tree,
         openFolderIds,
       );
-      if (visibleItems.length === 0) {
-        return;
-      }
 
       const currentIndex = focusedId
         ? visibleItems.findIndex((item) => item.node.id === focusedId)
@@ -82,33 +86,50 @@ export function useFileTreeKeyboard({
       }
 
       // Bare letter shortcuts when the tree is focused (VS Code–style).
-      // R rename · C copy · X cut · V paste (move after cut via ↑↓ then V).
-      if (!isModKey(event) && !event.altKey && !event.shiftKey && current) {
+      // A new file · R rename · C copy · X cut · V paste
+      if (!isModKey(event) && !event.altKey && !event.shiftKey) {
         const key = event.key.toLowerCase();
-        if (key === "r") {
+
+        if (key === "a" && canEdit) {
           event.preventDefault();
-          setPendingRenameId(current.node.id);
-          return;
-        }
-        if (key === "c") {
-          event.preventDefault();
-          copyItem(current.node.path);
-          return;
-        }
-        if (key === "x") {
-          event.preventDefault();
-          cutItem(current.node.path);
-          return;
-        }
-        if (key === "v") {
-          event.preventDefault();
-          const targetParentId =
-            current.node.kind === "folder"
+          const parentId =
+            current?.node.kind === "folder"
               ? current.node.id
-              : current.parentId;
-          void pasteInto(targetParentId);
+              : current?.parentId;
+          startCreate("file", parentId);
           return;
         }
+
+        if (current) {
+          if (key === "r") {
+            event.preventDefault();
+            setPendingRenameId(current.node.id);
+            return;
+          }
+          if (key === "c") {
+            event.preventDefault();
+            copyItem(current.node.path);
+            return;
+          }
+          if (key === "x") {
+            event.preventDefault();
+            cutItem(current.node.path);
+            return;
+          }
+          if (key === "v") {
+            event.preventDefault();
+            const targetParentId =
+              current.node.kind === "folder"
+                ? current.node.id
+                : current.parentId;
+            void pasteInto(targetParentId);
+            return;
+          }
+        }
+      }
+
+      if (visibleItems.length === 0) {
+        return;
       }
 
       if (isModKey(event) && !event.altKey) {
@@ -232,6 +253,7 @@ export function useFileTreeKeyboard({
       }
     },
     [
+      canEdit,
       clearMultiSelection,
       copyItem,
       cutItem,
@@ -247,6 +269,7 @@ export function useFileTreeKeyboard({
       setPendingRenameId,
       setSelectedIds,
       setSelectionAnchorId,
+      startCreate,
       toggleFolder,
       tree,
     ],

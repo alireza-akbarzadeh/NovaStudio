@@ -48,11 +48,13 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         <ContextMenu>
           <ContextMenuTrigger asChild>
             <div
+              tabIndex={-1}
               className={cn(
-                "flex min-h-24 flex-1 flex-col rounded-sm p-1.5",
+                "flex min-h-24 flex-1 flex-col rounded-sm p-1.5 outline-none focus-visible:outline-none",
                 tree.dropTargetId === "root" &&
                   "bg-ws-hover ring-1 ring-ws-accent",
               )}
+              onKeyDown={tree.handleTreeKeyDown}
               onDragOver={tree.handleRootDragOver}
               onDragLeave={tree.handleRootDragLeave}
               onDrop={tree.handleRootDrop}

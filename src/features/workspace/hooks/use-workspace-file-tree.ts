@@ -59,6 +59,8 @@ export function useWorkspaceFileTree(projectId: string) {
     cutItem: actions.cutItem,
     copyItem: actions.copyItem,
     pasteInto: actions.pasteInto,
+    canEdit: state.canEdit,
+    startCreate: state.startCreate,
   });
 
   const canPaste = Boolean(

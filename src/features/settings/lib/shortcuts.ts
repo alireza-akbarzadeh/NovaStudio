@@ -87,6 +87,13 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: "file-tree",
     title: "File tree",
     shortcuts: [
+      {
+        id: "new-file",
+        label: "New file",
+        keys: "A",
+        description:
+          "Type a path with / to nest folders, e.g. components/button/type/button.ts",
+      },
       { id: "rename", label: "Rename", keys: "R", description: "Also F2" },
       { id: "copy", label: "Copy", keys: "C", description: "Also ⌘ C" },
       { id: "cut", label: "Cut", keys: "X", description: "Also ⌘ X" },
