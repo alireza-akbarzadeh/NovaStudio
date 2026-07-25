@@ -82,8 +82,11 @@ export default defineSchema({
       v.union(
         v.literal("empty"),
         v.literal("simple"),
-        v.literal("nextjs"),
+        v.literal("static"),
+        v.literal("vite"),
+        v.literal("node"),
         v.literal("react"),
+        v.literal("nextjs"),
         v.literal("tanstack"),
       ),
     ),

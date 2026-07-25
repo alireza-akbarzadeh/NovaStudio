@@ -61,7 +61,6 @@ You do **not** need to be an expert in the whole stack. Small, focused PRs are p
 
 | Feature | Area | Notes |
 |---------|------|--------|
-| Template gallery | Projects | React / Vite / Next / Node / static starters |
 | Inline AI edit (⌘K) | Workspace AI | Selection → rewrite → Accept / Reject |
 | Multi-file AI apply with diffs | Workspace AI | Diff cards per file |
 | Zen / Focus mode | Editor chrome | Hide panels, center editor |

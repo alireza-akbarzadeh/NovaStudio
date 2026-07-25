@@ -101,7 +101,6 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 
 | Feature | Status | Why it matters |
 |---------|--------|----------------|
-| **Template gallery** | `todo` | React, Vite, Next, Node, static starters for new projects |
 | **Inline AI edit (⌘K in editor)** | `todo` | Select code → rewrite → Accept / Reject |
 | **Multi-file AI apply with diffs** | `todo` | Per-file diff cards, Apply all / Reject |
 | **Zen / Focus mode** | `todo` | Hide chrome, center the editor |
@@ -110,7 +109,7 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 
 ### In review / polish
 
-Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview, **Extensions marketplace** (themes + Vue, persisted per user) — see [`FEATURES.md`](./FEATURES.md).
+Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview, Extensions marketplace, **Template gallery** (React / Vite / Next / Node / static) — see [`FEATURES.md`](./FEATURES.md).
 
 ### Later (hard infrastructure)
 

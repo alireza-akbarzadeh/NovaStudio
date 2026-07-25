@@ -1,0 +1,88 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit cloud reviews for Polaris (GitHub PRs).
+# Install the app once: https://github.com/apps/coderabbitai
+# Then open a PR — CodeRabbit reviews on open and on every new push.
+
+language: "en-US"
+
+early_access: false
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  sequence_diagrams: true
+  assess_linked_issues: true
+
+  # Skip generated / vendor noise
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/.next/**"
+    - "!**/dist/**"
+    - "!**/convex/_generated/**"
+    - "!**/package-lock.json"
+    - "!**/*.lock"
+    - "!**/public/**/*.{png,jpg,jpeg,gif,webp,svg}"
+
+  path_instructions:
+    - path: "convex/**"
+      instructions: |
+        Follow Convex patterns in convex/_generated/ai/guidelines.md.
+        Prefer existing auth helpers; keep schema changes explicit and migration-aware.
+        Do not invent Convex APIs that conflict with project guidelines.
+    - path: "src/features/**"
+      instructions: |
+        Feature-first layout: keep domain UI under src/features/<domain>/.
+        Prefer extending an existing feature folder over new top-level dumps.
+        Match nearby hooks, forms, dialogs, and Convex useQuery/useMutation patterns.
+    - path: "src/features/workspace/**"
+      instructions: |
+        Workspace is the collaborative IDE core (editor, terminal, git, AI, WebContainer).
+        Watch for regressions in collab, drafts, and git baseline flows.
+        Support light and dark themes; empty/loading/error states required.
+    - path: "src/app/**"
+      instructions: |
+        Next.js App Router: keep routes thin; put domain logic in src/features/.
+    - path: "src/components/**"
+      instructions: |
+        Shared UI only. Prefer composition with existing ui primitives; avoid one-off visual systems.
+        Match workspace tokens (ws-*) and current Tailwind patterns.
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        TypeScript strict — avoid any unless unavoidable and commented.
+        Do not add useMemo/useCallback for performance unless nearby code already does
+        or there is a measured need (React Compiler–friendly repo).
+
+  auto_review:
+    enabled: true
+    drafts: false
+    # Re-review on every push to the PR (each new commit)
+    auto_incremental_review: true
+    # 0 = never pause incremental reviews mid-PR
+    auto_pause_after_reviewed_commits: 0
+    base_branches:
+      - "main"
+      - "master"
+      - "develop"
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT REVIEW"
+    labels:
+      - "!skip-review"
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "CONTRIBUTING.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "FEATURES.md"
+      - "README.md"
+      - "convex/_generated/ai/guidelines.md"

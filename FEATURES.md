@@ -48,7 +48,7 @@ These are the biggest daily-friction gaps you called out.
 | 10 | Dependencies panel | `review` | Search npm, add/remove packages. |
 | 11 | Real package install + Node terminal | `review` | WebContainer — real npm/pnpm/yarn/bun + auto-install. |
 | 12 | Hot reload + preview console | `review` | Instant feedback loop. |
-| 13 | Template gallery | `todo` | React, Vite, Next, Node, static. |
+| 13 | Template gallery | `review` | React, Vite, Next, Node, static (+ TanStack, Empty). |
 
 ### Sprint D — AI delight
 
@@ -195,3 +195,10 @@ These are the biggest daily-friction gaps you called out.
 - Install / uninstall / enable persisted per user in Convex (`userExtensions`)
 - One active editor theme at a time; language packs toggle independently
 - Survives reload — no reinstall needed
+
+### 13. Template gallery — ready for review
+
+- New project page is a **template gallery** with category filters (All · Frontend · Full-stack · Backend · Blank)
+- Starters: **React**, **Vite**, **Next.js**, **Node**, **Static**, plus TanStack Start and Empty
+- Cards show tags + selection state; project name + Create opens the seeded workspace
+- Seeds live in Convex (`projectTemplates`); `package.json` scripts work with WebContainer install / preview

@@ -3,7 +3,15 @@ import type { Doc } from "@/convex/_generated/dataModel";
 export type ShellProject = {
   name: string;
   source?: "blank" | "github" | "template";
-  templateId?: "empty" | "simple" | "nextjs" | "react" | "tanstack";
+  templateId?:
+    | "empty"
+    | "simple"
+    | "static"
+    | "vite"
+    | "node"
+    | "react"
+    | "nextjs"
+    | "tanstack";
   githubRepoUrl?: string;
   githubBranch?: string;
   lastCommitSha?: string;

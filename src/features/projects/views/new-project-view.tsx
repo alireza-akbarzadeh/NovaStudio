@@ -44,7 +44,7 @@ export function NewProjectView() {
         }}
       />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-4xl flex-col gap-8 px-6 py-10 md:px-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 py-10 md:px-10">
         <header className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
@@ -73,7 +73,7 @@ export function NewProjectView() {
                 New project
               </h1>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Choose a template to get started
+                Browse the template gallery to get started
               </p>
             </div>
           </div>

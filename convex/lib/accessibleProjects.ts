@@ -78,10 +78,16 @@ export function techForProject(project: Doc<"projects">) {
       return ["Next.js", "TypeScript"];
     case "react":
       return ["React", "Vite"];
+    case "vite":
+      return ["Vite", "TypeScript"];
+    case "node":
+      return ["Node", "TypeScript"];
+    case "static":
+      return ["HTML", "CSS", "JS"];
     case "tanstack":
       return ["TanStack", "TypeScript"];
     case "simple":
-      return ["HTML", "CSS"];
+      return ["TypeScript"];
     default:
       return project.source === "github" ? ["GitHub"] : ["Blank"];
   }
