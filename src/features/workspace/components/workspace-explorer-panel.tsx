@@ -1,24 +1,50 @@
 "use client";
 
-import { useState } from "react";
+import {
+  DiffIcon,
+  FilesIcon,
+  SparklesIcon,
+} from "lucide-react";
+import type { ReactNode } from "react";
 
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceFileTree } from "@/features/workspace/components/workspace-file-tree";
+import { WorkspaceGitReviews } from "@/features/workspace/components/workspace-git-reviews";
+import {
+  useWorkspaceStore,
+  type ExplorerTab,
+} from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
-
-type ExplorerTab = "project" | "changes";
 
 type WorkspaceExplorerPanelProps = {
   projectId: string;
 };
 
-const EXPLORER_TABS: { id: ExplorerTab; label: string }[] = [
-  { id: "project", label: "Project" },
-  { id: "changes", label: "Changes" },
+const EXPLORER_TABS: {
+  id: ExplorerTab;
+  label: string;
+  icon: ReactNode;
+}[] = [
+  {
+    id: "project",
+    label: "Project",
+    icon: <FilesIcon className="size-3.5" strokeWidth={1.75} />,
+  },
+  {
+    id: "changes",
+    label: "Changes",
+    icon: <DiffIcon className="size-3.5" strokeWidth={1.75} />,
+  },
+  {
+    id: "quality",
+    label: "Quality",
+    icon: <SparklesIcon className="size-3.5" strokeWidth={1.75} />,
+  },
 ];
 
 export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProps) {
-  const [activeTab, setActiveTab] = useState<ExplorerTab>("project");
+  const activeTab = useWorkspaceStore((s) => s.explorerTab);
+  const setExplorerTab = useWorkspaceStore((s) => s.setExplorerTab);
 
   return (
     <div className="flex h-full flex-col">
@@ -27,15 +53,16 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
           <button
             key={tab.id}
             type="button"
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => setExplorerTab(tab.id)}
             className={cn(
-              "inline-flex h-7 items-center rounded-lg px-2.5 text-[11px] font-medium transition-colors",
+              "inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium transition-colors",
               activeTab === tab.id
                 ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35"
                 : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
             )}
           >
-            {tab.label}
+            {tab.icon}
+            <span>{tab.label}</span>
           </button>
         ))}
       </div>
@@ -43,13 +70,15 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
       <div className="min-h-0 flex-1 overflow-hidden">
         {activeTab === "project" ? (
           <WorkspaceFileTree projectId={projectId} />
-        ) : (
+        ) : activeTab === "changes" ? (
           <div className="h-full overflow-auto">
             <WorkspaceChangeList
               projectId={projectId}
               emptyMessage="No local changes since last GitHub sync"
             />
           </div>
+        ) : (
+          <WorkspaceGitReviews projectId={projectId} enabled />
         )}
       </div>
     </div>

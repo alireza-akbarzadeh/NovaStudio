@@ -49,6 +49,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘9",
   },
   {
+    id: "showCodeQuality",
+    label: "Show Code Quality",
+    keywords: "ai review suggestions patches quality explorer",
+    shortcut: "⌘⇧R",
+  },
+  {
     id: "showOutline",
     label: "Show Outline",
     keywords: "symbols functions classes components outline",
@@ -77,11 +83,6 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Git: History",
     keywords: "commits log",
     shortcut: "⌘⇧H",
-  },
-  {
-    id: "showGitReviews",
-    label: "Git: AI Reviews",
-    keywords: "ai code review suggestions apply patches",
   },
   {
     id: "toggleTerminal",

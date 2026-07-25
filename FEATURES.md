@@ -57,7 +57,7 @@ These are the biggest daily-friction gaps you called out.
 | 14 | Inline AI edit (⌘K in editor) | `todo` | Selection → rewrite → Accept / Reject. |
 | 15 | Multi-file AI apply with diffs | `todo` | Per-file diff cards, Apply all / Reject. |
 | 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
-| 16b | **In-editor AI code review** | `review` | Git → Reviews: review local diffs, Apply / Dismiss patches in the editor (no GitHub redirect). |
+| 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
 
 ### Later / hard infrastructure
 
@@ -206,7 +206,9 @@ These are the biggest daily-friction gaps you called out.
 
 ### 16b. In-editor AI code review — ready for review
 
-- Git panel **Reviews** tab: **Review changes** runs Polaris AI on staged (or all local) diffs
+- Explorer tabs: **Project** · **Changes** · **Quality**
+- **Quality** → **Review changes** runs Polaris AI on staged (or all local) diffs
 - Findings list with severity, explanation, jump-to-file
 - **Apply** writes the suggested full-file patch and keeps the file staged; **Dismiss** hides the finding
 - No redirect to GitHub — suggestions stay inside the cloud editor
+- Shortcut: **⌘⇧R** (opens Files → Quality)

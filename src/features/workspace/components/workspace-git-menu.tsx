@@ -43,6 +43,7 @@ export function WorkspaceGitMenu({ projectId }: WorkspaceGitMenuProps) {
   const changedFiles = useChangedFiles(projectId);
   const { pull, isPulling } = usePullFromGitHub(projectId);
   const showGitPanel = useWorkspaceStore((s) => s.showGitPanel);
+  const showCodeQualityPanel = useWorkspaceStore((s) => s.showCodeQualityPanel);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const openBranchPicker = useWorkspaceStore((s) => s.openBranchPicker);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -127,10 +128,10 @@ export function WorkspaceGitMenu({ projectId }: WorkspaceGitMenuProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
-              onClick={() => showGitPanel("reviews")}
+              onClick={() => showCodeQualityPanel()}
             >
               <SparklesIcon className="size-3.5" />
-              AI Reviews
+              Code Quality
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-ws-border" />
             <DropdownMenuItem
@@ -171,10 +172,10 @@ export function WorkspaceGitMenu({ projectId }: WorkspaceGitMenuProps) {
           <>
             <DropdownMenuItem
               className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
-              onClick={() => showGitPanel("reviews")}
+              onClick={() => showCodeQualityPanel()}
             >
               <SparklesIcon className="size-3.5" />
-              AI Reviews
+              Code Quality
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-[12px] focus:bg-ws-hover focus:text-ws-text"

@@ -22,12 +22,12 @@ export type CommandId =
   | "showExplorer"
   | "showSearch"
   | "showGit"
+  | "showCodeQuality"
   | "showOutline"
   | "showDependencies"
   | "showExtensions"
   | "showGitChanges"
   | "showGitHistory"
-  | "showGitReviews"
   | "findInFiles"
   | "formatDocument";
 
@@ -174,6 +174,12 @@ export const workspaceCommands: Command[] = [
     run: () => showPanel("git"),
   },
   {
+    id: "showCodeQuality",
+    shortcut: "mod+shift+r",
+    allowInInput: true,
+    run: () => store().showCodeQualityPanel(),
+  },
+  {
     id: "showOutline",
     shortcut: "mod+shift+o",
     allowInInput: true,
@@ -202,11 +208,6 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+h",
     allowInInput: true,
     run: () => showGitTab("history"),
-  },
-  {
-    id: "showGitReviews",
-    allowInInput: true,
-    run: () => showGitTab("reviews"),
   },
   {
     id: "findInFiles",

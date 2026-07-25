@@ -14,7 +14,9 @@ export type LeftPanelView =
   | "dependencies"
   | "extensions";
 
-export type GitPanelTab = "changes" | "history" | "reviews" | "info";
+export type ExplorerTab = "project" | "changes" | "quality";
+
+export type GitPanelTab = "changes" | "history" | "info";
 
 export type BottomPanelTab = "terminal" | "problems";
 
@@ -75,6 +77,7 @@ type WorkspaceState = WorkspacePrefs & {
   cloneFromGitHubOpen: boolean;
   branchPickerOpen: boolean;
   leftPanelView: LeftPanelView;
+  explorerTab: ExplorerTab;
   gitPanelTab: GitPanelTab;
   bottomPanelTab: BottomPanelTab;
   currentFilePath: string | null;
@@ -115,8 +118,10 @@ type WorkspaceState = WorkspacePrefs & {
   openBranchPicker: () => void;
   setBranchPickerOpen: (open: boolean) => void;
   setLeftPanelView: (view: LeftPanelView) => void;
+  setExplorerTab: (tab: ExplorerTab) => void;
   setGitPanelTab: (tab: GitPanelTab) => void;
   showGitPanel: (tab?: GitPanelTab) => void;
+  showCodeQualityPanel: () => void;
   setCurrentFilePath: (path: string | null) => void;
   syncEditorTabFromRoute: (
     projectId: string,
@@ -258,6 +263,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   cloneFromGitHubOpen: false,
   branchPickerOpen: false,
   leftPanelView: "explorer",
+  explorerTab: "project",
   gitPanelTab: "changes",
   bottomPanelTab: "terminal",
   currentFilePath: null,
@@ -320,12 +326,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setBranchPickerOpen: (open) => set({ branchPickerOpen: open }),
   setLeftPanelView: (view) =>
     set({ leftPanelView: view, sidebarOpen: true }),
+  setExplorerTab: (tab) => set({ explorerTab: tab }),
   setGitPanelTab: (tab) => set({ gitPanelTab: tab }),
   showGitPanel: (tab) =>
     set({
       leftPanelView: "git",
       sidebarOpen: true,
       ...(tab ? { gitPanelTab: tab } : {}),
+    }),
+  showCodeQualityPanel: () =>
+    set({
+      leftPanelView: "explorer",
+      explorerTab: "quality",
+      sidebarOpen: true,
     }),
   setCurrentFilePath: (path) => set({ currentFilePath: path }),
   syncEditorTabFromRoute: (projectId, tab, options) =>
