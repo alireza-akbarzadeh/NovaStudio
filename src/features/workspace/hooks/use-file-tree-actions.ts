@@ -7,9 +7,16 @@ import { toast } from "sonner";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   useCreateProjectFile,
+  useDeleteProjectFile,
   useDuplicateProjectFile,
   useMoveProjectFile,
+  useWriteFileAtPath,
 } from "@/features/workspace/hooks/use-project-files";
+import {
+  prepareFileUploads,
+  summarizeUploadResult,
+} from "@/features/workspace/lib/file-tree-upload";
+import { pruneNestedSelectedPaths } from "@/features/workspace/lib/file-tree-selection";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 import {
@@ -42,6 +49,8 @@ export function useFileTreeActions({
   const createFile = useCreateProjectFile();
   const moveFile = useMoveProjectFile();
   const duplicateFile = useDuplicateProjectFile();
+  const writeFileAtPath = useWriteFileAtPath();
+  const deleteFile = useDeleteProjectFile();
 
   const treeClipboard = useWorkspaceStore((s) => s.treeClipboard);
   const setTreeClipboard = useWorkspaceStore((s) => s.setTreeClipboard);
@@ -173,6 +182,180 @@ export function useFileTreeActions({
     [files],
   );
 
+  const uploadFiles = useCallback(
+    async (
+      incoming: File[],
+      targetParentId?: Id<"projectFiles">,
+    ) => {
+      if (incoming.length === 0) return;
+
+      const targetParent = targetParentId
+        ? files?.find((file) => file._id === targetParentId)
+        : undefined;
+      const targetParentPath =
+        targetParent?.kind === "folder" ? targetParent.path : undefined;
+
+      try {
+        const { writes, skipped } = await prepareFileUploads(incoming, {
+          targetParentPath,
+          existingPaths: (files ?? []).map((file) => file.path),
+        });
+
+        if (writes.length === 0) {
+          toast.message(summarizeUploadResult(0, skipped));
+          return;
+        }
+
+        for (const write of writes) {
+          await writeFileAtPath({
+            projectId: projectId as Id<"projects">,
+            path: write.path,
+            content: write.content,
+          });
+        }
+
+        if (targetParentId) {
+          setOpenFolderIds((current) => {
+            if (current.has(targetParentId)) return current;
+            const next = new Set(current);
+            next.add(targetParentId);
+            return next;
+          });
+        }
+
+        toast.success(summarizeUploadResult(writes.length, skipped));
+
+        if (writes.length === 1) {
+          router.push(`/projects/${projectId}/files/${writes[0]!.path}`);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to upload files",
+        );
+      }
+    },
+    [files, projectId, router, setOpenFolderIds, writeFileAtPath],
+  );
+
+  const moveItemsToFolder = useCallback(
+    async (paths: string[], targetParentId?: Id<"projectFiles">) => {
+      if (!files || paths.length === 0) return;
+
+      const selected = paths
+        .map((path) => files.find((file) => file.path === path))
+        .filter((file): file is Doc<"projectFiles"> => Boolean(file))
+        .map((file) => ({ path: file.path, kind: file.kind }));
+
+      const roots = pruneNestedSelectedPaths(selected);
+      if (roots.length === 0) return;
+
+      let moved = 0;
+      let activeRedirect: string | null = null;
+      const activePath = pathname.match(/\/files\/(.+)$/)?.[1];
+      const decodedActive = activePath
+        ? decodeURIComponent(activePath)
+        : null;
+
+      try {
+        for (const path of roots) {
+          const item = files.find((file) => file.path === path);
+          if (!item) continue;
+
+          const sameParent =
+            (item.parentId ?? undefined) === (targetParentId ?? undefined);
+          if (sameParent) continue;
+
+          const newPath = await moveFile({
+            projectId: projectId as Id<"projects">,
+            path,
+            newParentId: targetParentId,
+          });
+          moved += 1;
+
+          if (
+            decodedActive &&
+            (decodedActive === path ||
+              decodedActive.startsWith(`${path}/`))
+          ) {
+            const suffix = decodedActive.slice(path.length);
+            activeRedirect = `${newPath}${suffix}`;
+          }
+        }
+
+        if (moved === 0) return;
+
+        if (targetParentId) {
+          setOpenFolderIds((current) => {
+            if (current.has(targetParentId)) return current;
+            const next = new Set(current);
+            next.add(targetParentId);
+            return next;
+          });
+        }
+
+        if (activeRedirect) {
+          router.push(`/projects/${projectId}/files/${activeRedirect}`);
+        }
+
+        toast.success(moved === 1 ? "Moved" : `Moved ${moved} items`);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to move",
+        );
+      }
+    },
+    [files, moveFile, pathname, projectId, router, setOpenFolderIds],
+  );
+
+  const deleteItems = useCallback(
+    async (paths: string[]) => {
+      if (!files || paths.length === 0) return;
+
+      const selected = paths
+        .map((path) => files.find((file) => file.path === path))
+        .filter((file): file is Doc<"projectFiles"> => Boolean(file))
+        .map((file) => ({ path: file.path, kind: file.kind }));
+
+      const roots = pruneNestedSelectedPaths(selected);
+      if (roots.length === 0) return;
+
+      const activePath = pathname.match(/\/files\/(.+)$/)?.[1];
+      const decodedActive = activePath
+        ? decodeURIComponent(activePath)
+        : null;
+      let shouldLeaveEditor = false;
+
+      try {
+        for (const path of roots) {
+          if (
+            decodedActive &&
+            (decodedActive === path ||
+              decodedActive.startsWith(`${path}/`))
+          ) {
+            shouldLeaveEditor = true;
+          }
+          await deleteFile({
+            projectId: projectId as Id<"projects">,
+            path,
+          });
+        }
+
+        if (shouldLeaveEditor) {
+          router.push(`/projects/${projectId}`);
+        }
+
+        toast.success(
+          roots.length === 1 ? "Deleted" : `Deleted ${roots.length} items`,
+        );
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete",
+        );
+      }
+    },
+    [deleteFile, files, pathname, projectId, router],
+  );
+
   return {
     treeClipboard,
     commitCreate,
@@ -184,5 +367,8 @@ export function useFileTreeActions({
     openInTerminal,
     findInFolder,
     attachToChat,
+    uploadFiles,
+    moveItemsToFolder,
+    deleteItems,
   };
 }

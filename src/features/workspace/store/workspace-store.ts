@@ -85,6 +85,7 @@ type WorkspaceState = WorkspacePrefs & {
   pendingChatAttachPaths: string[] | null;
   requestNewChat: boolean;
   terminalCwdRequest: string | null;
+  terminalCommandRequest: string | null;
   pendingEditorReveal: EditorRevealTarget | null;
   searchFolderScope: string | null;
   searchPanelMode: SearchPanelMode;
@@ -137,6 +138,8 @@ type WorkspaceState = WorkspacePrefs & {
   clearRequestNewChat: () => void;
   requestTerminalCwd: (cwd: string) => void;
   clearTerminalCwdRequest: () => void;
+  requestTerminalCommand: (command: string) => void;
+  clearTerminalCommandRequest: () => void;
   setPendingEditorReveal: (target: EditorRevealTarget | null) => void;
   clearPendingEditorReveal: () => void;
   setSearchFolderScope: (path: string | null) => void;
@@ -266,6 +269,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   pendingChatAttachPaths: null,
   requestNewChat: false,
   terminalCwdRequest: null,
+  terminalCommandRequest: null,
   pendingEditorReveal: null,
   searchFolderScope: null,
   searchPanelMode: "text",
@@ -425,6 +429,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       bottomPanelTab: "terminal",
     }),
   clearTerminalCwdRequest: () => set({ terminalCwdRequest: null }),
+  requestTerminalCommand: (command) =>
+    set({
+      terminalCommandRequest: command,
+      terminalOpen: true,
+      bottomPanelTab: "terminal",
+    }),
+  clearTerminalCommandRequest: () => set({ terminalCommandRequest: null }),
   setPendingEditorReveal: (target) => set({ pendingEditorReveal: target }),
   clearPendingEditorReveal: () => set({ pendingEditorReveal: null }),
   setSearchFolderScope: (path) => set({ searchFolderScope: path }),

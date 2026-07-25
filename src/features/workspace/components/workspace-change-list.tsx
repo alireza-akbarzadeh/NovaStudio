@@ -14,7 +14,7 @@ import {
   PlusIcon,
   Undo2Icon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
@@ -55,6 +55,37 @@ type WorkspaceChangeListProps = {
   emptyMessage?: string;
 };
 
+function computePathSelection(
+  clickedPath: string,
+  paths: string[],
+  current: Set<string>,
+  anchor: string | null,
+  modifiers: { shiftKey?: boolean; modKey?: boolean },
+): { selected: Set<string>; anchor: string } {
+  if (modifiers.shiftKey && anchor) {
+    const from = paths.indexOf(anchor);
+    const to = paths.indexOf(clickedPath);
+    if (from >= 0 && to >= 0) {
+      const start = Math.min(from, to);
+      const end = Math.max(from, to);
+      return {
+        selected: new Set(paths.slice(start, end + 1)),
+        anchor,
+      };
+    }
+  }
+
+  if (modifiers.modKey) {
+    const next = new Set(current);
+    if (next.has(clickedPath)) next.delete(clickedPath);
+    else next.add(clickedPath);
+    if (next.size === 0) next.add(clickedPath);
+    return { selected: next, anchor: clickedPath };
+  }
+
+  return { selected: new Set([clickedPath]), anchor: clickedPath };
+}
+
 export function WorkspaceChangeList({
   projectId,
   emptyMessage = "No modified files",
@@ -72,6 +103,8 @@ export function WorkspaceChangeList({
   const [stagedOpen, setStagedOpen] = useState(true);
   const [unstagedOpen, setUnstagedOpen] = useState(true);
   const [busyPath, setBusyPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
 
   const statsByPath = useMemo(() => {
     const map = new Map<string, LineDiffStats>();
@@ -176,6 +209,47 @@ export function WorkspaceChangeList({
   const staged = changedFiles.filter((file) => file.staged);
   const unstaged = changedFiles.filter((file) => !file.staged);
 
+  const selectChange = useCallback(
+    (
+      path: string,
+      sectionPaths: string[],
+      modifiers: { shiftKey?: boolean; modKey?: boolean },
+    ) => {
+      const next = computePathSelection(
+        path,
+        sectionPaths,
+        selectedPaths,
+        selectionAnchor,
+        modifiers,
+      );
+      setSelectedPaths(next.selected);
+      setSelectionAnchor(next.anchor);
+    },
+    [selectedPaths, selectionAnchor],
+  );
+
+  const stagePaths = useCallback(
+    async (paths: string[], stagedValue: boolean) => {
+      setBusyPath(paths[0] ?? "__batch__");
+      try {
+        for (const path of paths) {
+          await setFileStaged({
+            projectId: projectId as Id<"projects">,
+            path,
+            staged: stagedValue,
+          });
+        }
+        setSelectedPaths(new Set());
+        setSelectionAnchor(null);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Action failed");
+      } finally {
+        setBusyPath(null);
+      }
+    },
+    [projectId, setFileStaged],
+  );
+
   const runAction = async (path: string, action: () => Promise<unknown>) => {
     setBusyPath(path);
     try {
@@ -186,6 +260,9 @@ export function WorkspaceChangeList({
       setBusyPath(null);
     }
   };
+
+  const stagedPaths = staged.map((file) => file.path);
+  const unstagedPaths = unstaged.map((file) => file.path);
 
   return (
     <div className="flex flex-col gap-1 p-1.5">
@@ -219,18 +296,23 @@ export function WorkspaceChangeList({
               file={file}
               stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
+              selected={selectedPaths.has(file.path)}
               busy={busyPath === file.path}
+              onSelect={(event) =>
+                selectChange(file.path, stagedPaths, {
+                  shiftKey: event.shiftKey,
+                  modKey: event.metaKey || event.ctrlKey,
+                })
+              }
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
               onOpenFile={() => openTab({ kind: "file", path: file.path })}
-              onUnstage={() =>
-                void runAction(file.path, () =>
-                  setFileStaged({
-                    projectId: projectId as Id<"projects">,
-                    path: file.path,
-                    staged: false,
-                  }),
-                )
-              }
+              onUnstage={() => {
+                const paths =
+                  selectedPaths.has(file.path) && selectedPaths.size > 1
+                    ? stagedPaths.filter((path) => selectedPaths.has(path))
+                    : [file.path];
+                void stagePaths(paths, false);
+              }}
             />
           ))
         )}
@@ -266,35 +348,56 @@ export function WorkspaceChangeList({
               file={file}
               stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
+              selected={selectedPaths.has(file.path)}
               busy={busyPath === file.path}
+              onSelect={(event) =>
+                selectChange(file.path, unstagedPaths, {
+                  shiftKey: event.shiftKey,
+                  modKey: event.metaKey || event.ctrlKey,
+                })
+              }
               onOpenDiff={() => openTab({ kind: "diff", path: file.path })}
               onOpenFile={() => openTab({ kind: "file", path: file.path })}
-              onStage={() =>
-                void runAction(file.path, () =>
-                  setFileStaged({
-                    projectId: projectId as Id<"projects">,
-                    path: file.path,
-                    staged: true,
-                  }),
-                )
-              }
+              onStage={() => {
+                const paths =
+                  selectedPaths.has(file.path) && selectedPaths.size > 1
+                    ? unstagedPaths.filter((path) => selectedPaths.has(path))
+                    : [file.path];
+                void stagePaths(paths, true);
+              }}
               onDiscard={() =>
                 void runAction(file.path, async () => {
+                  const targets =
+                    selectedPaths.has(file.path) && selectedPaths.size > 1
+                      ? unstagedPaths.filter((path) => selectedPaths.has(path))
+                      : [file.path];
+                  const label =
+                    targets.length === 1
+                      ? `“${targets[0]}”`
+                      : `${targets.length} files`;
                   const ok = await confirm({
                     title: "Discard changes?",
-                    description: `Changes you made to “${file.path}” will not be saved. This cannot be undone.`,
+                    description: `Changes you made to ${label} will not be saved. This cannot be undone.`,
                     confirmLabel: "Discard",
                     cancelLabel: "Keep editing",
                     tone: "danger",
                   });
                   if (!ok) return;
 
-                  await discardFileChanges({
-                    projectId: projectId as Id<"projects">,
-                    path: file.path,
-                  });
-                  clearFileContentDraft(projectId, file.path);
-                  toast.success(`Discarded changes to ${file.path}`);
+                  for (const path of targets) {
+                    await discardFileChanges({
+                      projectId: projectId as Id<"projects">,
+                      path,
+                    });
+                    clearFileContentDraft(projectId, path);
+                  }
+                  setSelectedPaths(new Set());
+                  setSelectionAnchor(null);
+                  toast.success(
+                    targets.length === 1
+                      ? `Discarded changes to ${targets[0]}`
+                      : `Discarded changes to ${targets.length} files`,
+                  );
                 })
               }
             />
@@ -399,7 +502,9 @@ function ChangeRow({
   file,
   stats,
   activeMode,
+  selected = false,
   busy = false,
+  onSelect,
   onOpenDiff,
   onOpenFile,
   onStage,
@@ -410,7 +515,9 @@ function ChangeRow({
   file: ChangedFile;
   stats?: LineDiffStats;
   activeMode: "diff" | "file" | null;
+  selected?: boolean;
   busy?: boolean;
+  onSelect?: (event: React.MouseEvent) => void;
   onOpenDiff?: () => void;
   onOpenFile?: () => void;
   onStage?: () => void;
@@ -428,7 +535,7 @@ function ChangeRow({
     <li
       className={cn(
         "group flex items-center gap-0.5 rounded-sm pr-1 pl-1.5 text-[12px]",
-        active
+        selected || active
           ? "bg-ws-hover text-ws-text"
           : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
       )}
@@ -436,6 +543,11 @@ function ChangeRow({
       <Link
         href={href}
         onClick={(event) => {
+          onSelect?.(event);
+          if (event.shiftKey || event.metaKey || event.ctrlKey) {
+            event.preventDefault();
+            return;
+          }
           if (!onOpenDiff) return;
           event.preventDefault();
           onOpenDiff();

@@ -21,6 +21,7 @@ type BuildItemMenuPropsParams = {
   onFindInFolder: (folderPath?: string) => void;
   onAddToChat: (path: string, kind: "file" | "folder") => void;
   onAddToNewChat: (path: string, kind: "file" | "folder") => void;
+  onUpload?: (targetParentId?: Id<"projectFiles">) => void;
   startRename: () => void;
   openDeleteDialog: () => void;
 };
@@ -43,6 +44,7 @@ export function buildItemMenuProps({
   onFindInFolder,
   onAddToChat,
   onAddToNewChat,
+  onUpload,
   startRename,
   openDeleteDialog,
 }: BuildItemMenuPropsParams): FileTreeMenuContentProps {
@@ -54,6 +56,9 @@ export function buildItemMenuProps({
     canEdit,
     onNewFile: () => onStartCreate("file", isFolder ? node.id : undefined),
     onNewFolder: () => onStartCreate("folder", isFolder ? node.id : undefined),
+    onUpload: onUpload
+      ? () => onUpload(isFolder ? node.id : parentId)
+      : undefined,
     onOpen: () => {
       if (!isFolder) {
         onOpenFile();

@@ -36,7 +36,15 @@ type UseFileTreeItemParams = {
   onFindInFolder: (folderPath?: string) => void;
   onAddToChat: (path: string, kind: "file" | "folder") => void;
   onAddToNewChat: (path: string, kind: "file" | "folder") => void;
+  onUpload?: (targetParentId?: Id<"projectFiles">) => void;
   onFocusItem: (id: Id<"projectFiles">) => void;
+  selectedIds: Set<Id<"projectFiles">>;
+  files?: Array<{
+    _id: Id<"projectFiles">;
+    path: string;
+    kind: "file" | "folder";
+  }>;
+  onDeleteItems?: (paths: string[]) => Promise<void>;
 };
 
 export function useFileTreeItem({
@@ -65,7 +73,11 @@ export function useFileTreeItem({
   onFindInFolder,
   onAddToChat,
   onAddToNewChat,
+  onUpload,
   onFocusItem,
+  selectedIds,
+  files,
+  onDeleteItems,
 }: UseFileTreeItemParams) {
   const pathname = usePathname();
   const { openTab } = useEditorTabs(projectId);
@@ -90,14 +102,19 @@ export function useFileTreeItem({
     commitRename,
     handleDelete,
     openDeleteDialog,
+    deleteCount,
   } = useFileTreeItemMutations({
     nodePath: node.path,
     nodeName: node.name,
+    nodeId: node.id,
     projectId,
     isFolder,
     href,
     isDeleteRequested,
     onPendingDeleteHandled,
+    selectedIds,
+    files,
+    onDeleteItems,
   });
 
   useEffect(() => {
@@ -159,6 +176,7 @@ export function useFileTreeItem({
     onFindInFolder,
     onAddToChat,
     onAddToNewChat,
+    onUpload,
     startRename,
     openDeleteDialog,
   });
@@ -193,5 +211,6 @@ export function useFileTreeItem({
       void commitRename(value);
     },
     handleDelete: () => void handleDelete(),
+    deleteCount,
   };
 }

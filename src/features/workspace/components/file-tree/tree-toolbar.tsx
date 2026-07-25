@@ -5,6 +5,7 @@ import {
   FolderPlusIcon,
   ListCollapseIcon,
   SearchIcon,
+  UploadIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +17,7 @@ import { cn } from "@/lib/utils";
 type TreeToolbarProps = {
   onNewFile: () => void;
   onNewFolder: () => void;
+  onUpload?: () => void;
   onCollapseAll: () => void;
   canEdit: boolean;
   filter: string;
@@ -25,6 +27,7 @@ type TreeToolbarProps = {
 export function TreeToolbar({
   onNewFile,
   onNewFolder,
+  onUpload,
   onCollapseAll,
   canEdit,
   filter,
@@ -77,6 +80,11 @@ export function TreeToolbar({
             <TreeToolbarButton label="New Folder" onClick={onNewFolder}>
               <FolderPlusIcon className="size-3.5" />
             </TreeToolbarButton>
+            {onUpload ? (
+              <TreeToolbarButton label="Upload Files" onClick={onUpload}>
+                <UploadIcon className="size-3.5" />
+              </TreeToolbarButton>
+            ) : null}
           </>
         ) : null}
         <TreeToolbarButton label="Collapse All" onClick={onCollapseAll}>

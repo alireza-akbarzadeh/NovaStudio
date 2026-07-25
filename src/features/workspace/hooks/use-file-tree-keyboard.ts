@@ -4,6 +4,7 @@ import { useCallback } from "react";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FileTreeNode } from "@/features/workspace/lib/file-tree";
+import { extendTreeSelection } from "@/features/workspace/lib/file-tree-selection";
 
 import {
   flattenVisibleTree,
@@ -17,6 +18,16 @@ type UseFileTreeKeyboardParams = {
   openFolderIds: Set<Id<"projectFiles">>;
   focusedId: Id<"projectFiles"> | null;
   setFocusedId: (id: Id<"projectFiles">) => void;
+  selectOnly: (id: Id<"projectFiles">) => void;
+  selectedIds: Set<Id<"projectFiles">>;
+  selectionAnchorId: Id<"projectFiles"> | null;
+  setSelectedIds: React.Dispatch<
+    React.SetStateAction<Set<Id<"projectFiles">>>
+  >;
+  setSelectionAnchorId: React.Dispatch<
+    React.SetStateAction<Id<"projectFiles"> | null>
+  >;
+  clearMultiSelection: () => void;
   setPendingRenameId: (id: Id<"projectFiles">) => void;
   setPendingDeleteId: (id: Id<"projectFiles">) => void;
   toggleFolder: (folderId: Id<"projectFiles">) => void;
@@ -31,6 +42,12 @@ export function useFileTreeKeyboard({
   openFolderIds,
   focusedId,
   setFocusedId,
+  selectOnly,
+  selectedIds,
+  selectionAnchorId,
+  setSelectedIds,
+  setSelectionAnchorId,
+  clearMultiSelection,
   setPendingRenameId,
   setPendingDeleteId,
   toggleFolder,
@@ -57,6 +74,12 @@ export function useFileTreeKeyboard({
         : -1;
       const current =
         currentIndex >= 0 ? visibleItems[currentIndex] : undefined;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        clearMultiSelection();
+        return;
+      }
 
       if (isModKey(event) && !event.altKey) {
         const key = event.key.toLowerCase();
@@ -97,12 +120,31 @@ export function useFileTreeKeyboard({
         return;
       }
 
+      if (
+        event.shiftKey &&
+        (event.key === "ArrowDown" || event.key === "ArrowUp")
+      ) {
+        event.preventDefault();
+        const extended = extendTreeSelection(
+          event.key === "ArrowDown" ? "down" : "up",
+          visibleItems,
+          focusedId,
+          selectedIds,
+          selectionAnchorId,
+        );
+        if (!extended) return;
+        setSelectedIds(extended.selectedIds);
+        setSelectionAnchorId(extended.anchorId);
+        setFocusedId(extended.focusedId);
+        return;
+      }
+
       switch (event.key) {
         case "ArrowDown": {
           event.preventDefault();
           const nextIndex =
             currentIndex < visibleItems.length - 1 ? currentIndex + 1 : 0;
-          setFocusedId(visibleItems[nextIndex].node.id);
+          selectOnly(visibleItems[nextIndex]!.node.id);
           break;
         }
         case "ArrowUp": {
@@ -111,7 +153,7 @@ export function useFileTreeKeyboard({
             currentIndex > 0
               ? currentIndex - 1
               : visibleItems.length - 1;
-          setFocusedId(visibleItems[nextIndex].node.id);
+          selectOnly(visibleItems[nextIndex]!.node.id);
           break;
         }
         case "ArrowRight": {
@@ -119,7 +161,7 @@ export function useFileTreeKeyboard({
             return;
           }
 
-          const item = visibleItems[currentIndex];
+          const item = visibleItems[currentIndex]!;
           if (item.node.kind !== "folder") {
             return;
           }
@@ -132,7 +174,7 @@ export function useFileTreeKeyboard({
 
           const next = visibleItems[currentIndex + 1];
           if (next?.parentId === item.node.id) {
-            setFocusedId(next.node.id);
+            selectOnly(next.node.id);
           }
           break;
         }
@@ -141,7 +183,7 @@ export function useFileTreeKeyboard({
             return;
           }
 
-          const item = visibleItems[currentIndex];
+          const item = visibleItems[currentIndex]!;
           event.preventDefault();
 
           if (
@@ -153,22 +195,28 @@ export function useFileTreeKeyboard({
           }
 
           if (item.parentId) {
-            setFocusedId(item.parentId);
+            selectOnly(item.parentId);
           }
           break;
         }
       }
     },
     [
+      clearMultiSelection,
       copyItem,
       cutItem,
       filteredTree,
       focusedId,
       openFolderIds,
       pasteInto,
+      selectOnly,
+      selectedIds,
+      selectionAnchorId,
       setFocusedId,
       setPendingDeleteId,
       setPendingRenameId,
+      setSelectedIds,
+      setSelectionAnchorId,
       toggleFolder,
       tree,
     ],

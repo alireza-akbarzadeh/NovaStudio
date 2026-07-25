@@ -31,6 +31,16 @@ export type ShellHandlers = {
   onGitCheckout?: (branch: string) => Promise<string>;
   onGitCreateBranch?: (name: string) => Promise<string>;
   onGitLog?: (limit?: number) => Promise<string>;
+  /**
+   * Run a package-manager command inside WebContainer.
+   * Implementations should stream output to the terminal themselves
+   * and return an empty `output` (to avoid double-printing).
+   */
+  runInWebContainer?: (
+    binary: string,
+    args: string[],
+    cwd: string,
+  ) => Promise<ShellResult>;
 };
 
 export type ShellResult = {

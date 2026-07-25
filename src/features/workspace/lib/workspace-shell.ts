@@ -74,7 +74,7 @@ export async function runShellCommand(
   }
 
   if (isPackageManager(command)) {
-    return handlePackageManagerCommand(command, args, context);
+    return handlePackageManagerCommand(command, args, context, handlers);
   }
 
   switch (command) {

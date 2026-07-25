@@ -19,6 +19,7 @@ type FileTreeItemRowProps = {
   nodeName: string;
   active: boolean;
   isFocused: boolean;
+  isSelected: boolean;
   isCut: boolean;
   renaming: boolean;
   renameValue: string;
@@ -26,7 +27,7 @@ type FileTreeItemRowProps = {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onStartRename: () => void;
-  onFocusItem: () => void;
+  onSelect: (event: React.MouseEvent) => void;
   onToggleFolder?: () => void;
   onOpenPreview?: () => void;
   onOpenPermanent?: () => void;
@@ -37,6 +38,9 @@ type FileTreeItemRowProps = {
     onFocus: () => void;
   };
   highlightQuery: string;
+  draggable?: boolean;
+  onRowDragStart?: (event: React.DragEvent) => void;
+  onRowDragEnd?: () => void;
 };
 
 export function FileTreeItemRow({
@@ -46,6 +50,7 @@ export function FileTreeItemRow({
   nodeName,
   active,
   isFocused,
+  isSelected,
   isCut,
   renaming,
   renameValue,
@@ -53,27 +58,44 @@ export function FileTreeItemRow({
   onCommitRename,
   onCancelRename,
   onStartRename,
-  onFocusItem,
+  onSelect,
   onToggleFolder,
   onOpenPreview,
   onOpenPermanent,
   renameInputRef,
   focusProps,
   highlightQuery,
+  draggable = false,
+  onRowDragStart,
+  onRowDragEnd,
 }: FileTreeItemRowProps) {
+  const selectedClass =
+    isSelected || isFocused
+      ? "bg-ws-hover text-ws-text"
+      : undefined;
+
   if (isFolder) {
     return (
       <button
         type="button"
         {...focusProps}
-        onClick={() => {
-          onFocusItem();
-          onToggleFolder?.();
+        draggable={draggable}
+        onDragStart={onRowDragStart}
+        onDragEnd={onRowDragEnd}
+        onClick={(event) => {
+          if (event.shiftKey) {
+            event.preventDefault();
+          }
+          onSelect(event);
+          if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
+            onToggleFolder?.();
+          }
         }}
         onDoubleClick={onStartRename}
         className={cn(
           "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] text-ws-text-secondary hover:bg-ws-hover focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
-          isFocused && "bg-ws-hover text-ws-text",
+          draggable && "cursor-grab active:cursor-grabbing",
+          selectedClass,
           isCut && "opacity-50",
         )}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
@@ -129,9 +151,17 @@ export function FileTreeItemRow({
     <button
       type="button"
       {...focusProps}
-      onClick={() => {
-        onFocusItem();
-        onOpenPreview?.();
+      draggable={draggable}
+      onDragStart={onRowDragStart}
+      onDragEnd={onRowDragEnd}
+      onClick={(event) => {
+        if (event.shiftKey) {
+          event.preventDefault();
+        }
+        onSelect(event);
+        if (!event.shiftKey && !event.metaKey && !event.ctrlKey) {
+          onOpenPreview?.();
+        }
       }}
       onDoubleClick={(e) => {
         e.preventDefault();
@@ -139,9 +169,11 @@ export function FileTreeItemRow({
       }}
       className={cn(
         "flex min-w-0 flex-1 items-center gap-1 rounded-sm py-0.5 pr-1 text-left text-[12px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ws-accent",
-        active || isFocused
-          ? "bg-ws-hover text-ws-text"
-          : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+        draggable && "cursor-grab active:cursor-grabbing",
+        selectedClass ??
+          (active
+            ? "bg-ws-hover text-ws-text"
+            : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"),
         isCut && "opacity-50",
       )}
       style={{ paddingLeft: `${20 + depth * 12}px` }}

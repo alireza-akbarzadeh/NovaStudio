@@ -17,8 +17,16 @@ import {
   filterFileTree,
 } from "@/features/workspace/lib/search";
 
-import { collectFolderIds, findNodeByPath } from "../components/file-tree/tree-utils";
+import {
+  collectFolderIds,
+  findNodeByPath,
+  flattenVisibleTree,
+} from "../components/file-tree/tree-utils";
 import type { PendingCreate } from "../components/file-tree/types";
+import {
+  computeTreeSelection,
+  type TreeSelectModifiers,
+} from "../lib/file-tree-selection";
 
 export function useFileTreeState(projectId: string) {
   const files = useProjectFiles(projectId);
@@ -33,6 +41,11 @@ export function useFileTreeState(projectId: string) {
     new Set(),
   );
   const [focusedId, setFocusedId] = useState<Id<"projectFiles"> | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"projectFiles">>>(
+    new Set(),
+  );
+  const [selectionAnchorId, setSelectionAnchorId] =
+    useState<Id<"projectFiles"> | null>(null);
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(null);
   const [pendingRenameId, setPendingRenameId] =
     useState<Id<"projectFiles"> | null>(null);
@@ -80,8 +93,30 @@ export function useFileTreeState(projectId: string) {
     const activeNode = findNodeByPath(tree, decodeURIComponent(activePath));
     if (activeNode) {
       setFocusedId(activeNode.id);
+      setSelectedIds(new Set([activeNode.id]));
+      setSelectionAnchorId(activeNode.id);
     }
   }, [tree, pathname, focusedId]);
+
+  useEffect(() => {
+    if (!files) return;
+    const valid = new Set(files.map((file) => file._id));
+    setSelectedIds((current) => {
+      let changed = false;
+      const next = new Set<Id<"projectFiles">>();
+      for (const id of current) {
+        if (valid.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+    setSelectionAnchorId((current) =>
+      current && valid.has(current) ? current : null,
+    );
+  }, [files]);
 
   useEffect(() => {
     if (!focusedId) {
@@ -147,6 +182,48 @@ export function useFileTreeState(projectId: string) {
     setPendingCreate(null);
   }, []);
 
+  const selectItem = useCallback(
+    (id: Id<"projectFiles">, modifiers: TreeSelectModifiers = {}) => {
+      const visibleItems = flattenVisibleTree(
+        filteredTree ?? tree ?? [],
+        openFolderIds,
+      );
+      const next = computeTreeSelection(
+        id,
+        visibleItems,
+        selectedIds,
+        selectionAnchorId,
+        modifiers,
+      );
+      setSelectedIds(next.selectedIds);
+      setSelectionAnchorId(next.anchorId);
+      setFocusedId(next.focusedId);
+    },
+    [
+      filteredTree,
+      openFolderIds,
+      selectedIds,
+      selectionAnchorId,
+      tree,
+    ],
+  );
+
+  const selectOnly = useCallback((id: Id<"projectFiles">) => {
+    setFocusedId(id);
+    setSelectedIds(new Set([id]));
+    setSelectionAnchorId(id);
+  }, []);
+
+  const clearMultiSelection = useCallback(() => {
+    if (focusedId) {
+      setSelectedIds(new Set([focusedId]));
+      setSelectionAnchorId(focusedId);
+      return;
+    }
+    setSelectedIds(new Set());
+    setSelectionAnchorId(null);
+  }, [focusedId]);
+
   return {
     files,
     canEdit,
@@ -155,6 +232,13 @@ export function useFileTreeState(projectId: string) {
     setOpenFolderIds,
     focusedId,
     setFocusedId,
+    selectOnly,
+    selectedIds,
+    selectionAnchorId,
+    setSelectedIds,
+    setSelectionAnchorId,
+    selectItem,
+    clearMultiSelection,
     pendingCreate,
     pendingRenameId,
     setPendingRenameId,

@@ -39,14 +39,14 @@ These are the biggest daily-friction gaps you called out.
 | 6 | Outline / symbols sidebar | `done` | Jump to functions, classes, components in the open file. |
 | 7 | Preview chrome | `done` | Device sizes, URL bar, console overlay, error overlay. |
 | 8 | Pin / preview tabs | `review` | VS Code–style sticky + italic preview tabs. |
-| 9 | Drag-drop / upload files | `todo` | Drop onto file tree. |
+| 9 | Drag-drop / upload files | `review` | Drop onto file tree. |
 
 ### Sprint C — Runtime (StackBlitz parity)
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 10 | Dependencies panel | `todo` | Search npm, add/remove packages. |
-| 11 | Real package install + Node terminal | `todo` | WebContainer / sandbox — biggest credibility unlock. |
+| 11 | Real package install + Node terminal | `review` | WebContainer — real npm/pnpm/yarn/bun + auto-install. |
 | 12 | Hot reload + preview console | `todo` | Instant feedback loop. |
 | 13 | Template gallery | `todo` | React, Vite, Next, Node, static. |
 
@@ -77,7 +77,7 @@ These are the biggest daily-friction gaps you called out.
 - GitHub sync (stage / commit / push / pull / branches) — needs Diff + polish
 - Liveblocks collab + presence + sharing
 - AI chat tools + ghost-text suggestions
-- Esbuild preview + simulated terminal
+- Esbuild preview + WebContainer terminal (real npm)
 
 ---
 
@@ -154,3 +154,20 @@ These are the biggest daily-friction gaps you called out.
 - Double-click explorer (or edit / Keep Open / Pin) → permanent tab
 - Right-click tab: Pin · Unpin · Keep Open · Split · Close
 - Pinned tabs stay on the left with a pin icon
+
+### 9. Drag-drop / upload files — ready for review
+
+- Drop files or folders onto the explorer root or a folder (file rows use the parent folder)
+- Drag project files/folders within the tree to move them into a folder or back to the root (VS Code–style)
+- Toolbar **Upload** and context-menu **Upload…** (multi-file picker)
+- Preserves `webkitRelativePath` for folder drops; renames on conflict (`foo-2.ts`)
+- Text only · skips binary / over 512KB / ignored paths (`node_modules`, `.git`, …) with a toast summary
+
+### 11. Real package install + Node terminal — ready for review
+
+- WebContainer boots on `/projects/*` (COEP `credentialless` + COOP `same-origin`)
+- Project files mount into the in-browser Node FS; `node_modules` stays in the container only
+- Terminal `npm` / `pnpm` / `yarn` / `bun` spawn for real with streamed output
+- After install/add/remove, `package.json` + lockfiles sync back to Convex
+- Opening a project (including after clone) with `package.json` and no `node_modules` auto-runs the detected install once
+- Preview remains on server esbuild for now (#12)

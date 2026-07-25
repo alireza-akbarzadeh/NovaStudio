@@ -5,9 +5,11 @@ import {
   CircleXIcon,
   GitBranchIcon,
   Loader2Icon,
+  PackageIcon,
 } from "lucide-react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { WorkspaceBranchPicker } from "@/features/workspace/components/workspace-branch-picker";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
@@ -19,9 +21,25 @@ type WorkspaceStatusBarProps = {
   projectId: string;
 };
 
+function webContainerLabel(status: string | undefined): string {
+  switch (status) {
+    case "booting":
+    case "mounting":
+    case "idle":
+      return "Node: starting…";
+    case "ready":
+      return "Node: ready";
+    case "error":
+      return "Node: offline";
+    default:
+      return "Node";
+  }
+}
+
 export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
+  const webcontainer = useOptionalWebContainer();
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const branchPickerOpen = useWorkspaceStore((s) => s.branchPickerOpen);
@@ -29,6 +47,7 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const showProblemsPanel = useWorkspaceStore((s) => s.showProblemsPanel);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const setBottomPanelTab = useWorkspaceStore((s) => s.setBottomPanelTab);
   const { errorCount, warningCount } = useMonacoProblems();
 
   const changeCount = changedFiles?.length ?? 0;
@@ -36,8 +55,11 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const isGitHub = project?.source === "github" && project.githubRepoUrl;
   const isPushing = project?.exportStatus === "exporting";
   const language = getLanguageLabel(currentFilePath);
-  const problemsActive =
-    terminalOpen && bottomPanelTab === "problems";
+  const problemsActive = terminalOpen && bottomPanelTab === "problems";
+  const wcStatus = webcontainer?.status;
+  const wcBusy =
+    wcStatus === "booting" || wcStatus === "mounting" || wcStatus === "idle";
+  const wcError = wcStatus === "error";
 
   return (
     <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-ws-border-subtle bg-ws-panel px-2 text-[11px] text-ws-text-muted">
@@ -96,6 +118,29 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             <CircleAlertIcon className="size-3" />
             {warningCount}
           </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setBottomPanelTab("terminal")}
+          title={
+            wcError
+              ? (webcontainer?.error ??
+                "WebContainer unavailable — open Terminal")
+              : "Open Terminal · run npm install / npm install <pkg>"
+          }
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
+            wcError && "text-ws-danger-soft",
+            wcStatus === "ready" && "text-emerald-600 dark:text-emerald-400",
+          )}
+        >
+          {wcBusy ? (
+            <Loader2Icon className="size-3 shrink-0 animate-spin" />
+          ) : (
+            <PackageIcon className="size-3 shrink-0" />
+          )}
+          <span>{webContainerLabel(wcStatus)}</span>
         </button>
       </div>
 

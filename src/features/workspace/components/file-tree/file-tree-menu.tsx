@@ -21,6 +21,7 @@ export function FileTreeMenuContent({
   canEdit = true,
   onNewFile,
   onNewFolder,
+  onUpload,
   onOpen,
   onOpenInTerminal,
   onAddToChat,
@@ -66,6 +67,11 @@ export function FileTreeMenuContent({
                 New Folder...
                 <Shortcut className={shortcutClassName}>F</Shortcut>
               </Item>
+              {onUpload ? (
+                <Item onClick={onUpload} className={itemClassName}>
+                  Upload...
+                </Item>
+              ) : null}
               <Separator className={separatorClassName} />
             </>
           ) : null}

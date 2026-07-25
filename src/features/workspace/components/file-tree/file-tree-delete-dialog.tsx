@@ -16,6 +16,7 @@ type FileTreeDeleteDialogProps = {
   onOpenChange: (open: boolean) => void;
   nodeName: string;
   isFolder: boolean;
+  count?: number;
   onConfirm: () => void;
 };
 
@@ -24,17 +25,24 @@ export function FileTreeDeleteDialog({
   onOpenChange,
   nodeName,
   isFolder,
+  count = 1,
   onConfirm,
 }: FileTreeDeleteDialogProps) {
+  const multi = count > 1;
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="border-ws-border bg-ws-panel text-ws-text">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {nodeName}?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {multi ? `Delete ${count} items?` : `Delete ${nodeName}?`}
+          </AlertDialogTitle>
           <AlertDialogDescription className="text-ws-text-muted">
-            {isFolder
-              ? "This will permanently delete this folder and all its contents."
-              : "This will permanently delete this file."}
+            {multi
+              ? "This will permanently delete the selected files and folders."
+              : isFolder
+                ? "This will permanently delete this folder and all its contents."
+                : "This will permanently delete this file."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

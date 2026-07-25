@@ -1,5 +1,4 @@
-export const HELP_TEXT = `Polaris terminal is a simulated shell (not a real OS terminal).
-Node and system binaries are not available yet. Script names autocomplete from package.json.
+export const HELP_TEXT = `Polaris terminal — git + filesystem are simulated; npm runs in WebContainer.
 
 Shortcuts:
   Tab                        Autocomplete command / path / npm script
@@ -17,7 +16,7 @@ Available commands:
   cat <file>                Print file contents
   cd <path>                 Change directory
   echo <text>               Print text
-  npm|pnpm|yarn|bun run …   Suggest scripts from package.json (simulated)
+  npm|pnpm|yarn|bun …       Real install/run via WebContainer (when ready)
 
 Git (backed by GitHub API):
   git status                Show working tree status

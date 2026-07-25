@@ -23,8 +23,10 @@ import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspa
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
+import { WebContainerProvider } from "@/features/workspace/components/webcontainer-provider";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
+import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
@@ -38,7 +40,7 @@ type WorkspaceLayoutProps = {
   children: ReactNode;
 };
 
-export function WorkspaceLayout({
+function WorkspaceLayoutInner({
   projectId,
   projectName,
   children,
@@ -49,6 +51,7 @@ export function WorkspaceLayout({
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
   useUserJsonTabShortcut(projectId);
+  useWebContainerAutoInstall(projectId);
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
@@ -212,6 +215,14 @@ export function WorkspaceLayout({
       />
       <WorkspaceStatusBar projectId={projectId} />
     </div>
+  );
+}
+
+export function WorkspaceLayout(props: WorkspaceLayoutProps) {
+  return (
+    <WebContainerProvider projectId={props.projectId}>
+      <WorkspaceLayoutInner {...props} />
+    </WebContainerProvider>
   );
 }
 

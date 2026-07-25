@@ -5,6 +5,7 @@ import { Terminal } from "@xterm/xterm";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
+import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { useTerminalShell } from "@/features/workspace/hooks/use-terminal-shell";
 import type { CompleteContext } from "@/features/workspace/lib/terminal/complete";
 import {
@@ -19,6 +20,7 @@ import {
   TERMINAL_THEME_DARK,
   TERMINAL_THEME_LIGHT,
 } from "@/features/workspace/lib/terminal/themes";
+import type { ShellHandlers } from "@/features/workspace/lib/terminal/types";
 import {
   CLEAR_SCREEN,
   runShellCommand,
@@ -31,12 +33,33 @@ type WorkspaceTerminalProps = {
   projectId: string;
 };
 
+function statusBannerLine(
+  status: string,
+  error: string | null,
+): string {
+  switch (status) {
+    case "booting":
+      return "WebContainer: booting Node runtime…";
+    case "mounting":
+      return "WebContainer: mounting project files…";
+    case "ready":
+      return "WebContainer: ready — npm/pnpm/yarn/bun run for real";
+    case "error":
+      return `WebContainer: unavailable — ${error ?? "boot failed"}`;
+    default:
+      return "WebContainer: starting…";
+  }
+}
+
 export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const cwdRef = useRef("/");
   const historyRef = useRef(new CommandHistory());
   const editorRef = useRef<TerminalLineEditor | null>(null);
+  const executeRef = useRef<(command: string) => Promise<void>>(
+    async () => undefined,
+  );
 
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -49,6 +72,10 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
   const { projectName, branch, dirty, getContext, createHandlers, filesRef } =
     useTerminalShell(projectId);
+  const webcontainer = useOptionalWebContainer();
+  const webcontainerRef = useRef(webcontainer);
+  webcontainerRef.current = webcontainer;
+
   const projectNameRef = useRef(projectName);
   const branchRef = useRef(branch);
   const dirtyRef = useRef(dirty);
@@ -57,8 +84,13 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const clearTerminalCwdRequest = useWorkspaceStore(
     (s) => s.clearTerminalCwdRequest,
   );
+  const terminalCommandRequest = useWorkspaceStore(
+    (s) => s.terminalCommandRequest,
+  );
+  const clearTerminalCommandRequest = useWorkspaceStore(
+    (s) => s.clearTerminalCommandRequest,
+  );
 
-  // Stable refs so the xterm session is created once
   const getContextRef = useRef(getContext);
   const createHandlersRef = useRef(createHandlers);
 
@@ -91,6 +123,44 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   }, [clearTerminalCwdRequest, terminalCwdRequest]);
 
   useEffect(() => {
+    if (!terminalCommandRequest) return;
+    // Wait until xterm + execute are ready so we don't drop the command.
+    if (!terminalRef.current || !editorRef.current) return;
+
+    const command = terminalCommandRequest;
+    clearTerminalCommandRequest();
+    const term = terminalRef.current;
+    term.writeln(`\r\n→ ${command}`);
+    void executeRef.current(command);
+  }, [clearTerminalCommandRequest, terminalCommandRequest]);
+
+  // Surface WebContainer status changes in the terminal
+  const lastStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!webcontainer) return;
+    const key = `${webcontainer.status}:${webcontainer.error ?? ""}`;
+    if (lastStatusRef.current === key) return;
+    // Skip the very first paint — welcome banner already covers it
+    if (lastStatusRef.current === null) {
+      lastStatusRef.current = key;
+      return;
+    }
+    lastStatusRef.current = key;
+    const term = terminalRef.current;
+    if (!term) return;
+    term.writeln("");
+    term.writeln(statusBannerLine(webcontainer.status, webcontainer.error));
+    writeShellPrompt(term, {
+      projectName: projectNameRef.current,
+      cwd: cwdRef.current,
+      branch: branchRef.current,
+      dirty: dirtyRef.current,
+      isDark: isDarkRef.current,
+      newline: true,
+    });
+  }, [webcontainer]);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container || terminalRef.current) return;
 
@@ -101,27 +171,23 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       cursorBlink: true,
       cursorStyle: "bar",
       cursorWidth: 1,
-      // Canvas cannot resolve CSS vars — use the real next/font family name
       fontFamily,
       fontSize: 13,
       fontWeight: "400",
       lineHeight: 1.25,
-      // DomRenderer: device px (see resolveTerminalLetterSpacing)
       letterSpacing,
       theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
-      scrollback: 2000,
+      scrollback: 5000,
       allowTransparency: false,
     });
 
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(container);
-    // Re-apply after open so DomRenderer recomputes cell width + CSS spacing
     term.options.letterSpacing = letterSpacing;
     fitAddon.fit();
     terminalRef.current = term;
 
-    // Re-measure after next/font finishes loading so cell widths match glyphs
     void document.fonts.ready.then(() => {
       if (terminalRef.current !== term) return;
       term.options.fontFamily = resolveTerminalFontFamily();
@@ -147,7 +213,6 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
         cwd: cwdRef.current,
         files,
         history: historyRef.current,
-        // Re-read on every keystroke so package.json script edits stay live
         scripts: getPackageScripts(files, cwdRef.current),
       };
     };
@@ -164,9 +229,52 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
         historyRef.current.push(command);
       }
 
-      const handlers = createHandlersRef.current((line) => {
+      const handlers: ShellHandlers = createHandlersRef.current((line) => {
         term.writeln(line);
       });
+
+      const wc = webcontainerRef.current;
+      if (wc?.ready) {
+        handlers.runInWebContainer = async (binary, args, cwd) => {
+          try {
+            const exitCode = await wc.spawn(binary, args, {
+              cwd,
+              onChunk: (chunk) => {
+                term.write(chunk.replace(/\n/g, "\r\n"));
+              },
+            });
+            if (wc.shouldSyncAfterCommand(args)) {
+              try {
+                const synced = await wc.syncManifests();
+                if (synced.length > 0) {
+                  term.writeln(
+                    `\r\n[polaris] synced ${synced.join(", ")} to project`,
+                  );
+                }
+                await wc.refreshInstallState();
+              } catch (syncError) {
+                term.writeln(
+                  `\r\n[polaris] failed to sync lockfile: ${
+                    syncError instanceof Error
+                      ? syncError.message
+                      : "unknown error"
+                  }`,
+                );
+              }
+            }
+            return { output: "", exitCode, cwd };
+          } catch (error) {
+            return {
+              output:
+                error instanceof Error
+                  ? error.message
+                  : "WebContainer command failed",
+              exitCode: 1,
+              cwd,
+            };
+          }
+        };
+      }
 
       const result = await runShellCommand(command, context, handlers);
 
@@ -175,7 +283,6 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       }
 
       if (result.output === CLEAR_SCREEN) {
-        // Full reset so the next prompt isn't appended after the typed command.
         term.reset();
         writePrompt(term, false);
         return;
@@ -188,6 +295,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       writePrompt(term, false);
     };
 
+    executeRef.current = execute;
+
     const editor = new TerminalLineEditor(
       term,
       historyRef.current,
@@ -197,14 +306,23 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     );
     editorRef.current = editor;
 
-    term.writeln("Polaris workspace terminal (simulated shell)");
+    const wc = webcontainerRef.current;
+    term.writeln("Polaris workspace terminal");
     term.writeln(
       "Type 'help' for commands. Tab completes · → accepts suggestion · ↑↓ history",
     );
     term.writeln(
-      "npm/pnpm/yarn/bun scripts autocomplete from package.json (live)",
+      statusBannerLine(wc?.status ?? "idle", wc?.error ?? null),
     );
     writePrompt(term, true);
+
+    // Consume any command queued before the terminal finished mounting.
+    const pending = useWorkspaceStore.getState().terminalCommandRequest;
+    if (pending) {
+      useWorkspaceStore.getState().clearTerminalCommandRequest();
+      term.writeln(`\r\n→ ${pending}`);
+      void execute(pending);
+    }
 
     const dataDisposable = term.onData((data) => editor.handleData(data));
     const resizeObserver = new ResizeObserver(() => fitAddon.fit());

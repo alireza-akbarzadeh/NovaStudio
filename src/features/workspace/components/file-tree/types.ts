@@ -22,6 +22,7 @@ export type FileTreeMenuContentProps = {
   canEdit?: boolean;
   onNewFile: () => void;
   onNewFolder: () => void;
+  onUpload?: () => void;
   onOpen: () => void;
   onOpenInTerminal: () => void;
   onAddToChat: () => void;
@@ -47,6 +48,11 @@ export type FileTreeItemProps = {
   onToggleFolder: (folderId: Id<"projectFiles">) => void;
   focusedId: Id<"projectFiles"> | null;
   onFocusItem: (id: Id<"projectFiles">) => void;
+  selectedIds: Set<Id<"projectFiles">>;
+  onSelectItem: (
+    id: Id<"projectFiles">,
+    modifiers?: { shiftKey?: boolean; modKey?: boolean },
+  ) => void;
   pendingCreate: PendingCreate | null;
   onStartCreate: (kind: "file" | "folder", parentId?: Id<"projectFiles">) => void;
   renderPendingCreate: (
@@ -70,6 +76,35 @@ export type FileTreeItemProps = {
   onFindInFolder: (folderPath?: string) => void;
   onAddToChat: (path: string, kind: "file" | "folder") => void;
   onAddToNewChat: (path: string, kind: "file" | "folder") => void;
+  onUpload?: (targetParentId?: Id<"projectFiles">) => void;
+  dropTargetId?: "root" | Id<"projectFiles"> | null;
+  dragSourcePath?: string | null;
+  dragSourcePaths?: Set<string>;
+  onTreeDragStart?: (payload: {
+    path: string;
+    kind: "file" | "folder";
+    parentId?: Id<"projectFiles">;
+    paths: string[];
+  }) => void;
+  onTreeDragEnd?: () => void;
+  onDeleteItems?: (paths: string[]) => Promise<void>;
+  files?: Array<{
+    _id: Id<"projectFiles">;
+    path: string;
+    kind: "file" | "folder";
+  }>;
+  onItemDragOver?: (
+    event: React.DragEvent,
+    targetId: "root" | Id<"projectFiles">,
+  ) => void;
+  onItemDragLeave?: (
+    event: React.DragEvent,
+    targetId: "root" | Id<"projectFiles">,
+  ) => void;
+  onItemDrop?: (
+    event: React.DragEvent,
+    targetParentId: Id<"projectFiles"> | undefined,
+  ) => void;
   parentId?: Id<"projectFiles">;
   highlightQuery?: string;
 };
