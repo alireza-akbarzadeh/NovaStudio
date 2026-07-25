@@ -57,13 +57,16 @@ export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   useAcceptPendingInvites();
 
+  // Auto-open on the `/projects` deep link, and force-close only when auth is lost.
+  // We intentionally do NOT close on `/projects/*` so the dialog can overlay a
+  // workspace when opened via the switcher.
   useEffect(() => {
-    if (pathname === "/projects" && isAuthenticated) {
-      setOpen(true);
+    if (!isAuthenticated) {
+      setOpen(false);
       return;
     }
-    if (pathname.startsWith("/projects/") || !isAuthenticated) {
-      setOpen(false);
+    if (pathname === "/projects") {
+      setOpen(true);
     }
   }, [pathname, isAuthenticated]);
 

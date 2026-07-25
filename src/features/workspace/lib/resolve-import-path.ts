@@ -1,5 +1,7 @@
 /** Resolve import / module specifiers against a project file index. */
 
+import { dirnamePath, joinPath, toPosixPath } from "@/lib/posix-path";
+
 const SOURCE_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".mjs", ".cjs", ".json", ".css", ".scss"];
 
 const INDEX_FILES = [
@@ -13,34 +15,6 @@ export type ProjectFileEntry = {
   path: string;
   content?: string;
 };
-
-function normalizePath(path: string): string {
-  return path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+/g, "/");
-}
-
-/** Collapse `.` / `..` segments. */
-export function normalizeRelativePath(path: string): string {
-  const parts: string[] = [];
-  for (const part of normalizePath(path).split("/")) {
-    if (!part || part === ".") continue;
-    if (part === "..") {
-      parts.pop();
-      continue;
-    }
-    parts.push(part);
-  }
-  return parts.join("/");
-}
-
-function dirname(path: string): string {
-  const normalized = normalizePath(path);
-  const idx = normalized.lastIndexOf("/");
-  return idx === -1 ? "" : normalized.slice(0, idx);
-}
-
-function joinPath(...parts: string[]): string {
-  return normalizeRelativePath(parts.filter(Boolean).join("/"));
-}
 
 /** Map common aliases (`@/` → `src/`) used in React / Next templates. */
 export function expandPathAlias(specifier: string): string | null {
@@ -57,7 +31,7 @@ function candidatesForBase(
   base: string,
   fileSet: Set<string>,
 ): string | null {
-  const normalized = normalizePath(base);
+  const normalized = toPosixPath(base);
   if (fileSet.has(normalized)) return normalized;
 
   for (const ext of SOURCE_EXTENSIONS) {
@@ -94,13 +68,9 @@ export function resolveImportPath(
     return null;
   }
 
-  const fileSet = new Set(
-    [...filePaths].map((path) => normalizePath(path)),
-  );
+  const fileSet = new Set([...filePaths].map((path) => toPosixPath(path)));
 
-  const base = aliased
-    ? aliased
-    : joinPath(dirname(fromPath), trimmed);
+  const base = aliased ? aliased : joinPath(dirnamePath(fromPath), trimmed);
 
   return candidatesForBase(base, fileSet);
 }
@@ -111,7 +81,7 @@ export function buildFileContentMap(
   const map = new Map<string, string>();
   for (const file of files) {
     if (!file.path) continue;
-    map.set(normalizePath(file.path), file.content ?? "");
+    map.set(toPosixPath(file.path), file.content ?? "");
   }
   return map;
 }

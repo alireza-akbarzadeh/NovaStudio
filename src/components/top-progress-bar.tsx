@@ -26,7 +26,7 @@ export function TopProgressBar({
         className,
       )}
     >
-      <div className="absolute inset-y-0 w-1/3 animate-[top-progress_1.1s_ease-in-out_infinite] rounded-full bg-[#3574f0] shadow-[0_0_12px_rgba(53,116,240,0.65)]" />
+      <div className="absolute inset-y-0 w-1/3 animate-[top-progress_1.1s_ease-in-out_infinite] rounded-full bg-ws-accent shadow-[0_0_12px_rgba(139,92,246,0.65)]" />
       <style>{`
         @keyframes top-progress {
           0% { transform: translateX(-120%); }

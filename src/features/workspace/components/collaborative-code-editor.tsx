@@ -55,6 +55,43 @@ function replaceYText(ydoc: Y.Doc, ytext: Y.Text, next: string) {
   });
 }
 
+/** Full-model replace without jumping the caret to EOF (Monaco's default). */
+function replaceMonacoContentPreservingCursor(
+  ed: editor.IStandaloneCodeEditor,
+  model: editor.ITextModel,
+  next: string,
+) {
+  const selection = ed.getSelection();
+  const anchorOffset = selection
+    ? model.getOffsetAt({
+        lineNumber: selection.selectionStartLineNumber,
+        column: selection.selectionStartColumn,
+      })
+    : 0;
+  const headOffset = selection
+    ? model.getOffsetAt({
+        lineNumber: selection.positionLineNumber,
+        column: selection.positionColumn,
+      })
+    : 0;
+
+  ed.executeEdits("polaris-external", [
+    { range: model.getFullModelRange(), text: next },
+  ]);
+
+  if (!selection) return;
+
+  // getPositionAt clamps, so a shorter replacement lands at the new EOF.
+  const anchor = model.getPositionAt(anchorOffset);
+  const head = model.getPositionAt(headOffset);
+  ed.setSelection({
+    selectionStartLineNumber: anchor.lineNumber,
+    selectionStartColumn: anchor.column,
+    positionLineNumber: head.lineNumber,
+    positionColumn: head.column,
+  });
+}
+
 function LiveblocksCollaborativeEditor({
   projectId,
   filePath,
@@ -244,10 +281,7 @@ function LiveblocksCollaborativeEditor({
     const model = ed?.getModel();
     if (ed && model && ready) {
       try {
-        const fullRange = model.getFullModelRange();
-        ed.executeEdits("polaris-external", [
-          { range: fullRange, text: next },
-        ]);
+        replaceMonacoContentPreservingCursor(ed, model, next);
       } catch (error) {
         console.warn("[collab] Monaco external replace failed", error);
         const ytext = ytextRef.current;

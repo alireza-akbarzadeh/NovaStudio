@@ -4,7 +4,7 @@ import type { EditorSettings } from "@/features/settings/lib/editor-settings";
 import type { MonacoJsonOverrides } from "@/features/settings/lib/settings-json";
 
 const EDITOR_FONT =
-  "var(--font-editor-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+  "var(--font-jetbrains-mono), \"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
 
 export type MonacoEditorSettings = Pick<
   EditorSettings,

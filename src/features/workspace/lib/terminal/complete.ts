@@ -1,15 +1,23 @@
 import { GIT_SUBCOMMANDS, SHELL_COMMANDS } from "./commands";
 import type { CommandHistory } from "./history";
+import {
+  getPackageScripts,
+  isPackageManager,
+  type PackageScriptFile,
+} from "./package-scripts";
 
 export type CompleteFile = {
   path: string;
   kind: "file" | "folder";
+  content?: string;
 };
 
 export type CompleteContext = {
   cwd: string;
   files: CompleteFile[];
   history: CommandHistory;
+  /** Optional override; otherwise derived from files + cwd */
+  scripts?: string[];
 };
 
 export type Suggestion = {
@@ -41,6 +49,13 @@ function longestCommonPrefix(values: string[]): string {
     }
   }
   return prefix;
+}
+
+function firstPrefix(candidates: readonly string[], token: string): string | null {
+  const lower = token.toLowerCase();
+  return (
+    candidates.find((c) => c.toLowerCase().startsWith(lower)) ?? null
+  );
 }
 
 function normalizeCwd(cwd: string): string {
@@ -145,14 +160,64 @@ function rebuildPathToken(
 ): string {
   if (!namePrefix) {
     if (original.endsWith("/")) return `${original}${replacement}`;
-    if (original === "/" || original === "") return replacement.startsWith("/")
-      ? replacement
-      : original.startsWith("/")
-        ? `/${replacement}`
-        : replacement;
+    if (original === "/" || original === "")
+      return replacement.startsWith("/")
+        ? replacement
+        : original.startsWith("/")
+          ? `/${replacement}`
+          : replacement;
     return original + replacement;
   }
   return original.slice(0, original.length - namePrefix.length) + replacement;
+}
+
+function scriptsFor(ctx: CompleteContext): string[] {
+  if (ctx.scripts) return ctx.scripts;
+  return getPackageScripts(ctx.files as PackageScriptFile[], ctx.cwd);
+}
+
+function parseTokens(line: string): {
+  parts: string[];
+  token: string;
+  endsWithSpace: boolean;
+} {
+  const endsWithSpace = /\s$/.test(line);
+  const parts = line.trimEnd().split(/\s+/).filter(Boolean);
+  const token = endsWithSpace ? "" : (parts[parts.length - 1] ?? "");
+  return { parts, token, endsWithSpace };
+}
+
+/**
+ * Complete npm/pnpm/yarn/bun script invocations.
+ *   npm|pnpm|bun run <script>
+ *   yarn [run] <script>
+ */
+function completePackageManager(
+  parts: string[],
+  endsWithSpace: boolean,
+  token: string,
+  scripts: string[],
+): string | null {
+  const command = parts[0] ?? "";
+  if (!isPackageManager(command)) return null;
+
+  // Finished tokens before the one being typed
+  const finished = endsWithSpace ? parts : parts.slice(0, -1);
+  const argIndex = finished.length; // 1 = first arg after binary
+
+  if (argIndex === 1) {
+    if (command === "yarn") {
+      return prefixMatch(["run", ...scripts], token);
+    }
+    return prefixMatch(["run"], token);
+  }
+
+  // `npm run <script>` or `yarn run <script>`
+  if (finished[1] === "run" && argIndex === 2) {
+    return prefixMatch(scripts, token);
+  }
+
+  return null;
 }
 
 /**
@@ -163,18 +228,19 @@ export function completeLine(
   line: string,
   ctx: CompleteContext,
 ): string | null {
-  const parts = line.split(/\s+/);
-  const endsWithSpace = /\s$/.test(line);
-  const token = endsWithSpace ? "" : (parts[parts.length - 1] ?? "");
+  const { parts, token, endsWithSpace } = parseTokens(line);
   const command = parts[0] ?? "";
   const isFirst = parts.length <= 1 && !endsWithSpace;
 
   let completed: string | null = null;
+  const scripts = scriptsFor(ctx);
 
   if (isFirst) {
     completed = prefixMatch(SHELL_COMMANDS, token);
   } else if (command === "git" && parts.length === 2 && !endsWithSpace) {
     completed = prefixMatch(GIT_SUBCOMMANDS, token);
+  } else if (isPackageManager(command)) {
+    completed = completePackageManager(parts, endsWithSpace, token, scripts);
   } else if (
     command === "cd" ||
     command === "ls" ||
@@ -196,7 +262,7 @@ export function completeLine(
 
 /**
  * Fish-style inline suggestion while typing.
- * Prefers history matches; falls back to command/path completion.
+ * Prefers history matches; falls back to script / command / path completion.
  */
 export function suggestLine(
   line: string,
@@ -209,8 +275,86 @@ export function suggestLine(
     return { line: fromHistory, ghost: fromHistory.slice(line.length) };
   }
 
+  const packageSuggestion = suggestPackageManager(line, ctx);
+  if (packageSuggestion) return packageSuggestion;
+
   const completed = completeLine(line, ctx);
   if (!completed || completed === line) return null;
 
   return { line: completed, ghost: completed.slice(line.length) };
+}
+
+function suggestPackageManager(
+  line: string,
+  ctx: CompleteContext,
+): Suggestion | null {
+  const { parts, endsWithSpace } = parseTokens(line);
+  const command = parts[0] ?? "";
+  if (!isPackageManager(command)) return null;
+
+  const scripts = scriptsFor(ctx);
+  if (scripts.length === 0) return null;
+
+  const asSuggestion = (full: string): Suggestion | null => {
+    if (full === line || !full.startsWith(line)) return null;
+    return { line: full, ghost: full.slice(line.length) };
+  };
+
+  // `npm ` → `npm run <first-script>`
+  if (parts.length === 1 && endsWithSpace) {
+    const script = scripts[0]!;
+    const full =
+      command === "yarn" ? `yarn ${script}` : `${command} run ${script}`;
+    return asSuggestion(full);
+  }
+
+  // `npm r` / `npm ru` → `npm run <script>`
+  if (
+    parts.length === 2 &&
+    !endsWithSpace &&
+    command !== "yarn" &&
+    "run".startsWith(parts[1]!.toLowerCase())
+  ) {
+    return asSuggestion(`${command} run ${scripts[0]!}`);
+  }
+
+  // `npm run` → `npm run <script>`
+  if (parts.length === 2 && parts[1] === "run" && !endsWithSpace) {
+    return asSuggestion(`${command} run ${scripts[0]!}`);
+  }
+
+  // `npm run ` / `npm run st`
+  if (parts[1] === "run") {
+    const scriptToken = endsWithSpace
+      ? ""
+      : parts.length >= 3
+        ? (parts[2] ?? "")
+        : "";
+    if (parts.length === 2 && endsWithSpace) {
+      return asSuggestion(`${command} run ${scripts[0]!}`);
+    }
+    if (parts.length >= 3 || (parts.length === 2 && endsWithSpace)) {
+      const match = firstPrefix(scripts, scriptToken);
+      if (!match) return null;
+      return asSuggestion(`${command} run ${match}`);
+    }
+  }
+
+  // `yarn st` / `yarn ` shorthand
+  if (command === "yarn") {
+    if (parts.length === 1 && endsWithSpace) {
+      return asSuggestion(`yarn ${scripts[0]!}`);
+    }
+    if (parts.length === 2 && parts[1] !== "run") {
+      const token = endsWithSpace ? "" : (parts[1] ?? "");
+      const match = firstPrefix(scripts, token);
+      if (!match) return null;
+      return asSuggestion(`yarn ${match}`);
+    }
+    if (parts.length === 2 && parts[1] === "run" && endsWithSpace) {
+      return asSuggestion(`yarn run ${scripts[0]!}`);
+    }
+  }
+
+  return null;
 }

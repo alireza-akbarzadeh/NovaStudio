@@ -7,14 +7,22 @@ import { useEffect, useRef, useSyncExternalStore } from "react";
 
 import { useTerminalShell } from "@/features/workspace/hooks/use-terminal-shell";
 import type { CompleteContext } from "@/features/workspace/lib/terminal/complete";
+import {
+  resolveTerminalFontFamily,
+  resolveTerminalLetterSpacing,
+} from "@/features/workspace/lib/terminal/font";
 import { CommandHistory } from "@/features/workspace/lib/terminal/history";
 import { TerminalLineEditor } from "@/features/workspace/lib/terminal/line-editor";
+import { getPackageScripts } from "@/features/workspace/lib/terminal/package-scripts";
 import { writeShellPrompt } from "@/features/workspace/lib/terminal/prompt";
 import {
   TERMINAL_THEME_DARK,
   TERMINAL_THEME_LIGHT,
 } from "@/features/workspace/lib/terminal/themes";
-import { runShellCommand } from "@/features/workspace/lib/workspace-shell";
+import {
+  CLEAR_SCREEN,
+  runShellCommand,
+} from "@/features/workspace/lib/workspace-shell";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 import "@xterm/xterm/css/xterm.css";
@@ -86,15 +94,20 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const container = containerRef.current;
     if (!container || terminalRef.current) return;
 
+    const fontFamily = resolveTerminalFontFamily();
+    const letterSpacing = resolveTerminalLetterSpacing();
+
     const term = new Terminal({
       cursorBlink: true,
       cursorStyle: "bar",
       cursorWidth: 1,
-      fontFamily:
-        "var(--font-terminal), ui-monospace, Menlo, Monaco, Consolas, monospace",
-      fontSize: 12,
-      lineHeight: 1.2,
-      letterSpacing: 0,
+      // Canvas cannot resolve CSS vars — use the real next/font family name
+      fontFamily,
+      fontSize: 13,
+      fontWeight: "400",
+      lineHeight: 1.25,
+      // DomRenderer: device px (see resolveTerminalLetterSpacing)
+      letterSpacing,
       theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
       scrollback: 2000,
       allowTransparency: false,
@@ -103,8 +116,19 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(container);
+    // Re-apply after open so DomRenderer recomputes cell width + CSS spacing
+    term.options.letterSpacing = letterSpacing;
     fitAddon.fit();
     terminalRef.current = term;
+
+    // Re-measure after next/font finishes loading so cell widths match glyphs
+    void document.fonts.ready.then(() => {
+      if (terminalRef.current !== term) return;
+      term.options.fontFamily = resolveTerminalFontFamily();
+      term.options.letterSpacing = resolveTerminalLetterSpacing();
+      fitAddon.fit();
+      term.refresh(0, term.rows - 1);
+    });
 
     const writePrompt = (t: Terminal, newline = false) => {
       writeShellPrompt(t, {
@@ -117,11 +141,16 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       });
     };
 
-    const getCompleteContext = (): CompleteContext => ({
-      cwd: cwdRef.current,
-      files: filesRef.current ?? [],
-      history: historyRef.current,
-    });
+    const getCompleteContext = (): CompleteContext => {
+      const files = filesRef.current ?? [];
+      return {
+        cwd: cwdRef.current,
+        files,
+        history: historyRef.current,
+        // Re-read on every keystroke so package.json script edits stay live
+        scripts: getPackageScripts(files, cwdRef.current),
+      };
+    };
 
     const execute = async (command: string) => {
       const context = getContextRef.current(cwdRef.current);
@@ -145,7 +174,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
         cwdRef.current = result.cwd;
       }
 
-      if (result.output === "__CLEAR__") {
+      if (result.output === CLEAR_SCREEN) {
         // Full reset so the next prompt isn't appended after the typed command.
         term.reset();
         writePrompt(term, false);
@@ -171,6 +200,9 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     term.writeln("Polaris workspace terminal (simulated shell)");
     term.writeln(
       "Type 'help' for commands. Tab completes · → accepts suggestion · ↑↓ history",
+    );
+    term.writeln(
+      "npm/pnpm/yarn/bun scripts autocomplete from package.json (live)",
     );
     writePrompt(term, true);
 

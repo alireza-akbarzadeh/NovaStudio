@@ -32,7 +32,7 @@ export function PricingSection({
     >
       <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
             Pricing
           </div>
           <h2

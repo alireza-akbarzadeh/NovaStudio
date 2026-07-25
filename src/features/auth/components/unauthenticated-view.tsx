@@ -191,7 +191,7 @@ function Hero() {
     <section className="relative overflow-hidden pt-20 pb-28 md:pt-24 md:pb-40">
       <div
         aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[1200px] -translate-x-1/2 rounded-full bg-[#3574f0]/20 opacity-50 blur-[160px]"
+        className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[1200px] -translate-x-1/2 rounded-full bg-ws-accent/20 opacity-50 blur-[160px]"
       />
 
       <div className="mx-auto max-w-6xl px-6 text-center">
@@ -217,7 +217,7 @@ function Hero() {
               <SignUpButton mode="modal" forceRedirectUrl="/projects">
                 <button
                   type="button"
-                  className="rounded-md bg-[#3574f0] px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#2d66d8]"
+                  className="rounded-md bg-ws-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-ws-accent-hover"
                 >
                   Start building
                 </button>
@@ -235,7 +235,7 @@ function Hero() {
               <button
                 type="button"
                 onClick={() => openProjects()}
-                className="rounded-md bg-[#3574f0] px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-[#2d66d8]"
+                className="rounded-md bg-ws-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-ws-accent-hover"
               >
                 Open projects
               </button>
@@ -277,7 +277,7 @@ function Hero() {
                   </div>
                   <div className="pl-2 text-white">polaris</div>
                   <div className="pl-2">▾ src</div>
-                  <div className="pl-6 font-bold text-[#7eb0f8]">page.tsx</div>
+                  <div className="pl-6 font-bold text-ws-accent-soft">page.tsx</div>
                   <div className="pl-6">workspace.tsx</div>
                   <div className="pl-6">types.d.ts</div>
                   <div className="pl-2">▸ components</div>
@@ -298,9 +298,9 @@ function Hero() {
                     102
                   </div>
                   <div className="font-medium text-zinc-500">
-                    <span className="text-[#c792ea]">import</span> {"{"}{" "}
-                    <span className="text-[#82aaff]">Workspace</span> {"}"}{" "}
-                    <span className="text-[#c792ea]">from</span>{" "}
+                    <span className="text-[#c4b5fd]">import</span> {"{"}{" "}
+                    <span className="text-[#7dd3fc]">Workspace</span> {"}"}{" "}
+                    <span className="text-[#c4b5fd]">from</span>{" "}
                     <span className="text-[#c3e88d]">
                       &quot;@polaris/core&quot;
                     </span>
@@ -318,25 +318,25 @@ function Hero() {
                     104
                   </div>
                   <div className="font-medium text-zinc-500">
-                    <span className="text-[#c792ea]">export default function</span>{" "}
-                    <span className="text-[#82aaff]">Home</span>() {"{"}
+                    <span className="text-[#c4b5fd]">export default function</span>{" "}
+                    <span className="text-[#7dd3fc]">Home</span>() {"{"}
                   </div>
                 </div>
 
-                <div className="group -mx-6 mb-1 flex gap-6 bg-[#3574f0]/10 px-6 py-1 ring-1 ring-[#3574f0]/25 md:-mx-8 md:px-8">
-                  <div className="w-6 select-none text-right text-[#7eb0f8]/50">
+                <div className="group -mx-6 mb-1 flex gap-6 bg-ws-accent/10 px-6 py-1 ring-1 ring-ws-accent/25 md:-mx-8 md:px-8">
+                  <div className="w-6 select-none text-right text-ws-accent-soft/50">
                     105
                   </div>
                   <div className="font-medium text-white">
-                    <span className="text-[#c792ea]">return</span>{" "}
-                    <span className="text-[#c792ea]">&lt;</span>
-                    <span className="text-[#82aaff]">Workspace</span>{" "}
+                    <span className="text-[#c4b5fd]">return</span>{" "}
+                    <span className="text-[#c4b5fd]">&lt;</span>
+                    <span className="text-[#7dd3fc]">Workspace</span>{" "}
                     project=
                     <span className="text-[#c3e88d]">&quot;polaris&quot;</span>{" "}
                     ai=
                     <span className="text-[#ffcb6b]">true</span>{" "}
-                    <span className="text-[#c792ea]">/&gt;</span>
-                    <span className="cursor-blink ml-1 inline-block h-4 w-[2px] bg-[#3574f0] align-middle" />
+                    <span className="text-[#c4b5fd]">/&gt;</span>
+                    <span className="cursor-blink ml-1 inline-block h-4 w-[2px] bg-ws-accent align-middle" />
                   </div>
                 </div>
 
@@ -360,7 +360,7 @@ function Hero() {
                   style={{ animationDelay: "800ms" }}
                 >
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="size-2 rounded-full bg-[#3574f0]" />
+                    <div className="size-2 rounded-full bg-ws-accent" />
                     <span className="text-[10px] font-bold tracking-wider text-[#9a9a9a] uppercase">
                       Polaris AI
                     </span>
@@ -372,7 +372,7 @@ function Hero() {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      className="flex-1 rounded bg-[#3574f0] py-1.5 text-[11px] font-bold text-white"
+                      className="flex-1 rounded bg-ws-accent py-1.5 text-[11px] font-bold text-white"
                     >
                       Apply Fix
                     </button>
@@ -398,7 +398,7 @@ function Features() {
     <section className="border-t border-white/5 bg-white/[0.01] py-24">
       <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="mx-auto mb-16 max-w-2xl text-center">
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
             Principles
           </div>
           <h2
@@ -417,7 +417,7 @@ function Features() {
               id={feature.id}
               className="scroll-mt-24 rounded-2xl border border-white/5 bg-zinc-900/50 p-8 transition-all hover:border-white/10 md:p-10"
             >
-              <div className="mb-6 font-mono text-[10px] font-bold tracking-widest text-[#7eb0f8] uppercase">
+              <div className="mb-6 font-mono text-[10px] font-bold tracking-widest text-ws-accent-soft uppercase">
                 {feature.label}
               </div>
               <h3 className="mb-4 text-xl font-bold text-white">
@@ -439,7 +439,7 @@ function EngineDeepDive() {
     <section className="border-t border-white/5 py-24 md:py-32">
       <div className="mx-auto grid max-w-6xl gap-16 px-6 md:grid-cols-2 md:items-center md:px-8">
         <div>
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
             04 // Native workspace
           </div>
           <h2
@@ -475,28 +475,28 @@ function EngineDeepDive() {
         <div className="relative">
           <div
             aria-hidden
-            className="pointer-events-none absolute -inset-10 rounded-full bg-[#3574f0]/15 blur-[100px]"
+            className="pointer-events-none absolute -inset-10 rounded-full bg-ws-accent/15 blur-[100px]"
           />
           <div className="relative rounded-2xl border border-white/10 bg-zinc-950 p-8 font-mono text-[12px] leading-relaxed">
             <div className="mb-4 flex items-center justify-between">
               <span className="text-[10px] tracking-widest text-[#9a9a9a] uppercase">
                 workspace_trace.log
               </span>
-              <span className="rounded bg-[#3574f0]/20 px-2 py-0.5 text-[10px] font-bold text-[#7eb0f8]">
+              <span className="rounded bg-ws-accent/20 px-2 py-0.5 text-[10px] font-bold text-ws-accent-soft">
                 LIVE
               </span>
             </div>
             <div className="space-y-2 text-zinc-400">
               <div>
-                <span className="text-[#7eb0f8]">→</span> open: page.tsx{" "}
+                <span className="text-ws-accent-soft">→</span> open: page.tsx{" "}
                 <span className="text-[#9a9a9a]">(ready)</span>
               </div>
               <div>
-                <span className="text-[#7eb0f8]">→</span> context: 3 tabs + git
+                <span className="text-ws-accent-soft">→</span> context: 3 tabs + git
                 status
               </div>
               <div>
-                <span className="text-[#7eb0f8]">→</span> assist: refactor Hero
+                <span className="text-ws-accent-soft">→</span> assist: refactor Hero
                 CTA
               </div>
               <div className="text-emerald-400">
@@ -504,9 +504,9 @@ function EngineDeepDive() {
                 <span className="text-[#9a9a9a]">(apply in editor)</span>
               </div>
               <div className="mt-4 border-t border-white/5 pt-3 text-white/60">
-                <span className="text-[#c792ea]">const</span> workspace ={" "}
-                <span className="text-[#c792ea]">await</span> Polaris.
-                <span className="text-[#82aaff]">boot</span>();
+                <span className="text-[#c4b5fd]">const</span> workspace ={" "}
+                <span className="text-[#c4b5fd]">await</span> Polaris.
+                <span className="text-[#7dd3fc]">boot</span>();
               </div>
             </div>
           </div>
@@ -524,7 +524,7 @@ function WorkflowSteps() {
     >
       <div className="mx-auto max-w-6xl px-6 md:px-8">
         <div className="mx-auto mb-16 max-w-2xl text-center md:mb-20">
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
             Workflow
           </div>
           <h2
@@ -543,7 +543,7 @@ function WorkflowSteps() {
               key={s.n}
               className="group relative bg-[#121316] p-8 transition-colors hover:bg-white/[0.02]"
             >
-              <div className="mb-8 font-mono text-[42px] leading-none font-bold text-white/10 transition-colors group-hover:text-[#3574f0]/40">
+              <div className="mb-8 font-mono text-[42px] leading-none font-bold text-white/10 transition-colors group-hover:text-ws-accent/40">
                 {s.n}
               </div>
               <h3 className="mb-3 text-lg font-bold text-white">{s.t}</h3>
@@ -561,7 +561,7 @@ function FaqSection() {
     <section id="faq" className="scroll-mt-24 border-t border-white/5 py-24 md:py-32">
       <div className="mx-auto max-w-3xl px-6 md:px-8">
         <div className="mb-12 text-center">
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-[#7eb0f8] uppercase">
+          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
             FAQ
           </div>
           <h2
@@ -602,7 +602,7 @@ function Cta() {
         <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] border border-white/5 bg-white/[0.02] p-10 text-center md:rounded-[40px] md:p-16">
           <div
             aria-hidden
-            className="absolute -top-24 -left-24 size-64 rounded-full bg-[#3574f0]/15 blur-[100px]"
+            className="absolute -top-24 -left-24 size-64 rounded-full bg-ws-accent/15 blur-[100px]"
           />
           <h2
             className={cn(
@@ -713,7 +713,7 @@ export function LandingView() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-[#121316] font-sans text-[#dfdfdf] selection:bg-[#3574f0]/30 selection:text-white">
+    <div className="min-h-dvh bg-[#121316] font-sans text-[#dfdfdf] selection:bg-ws-accent/30 selection:text-white">
       <Nav />
       <Hero />
       <Features />

@@ -1,10 +1,10 @@
 import type { Monaco } from "@monaco-editor/react";
 import type { editor, IDisposable, Position } from "monaco-editor";
 
+import { normalizeRelativePath } from "@/lib/posix-path";
 import { monacoModelPath } from "@/features/workspace/lib/monaco-languages";
 import {
   buildFileContentMap,
-  normalizeRelativePath,
   resolveImportPath,
   type ProjectFileEntry,
 } from "@/features/workspace/lib/resolve-import-path";
