@@ -18,6 +18,83 @@ export function buildPath(parentPath: string | undefined, name: string) {
   return parentPath ? `${parentPath}/${name}` : name;
 }
 
+/**
+ * Normalize a user-entered relative path (`a/b/c.tsx`).
+ * Rejects empty, `..`, and absolute-looking junk.
+ */
+export function normalizeRelativePath(raw: string): string {
+  const normalized = raw
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+/g, "/")
+    .replace(/\/+$/, "");
+  if (!normalized) {
+    throw new Error("Name is required");
+  }
+  const segments = normalized.split("/").filter(Boolean);
+  if (segments.length === 0) {
+    throw new Error("Name is required");
+  }
+  if (segments.some((s) => s === "." || s === ".." || !s.trim())) {
+    throw new Error("Invalid path");
+  }
+  return segments.join("/");
+}
+
+/**
+ * Ensure each folder segment under parent exists; returns deepest parent.
+ */
+export async function ensureFolderSegments(
+  ctx: MutationCtx,
+  projectId: Id<"projects">,
+  startParentId: Id<"projectFiles"> | undefined,
+  startParentPath: string | undefined,
+  folderSegments: string[],
+): Promise<{
+  parentId: Id<"projectFiles"> | undefined;
+  parentPath: string | undefined;
+  folderIds: Id<"projectFiles">[];
+}> {
+  let parentId = startParentId;
+  let parentPath = startParentPath;
+  const folderIds: Id<"projectFiles">[] = [];
+
+  for (const folderName of folderSegments) {
+    const folderPath = buildPath(parentPath, folderName);
+    const existing = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_path", (q) =>
+        q.eq("projectId", projectId).eq("path", folderPath),
+      )
+      .unique();
+
+    if (existing) {
+      if (existing.kind !== "folder") {
+        throw new Error(`Path conflict: ${folderPath} is a file`);
+      }
+      parentId = existing._id;
+      parentPath = existing.path;
+      folderIds.push(existing._id);
+      continue;
+    }
+
+    const now = Date.now();
+    parentId = await ctx.db.insert("projectFiles", {
+      projectId,
+      name: folderName,
+      parentId,
+      kind: "folder",
+      path: folderPath,
+      updatedAt: now,
+    });
+    parentPath = folderPath;
+    folderIds.push(parentId);
+  }
+
+  return { parentId, parentPath, folderIds };
+}
+
 /** Suggest a unique sibling name like `untitled.ts`, `untitled-2.ts`. */
 export function suggestUniqueName(
   existingNames: Iterable<string>,

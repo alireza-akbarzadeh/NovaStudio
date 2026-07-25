@@ -54,7 +54,7 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
     label: "Explorer",
     shortLabel: "Files",
     icon: <FolderTreeIcon className="size-3.5" strokeWidth={1.75} />,
-    shortcut: "⌘1",
+    shortcut: "⌘⇧E",
   },
   {
     view: "search",

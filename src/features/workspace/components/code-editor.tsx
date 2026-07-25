@@ -1,6 +1,6 @@
 "use client";
 
-import Editor, { type OnMount } from "@monaco-editor/react";
+import Editor, { loader, type OnMount } from "@monaco-editor/react";
 import type { editor, IDisposable } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
@@ -11,6 +11,7 @@ import {
   monacoThemeIdForActiveExtension,
   registerExtensionThemes,
 } from "@/features/extensions/lib/activate";
+import { VUE_EXTENSION_ID } from "@/features/extensions/lib/catalog";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import {
   monacoLanguageForPath,
@@ -102,11 +103,31 @@ export function CodeEditor({
   const monacoOverrides = useEditorSettingsStore((s) => s.monacoOverrides);
 
   const language = useMemo(
-    () => monacoLanguageForPath(filePath),
-    // Re-resolve when Vue (or other language packs) toggle.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () =>
+      monacoLanguageForPath(filePath, {
+        vueEnabled: enabledIds.has(VUE_EXTENSION_ID),
+      }),
     [filePath, enabledIds],
   );
+
+  // Keep model language in sync when Vue (or other packs) toggle after mount.
+  useEffect(() => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const model = ed.getModel();
+    if (!model) return;
+    let cancelled = false;
+    void loader.init().then((monaco) => {
+      if (cancelled) return;
+      activateExtensions(monaco, enabledIds);
+      if (model.getLanguageId() !== language) {
+        monaco.editor.setModelLanguage(model, language);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [language, enabledIds]);
 
   const extensionTheme = monacoThemeIdForActiveExtension(activeThemeId);
   const theme =

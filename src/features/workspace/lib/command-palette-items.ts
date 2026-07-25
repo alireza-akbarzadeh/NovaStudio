@@ -31,9 +31,9 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
   },
   {
     id: "showExplorer",
-    label: "Show Explorer",
+    label: "Toggle Explorer",
     keywords: "files tree sidebar",
-    shortcut: "⌘1",
+    shortcut: "⌘⇧E",
   },
   {
     id: "showSearch",

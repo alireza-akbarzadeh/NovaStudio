@@ -4,8 +4,10 @@ import { mutation, query } from "./_generated/server";
 import {
   buildPath,
   deleteFolderRecursive,
+  ensureFolderSegments,
   isProjectFileChanged,
   listSiblingNames,
+  normalizeRelativePath,
   seedDefaultProjectFiles,
   suggestUniqueName,
   touchProject,
@@ -223,17 +225,17 @@ export const create = mutation({
   handler: async (ctx, args) => {
     await verifyProjectWriteAccess(ctx, args.projectId);
 
-    const name = args.name.trim();
-    if (!name) {
-      throw new Error("Name is required");
-    }
-    if (name.includes("/")) {
-      throw new Error("Name cannot contain '/'");
-    }
+    const relative = normalizeRelativePath(args.name);
+    const segments = relative.split("/");
+    const leafName = segments[segments.length - 1]!;
+    const folderSegments = segments.slice(0, -1);
 
+    let parentId = args.parentId;
     let parentPath: string | undefined;
-    if (args.parentId) {
-      const parent = await ctx.db.get("projectFiles", args.parentId);
+    const folderIds: Id<"projectFiles">[] = [];
+
+    if (parentId) {
+      const parent = await ctx.db.get("projectFiles", parentId);
       if (!parent || parent.projectId !== args.projectId) {
         throw new Error("Parent folder not found");
       }
@@ -241,9 +243,23 @@ export const create = mutation({
         throw new Error("Parent must be a folder");
       }
       parentPath = parent.path;
+      folderIds.push(parent._id);
     }
 
-    const path = buildPath(parentPath, name);
+    if (folderSegments.length > 0) {
+      const ensured = await ensureFolderSegments(
+        ctx,
+        args.projectId,
+        parentId,
+        parentPath,
+        folderSegments,
+      );
+      parentId = ensured.parentId;
+      parentPath = ensured.parentPath;
+      folderIds.push(...ensured.folderIds);
+    }
+
+    const path = buildPath(parentPath, leafName);
     const existing = await ctx.db
       .query("projectFiles")
       .withIndex("by_project_path", (q) =>
@@ -258,19 +274,22 @@ export const create = mutation({
     const content = args.kind === "file" ? (args.content ?? "") : undefined;
     const fileId = await ctx.db.insert("projectFiles", {
       projectId: args.projectId,
-      name,
-      parentId: args.parentId,
+      name: leafName,
+      parentId,
       kind: args.kind,
       content,
-      // New files have no synced baseline until the next push.
       syncedContent: undefined,
       staged: args.kind === "file" ? false : undefined,
       path,
       updatedAt: now,
     });
 
+    if (args.kind === "folder") {
+      folderIds.push(fileId);
+    }
+
     await touchProject(ctx, args.projectId);
-    return fileId;
+    return { id: fileId, path, folderIds };
   },
 });
 

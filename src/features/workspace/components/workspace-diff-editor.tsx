@@ -11,6 +11,7 @@ import {
   monacoThemeIdForActiveExtension,
   registerExtensionThemes,
 } from "@/features/extensions/lib/activate";
+import { VUE_EXTENSION_ID } from "@/features/extensions/lib/catalog";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import { monacoLanguageForPath } from "@/features/workspace/lib/editor-languages";
 import {
@@ -56,8 +57,10 @@ export function WorkspaceDiffEditor({
   const monacoOverrides = useEditorSettingsStore((s) => s.monacoOverrides);
 
   const language = useMemo(
-    () => monacoLanguageForPath(filePath),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () =>
+      monacoLanguageForPath(filePath, {
+        vueEnabled: enabledIds.has(VUE_EXTENSION_ID),
+      }),
     [filePath, enabledIds],
   );
 

@@ -2,10 +2,15 @@ import { VUE_EXTENSION_ID } from "@/features/extensions/lib/catalog";
 import { isExtensionEnabled } from "@/features/extensions/lib/extensions-state";
 
 /** Monaco language id keyed by file path. */
-export function monacoLanguageForPath(filePath: string): string {
+export function monacoLanguageForPath(
+  filePath: string,
+  options?: { vueEnabled?: boolean },
+): string {
   const lower = filePath.toLowerCase();
+  const vueEnabled =
+    options?.vueEnabled ?? isExtensionEnabled(VUE_EXTENSION_ID);
 
-  if (/\.vue$/.test(lower) && isExtensionEnabled(VUE_EXTENSION_ID)) {
+  if (/\.vue$/.test(lower) && vueEnabled) {
     return "vue";
   }
   if (/\.tsx$/.test(lower)) return "typescript";

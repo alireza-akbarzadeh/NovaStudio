@@ -81,6 +81,36 @@ export function useFileTreeKeyboard({
         return;
       }
 
+      // Bare letter shortcuts when the tree is focused (VS Code–style).
+      // R rename · C copy · X cut · V paste (move after cut via ↑↓ then V).
+      if (!isModKey(event) && !event.altKey && !event.shiftKey && current) {
+        const key = event.key.toLowerCase();
+        if (key === "r") {
+          event.preventDefault();
+          setPendingRenameId(current.node.id);
+          return;
+        }
+        if (key === "c") {
+          event.preventDefault();
+          copyItem(current.node.path);
+          return;
+        }
+        if (key === "x") {
+          event.preventDefault();
+          cutItem(current.node.path);
+          return;
+        }
+        if (key === "v") {
+          event.preventDefault();
+          const targetParentId =
+            current.node.kind === "folder"
+              ? current.node.id
+              : current.parentId;
+          void pasteInto(targetParentId);
+          return;
+        }
+      }
+
       if (isModKey(event) && !event.altKey) {
         const key = event.key.toLowerCase();
         if (key === "x" && current) {

@@ -217,7 +217,7 @@ export function WorkspaceSettingsDialog() {
           >
             <FolderTreeIcon />
             <span>Show Project</span>
-            <CommandShortcut>⌘1</CommandShortcut>
+            <CommandShortcut>⌘⇧E</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

@@ -92,6 +92,7 @@ export function WorkspaceFileTree({ projectId }: WorkspaceFileTreeProps) {
         <ContextMenuTrigger asChild>
           <nav
             aria-label="Project files"
+            tabIndex={-1}
             className={cn(
               "flex-1 overflow-auto rounded-sm p-1.5 outline-none focus-visible:outline-none",
               tree.dropTargetId === "root" &&

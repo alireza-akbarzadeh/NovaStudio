@@ -8,7 +8,10 @@ import {
   NORD_THEME,
   SOLARIZED_LIGHT_THEME,
 } from "@/features/extensions/lib/themes/packs";
-import { registerVueLanguage } from "@/features/extensions/lib/vue-language";
+import {
+  registerVueLanguage,
+  syncVueModelsLanguage,
+} from "@/features/extensions/lib/vue-language";
 
 type Monaco = typeof import("monaco-editor");
 
@@ -38,9 +41,12 @@ export function activateExtensions(
 
   registerExtensionThemes(monaco);
 
-  if (enabled.has(VUE_EXTENSION_ID)) {
+  const vueOn = enabled.has(VUE_EXTENSION_ID);
+  if (vueOn) {
     registerVueLanguage(monaco);
   }
+  // Always sync open .vue buffers so install/enable is visible without reload.
+  syncVueModelsLanguage(monaco, vueOn);
 }
 
 /** Resolve Monaco theme id for an active theme extension, if any. */

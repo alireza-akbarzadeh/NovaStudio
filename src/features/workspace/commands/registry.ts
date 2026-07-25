@@ -34,6 +34,8 @@ export type Command = {
   id: CommandId;
   /** Chord like "mod+b", "mod+,", "escape" */
   shortcut?: string;
+  /** Extra chords that run the same command */
+  aliases?: string[];
   /** When true, runs even while focus is in an input/textarea/contenteditable */
   allowInInput?: boolean;
   run: () => void;
@@ -144,9 +146,19 @@ export const workspaceCommands: Command[] = [
   },
   {
     id: "showExplorer",
-    shortcut: "mod+1",
+    shortcut: "mod+shift+e",
+    aliases: ["mod+1"],
     allowInInput: true,
-    run: () => showPanel("explorer"),
+    run: () => {
+      showPanel("explorer");
+      // Focus the file tree so R/C/X and arrow navigation work immediately.
+      queueMicrotask(() => {
+        const tree = document.querySelector<HTMLElement>(
+          '[aria-label="Project files"]',
+        );
+        tree?.focus();
+      });
+    },
   },
   {
     id: "showSearch",
@@ -239,7 +251,9 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function matchShortcut(event: KeyboardEvent): Command | undefined {
   const chord = normalizeEventChord(event);
-  return workspaceCommands.find((c) => c.shortcut === chord);
+  return workspaceCommands.find(
+    (c) => c.shortcut === chord || c.aliases?.includes(chord),
+  );
 }
 
 export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {

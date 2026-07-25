@@ -71,7 +71,7 @@ export function useFileTreeActions({
       const { kind, parentId } = pendingCreate;
 
       try {
-        const fileId = await createFile({
+        const created = await createFile({
           projectId: projectId as Id<"projects">,
           name: trimmed,
           parentId,
@@ -80,11 +80,16 @@ export function useFileTreeActions({
         });
         cancelCreate();
 
+        if (created.folderIds.length > 0) {
+          setOpenFolderIds((current) => {
+            const next = new Set(current);
+            for (const id of created.folderIds) next.add(id);
+            return next;
+          });
+        }
+
         if (kind === "file") {
-          const created = files?.find((f) => f._id === fileId);
-          if (created) {
-            router.push(`/projects/${projectId}/files/${created.path}`);
-          }
+          router.push(`/projects/${projectId}/files/${created.path}`);
         } else {
           toast.success("Folder created");
         }
@@ -94,7 +99,14 @@ export function useFileTreeActions({
         );
       }
     },
-    [cancelCreate, createFile, files, pendingCreate, projectId, router],
+    [
+      cancelCreate,
+      createFile,
+      pendingCreate,
+      projectId,
+      router,
+      setOpenFolderIds,
+    ],
   );
 
   const copyPathToClipboard = useCallback(async (path: string, label: string) => {
