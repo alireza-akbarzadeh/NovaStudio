@@ -190,7 +190,20 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
                   role="tab"
                   aria-selected={active}
                   disabled={creating}
-                  onClick={() => setFilter(item.id)}
+                  onClick={() => {
+                    setFilter(item.id);
+                    if (!templates) return;
+                    const next =
+                      item.id === "all"
+                        ? templates
+                        : templates.filter((t) => t.category === item.id);
+                    if (
+                      next.length > 0 &&
+                      !next.some((t) => t.id === templateId)
+                    ) {
+                      setTemplateId(next[0]!.id);
+                    }
+                  }}
                   className={cn(
                     "rounded-md px-2.5 py-1 text-[12px] font-medium transition-colors",
                     "outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
