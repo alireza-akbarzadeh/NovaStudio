@@ -8,6 +8,7 @@ import {
   PackageIcon,
   ZapIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
@@ -23,16 +24,53 @@ type WorkspaceStatusBarProps = {
   projectId: string;
 };
 
+function StatusChip({
+  children,
+  className,
+  active,
+  onClick,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  active?: boolean;
+  onClick?: () => void;
+  title?: string;
+}) {
+  const classes = cn(
+    "inline-flex h-6 max-w-55 items-center gap-1.5 truncate rounded-full bg-ws-chip px-2.5 text-[11px] transition-colors",
+    active
+      ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/30"
+      : "text-ws-text-muted",
+    onClick && !active && "hover:bg-ws-hover hover:text-ws-text",
+    className,
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} title={title} className={classes}>
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <span title={title} className={classes}>
+      {children}
+    </span>
+  );
+}
+
 function webContainerLabel(status: string | undefined): string {
   switch (status) {
     case "booting":
     case "mounting":
     case "idle":
-      return "Node: starting…";
+      return "Node starting…";
     case "ready":
-      return "Node: ready";
+      return "Node ready";
     case "error":
-      return "Node: offline";
+      return "Node offline";
     default:
       return "Node";
   }
@@ -65,48 +103,41 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const wcError = wcStatus === "error";
 
   return (
-    <footer className="flex h-[22px] shrink-0 items-center justify-between border-t border-ws-border-subtle bg-ws-panel px-2 text-[11px] text-ws-text-muted">
-      <div className="flex min-w-0 items-center gap-2">
+    <footer className="ws-chrome flex h-9 shrink-0 items-center justify-between gap-2 border-t border-ws-border-subtle bg-ws-panel px-3">
+      <div className="flex min-w-0 items-center gap-1.5">
         {isGitHub ? (
           isPushing ? (
-            <span className="inline-flex max-w-[220px] items-center gap-1.5 truncate px-1.5 py-0.5">
+            <StatusChip>
               <Loader2Icon className="size-3 shrink-0 animate-spin" />
               <span className="truncate">{branch}</span>
-            </span>
+            </StatusChip>
           ) : (
-            <WorkspaceBranchPicker
-              projectId={projectId}
-              branch={branch}
-              changeCount={changeCount}
-              open={branchPickerOpen}
-              onOpenChange={setBranchPickerOpen}
-            />
+            <div className="[&_button]:h-6 [&_button]:rounded-full [&_button]:bg-ws-chip [&_button]:px-2.5 [&_button]:text-[11px]">
+              <WorkspaceBranchPicker
+                projectId={projectId}
+                branch={branch}
+                changeCount={changeCount}
+                open={branchPickerOpen}
+                onOpenChange={setBranchPickerOpen}
+              />
+            </div>
           )
         ) : (
-          <button
-            type="button"
-            onClick={openGitInitDialog}
-            className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-ws-text-muted transition-colors hover:bg-ws-hover hover:text-ws-text"
-            title="Initialize Git repository"
-          >
+          <StatusChip onClick={openGitInitDialog} title="Initialize Git repository">
             <GitBranchIcon className="size-3 shrink-0" />
-            <span>Initialize Repository</span>
-          </button>
+            <span>Initialize Git</span>
+          </StatusChip>
         )}
 
-        <button
-          type="button"
+        <StatusChip
           onClick={showProblemsPanel}
           title="Problems (⌘⇧M)"
-          className={cn(
-            "inline-flex items-center gap-2 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
-            problemsActive && "bg-ws-hover text-ws-text",
-          )}
+          active={problemsActive}
         >
           <span
             className={cn(
               "inline-flex items-center gap-1",
-              errorCount > 0 ? "text-ws-danger-soft" : "text-ws-text-muted",
+              errorCount > 0 ? "text-ws-danger-soft" : undefined,
             )}
           >
             <CircleXIcon className="size-3" />
@@ -115,16 +146,15 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
           <span
             className={cn(
               "inline-flex items-center gap-1",
-              warningCount > 0 ? "text-amber-500" : "text-ws-text-muted",
+              warningCount > 0 ? "text-amber-500" : undefined,
             )}
           >
             <CircleAlertIcon className="size-3" />
             {warningCount}
           </span>
-        </button>
+        </StatusChip>
 
-        <button
-          type="button"
+        <StatusChip
           onClick={() => setBottomPanelTab("terminal")}
           title={
             wcError
@@ -133,7 +163,6 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
               : "Open Terminal · run npm install / npm install <pkg>"
           }
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-ws-hover hover:text-ws-text",
             wcError && "text-ws-danger-soft",
             wcStatus === "ready" && "text-emerald-600 dark:text-emerald-400",
           )}
@@ -144,11 +173,11 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             <PackageIcon className="size-3 shrink-0" />
           )}
           <span>{webContainerLabel(wcStatus)}</span>
-        </button>
+        </StatusChip>
 
         {previewServer?.hot ? (
-          <span
-            className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-emerald-600 dark:text-emerald-400"
+          <StatusChip
+            className="text-emerald-600 dark:text-emerald-400"
             title={
               previewServer.commandLine
                 ? `Hot reload · ${previewServer.commandLine}`
@@ -160,27 +189,24 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
               HMR
               {previewServer.port != null ? ` :${previewServer.port}` : ""}
             </span>
-          </span>
+          </StatusChip>
         ) : previewServer?.status === "starting" ? (
-          <span className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5">
+          <StatusChip>
             <Loader2Icon className="size-3 shrink-0 animate-spin" />
             <span>Preview…</span>
-          </span>
+          </StatusChip>
         ) : null}
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5">
         {currentFilePath ? (
-          <span
-            className="hidden truncate sm:inline"
-            title={currentFilePath}
-          >
-            {currentFilePath}
-          </span>
+          <StatusChip className="hidden sm:inline-flex" title={currentFilePath}>
+            <span className="truncate font-mono text-[10px]">
+              {currentFilePath}
+            </span>
+          </StatusChip>
         ) : null}
-        <span className="shrink-0 px-1.5 text-ws-text-secondary">{language}</span>
-        <span className="hidden shrink-0 sm:inline">UTF-8</span>
-        <span className="hidden shrink-0 sm:inline">Spaces: 2</span>
+        <StatusChip className="text-ws-text-secondary">{language}</StatusChip>
       </div>
     </footer>
   );

@@ -127,12 +127,12 @@ function WorkspaceLayoutInner({
   const editorDefault = Math.max(30, 100 - sidebarDefault - aiDefault);
 
   return (
-    <div className="flex h-dvh w-full flex-col bg-ws-bg text-ws-text-secondary">
+    <div className="ws-chrome flex h-dvh w-full flex-col bg-ws-bg text-ws-text-secondary">
       <WorkspaceToolbar projectId={projectId} projectName={projectName} />
 
       <ResizablePanelGroup
         orientation="horizontal"
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 gap-0"
         defaultLayout={{
           sidebar: sidebarDefault,
           editor: editorDefault,
@@ -154,41 +154,46 @@ function WorkspaceLayoutInner({
           </aside>
         </ResizablePanel>
 
-        <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
+        <ResizableHandle className="w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40" />
 
         <ResizablePanel id="editor" minSize="30%" className="min-w-0">
-          <ResizablePanelGroup
-            orientation="vertical"
-            className="h-full"
-            defaultLayout={{
-              main: 100 - terminalDefault,
-              terminal: terminalDefault,
-            }}
-            onLayoutChanged={onVerticalLayoutChanged}
-          >
-            <ResizablePanel id="main" minSize="20%" className="min-h-0 bg-ws-bg">
-              <WorkspaceEditorPanel projectId={projectId}>
-                {children}
-              </WorkspaceEditorPanel>
-            </ResizablePanel>
-
-            <ResizableHandle className="h-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
-
-            <ResizablePanel
-              id="terminal"
-              panelRef={terminalPanelRef}
-              collapsible
-              collapsedSize={0}
-              minSize="15%"
-              defaultSize={`${terminalDefault}`}
-              className="bg-ws-panel"
+          <div className="flex h-full min-h-0 flex-col gap-1.5 p-1.5 pt-1">
+            <ResizablePanelGroup
+              orientation="vertical"
+              className="min-h-0 flex-1"
+              defaultLayout={{
+                main: 100 - terminalDefault,
+                terminal: terminalDefault,
+              }}
+              onLayoutChanged={onVerticalLayoutChanged}
             >
-              <WorkspaceBottomPanel projectId={projectId} />
-            </ResizablePanel>
-          </ResizablePanelGroup>
+              <ResizablePanel id="main" minSize="20%" className="min-h-0">
+                <div className="h-full min-h-0 overflow-hidden rounded-xl border border-ws-border-subtle bg-ws-stage shadow-[0_1px_0_color-mix(in_oklab,var(--ws-text)_4%,transparent)]">
+                  <WorkspaceEditorPanel projectId={projectId}>
+                    {children}
+                  </WorkspaceEditorPanel>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle className="h-1.5 bg-transparent after:hidden hover:bg-ws-accent/40" />
+
+              <ResizablePanel
+                id="terminal"
+                panelRef={terminalPanelRef}
+                collapsible
+                collapsedSize={0}
+                minSize="15%"
+                defaultSize={`${terminalDefault}`}
+              >
+                <div className="h-full min-h-0 overflow-hidden rounded-xl border border-ws-border-subtle bg-ws-panel">
+                  <WorkspaceBottomPanel projectId={projectId} />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
         </ResizablePanel>
 
-        <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
+        <ResizableHandle className="w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40" />
 
         <ResizablePanel
           id="ai"
@@ -199,10 +204,12 @@ function WorkspaceLayoutInner({
           defaultSize={`${aiDefault}`}
           className="bg-ws-panel"
         >
-          <WorkspaceAiSidebar
-            projectId={projectId}
-            projectName={projectName}
-          />
+          <aside className="h-full border-l border-ws-border-subtle">
+            <WorkspaceAiSidebar
+              projectId={projectId}
+              projectName={projectName}
+            />
+          </aside>
         </ResizablePanel>
       </ResizablePanelGroup>
 

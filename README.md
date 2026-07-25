@@ -108,6 +108,10 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 | **Team hub** | `todo` | Members, roles, pending requests UI |
 | **Slack / Linear / Discord / Vercel / Notion** | `coming-soon` | Integrations beyond GitHub |
 
+### In review / polish
+
+Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview, **Extensions marketplace** (themes + Vue, persisted per user) — see [`FEATURES.md`](./FEATURES.md).
+
 ### Later (hard infrastructure)
 
 | Feature | Notes |
@@ -115,10 +119,6 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 | Full Next/Vite host beyond esbuild | Deeper framework runtime |
 | Debugger | Breakpoints & inspect |
 | Workspace-wide Live Share | Terminal + preview beyond per-file Yjs |
-
-### In review / polish
-
-Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview, **Extensions marketplace** (themes + Vue, persisted per user) — see [`FEATURES.md`](./FEATURES.md).
 
 > Want something not listed? Open a **Feature request** — see [below](#feature-requests).
 

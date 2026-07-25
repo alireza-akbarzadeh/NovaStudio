@@ -1,18 +1,18 @@
 import type { ITheme } from "@xterm/xterm";
 
-/** Black + purple dark — matches --ws-* dark tokens */
+/** Deep ink + cooler violet — matches --ws-* dark tokens */
 export const TERMINAL_THEME_DARK: ITheme = {
-  background: "#000000",
+  background: "#0E0D14",
   foreground: "#e8e4f5",
   cursor: "#c4b5fd",
-  cursorAccent: "#000000",
+  cursorAccent: "#0e0d14",
   selectionBackground: "#4c1d95",
   selectionForeground: "#f3f0ff",
-  black: "#000000",
+  black: "#0c0b10",
   red: "#ff6b68",
   green: "#6aab73",
   yellow: "#fbbf24",
-  blue: "#a78bfa",
+  blue: "#9b87f5",
   magenta: "#e879f9",
   cyan: "#7dd3fc",
   white: "#c8c0dc",
@@ -26,11 +26,11 @@ export const TERMINAL_THEME_DARK: ITheme = {
   brightWhite: "#f3f0ff",
 };
 
-/** White + purple light — matches --ws-* light tokens */
+/** Soft white + violet — matches --ws-* light tokens */
 export const TERMINAL_THEME_LIGHT: ITheme = {
   background: "#ffffff",
   foreground: "#1a1228",
-  cursor: "#7c3aed",
+  cursor: "#6d28d9",
   cursorAccent: "#ffffff",
   selectionBackground: "#e9d5ff",
   selectionForeground: "#1a1228",
@@ -46,7 +46,7 @@ export const TERMINAL_THEME_LIGHT: ITheme = {
   brightRed: "#db3b3b",
   brightGreen: "#548a3d",
   brightYellow: "#b45309",
-  brightBlue: "#7c3aed",
+  brightBlue: "#6d28d9",
   brightMagenta: "#c026d3",
   brightCyan: "#1a7a7a",
   brightWhite: "#1a1228",

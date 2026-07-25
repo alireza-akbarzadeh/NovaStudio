@@ -11,6 +11,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono);
   --font-editor-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-terminal:
@@ -70,10 +71,13 @@
   --color-ws-purple: var(--ws-purple);
   --color-ws-warning: var(--ws-warning);
   --color-ws-danger-surface: var(--ws-danger-surface);
+  --color-ws-stage: var(--ws-stage);
+  --color-ws-chip: var(--ws-chip);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
 :root {
@@ -111,19 +115,21 @@
   --sidebar-border: oklch(0.922 0.01 303);
   --sidebar-ring: oklch(0.55 0.22 303.9);
 
-  /* Workspace — white + purple */
-  --ws-bg: #ffffff;
-  --ws-panel: #f7f5fb;
+  /* Workspace — soft white + violet chrome */
+  --ws-bg: #f4f1fa;
+  --ws-panel: #faf8fd;
+  --ws-stage: #ffffff;
+  --ws-chip: #efeaf8;
   --ws-hover: #efeaf8;
   --ws-hover-deep: #e4dcf3;
   --ws-border: #ddd6eb;
-  --ws-border-subtle: #ebe6f4;
+  --ws-border-subtle: #e8e2f2;
   --ws-border-strong: #cfc4e4;
   --ws-text: #1a1228;
   --ws-text-secondary: #4c4460;
   --ws-text-muted: #6b6280;
-  --ws-accent: #7c3aed;
-  --ws-accent-hover: #6d28d9;
+  --ws-accent: #6d28d9;
+  --ws-accent-hover: #5b21b6;
   --ws-accent-soft: #7c3aed;
   --ws-link: #6d28d9;
   --ws-success: #548a3d;
@@ -132,9 +138,9 @@
   --ws-danger-bg: #c42b1c;
   --ws-danger-bg-hover: #a82418;
   --ws-mark: #f3e8ff;
-  --ws-menu-focus: #7c3aed;
+  --ws-menu-focus: #6d28d9;
   --ws-danger-focus: #f5d0ce;
-  --ws-purple: #7c3aed;
+  --ws-purple: #6d28d9;
   --ws-warning: #9a7b0a;
   --ws-danger-surface: #fde8e8;
 }
@@ -173,30 +179,32 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.24 303.9);
 
-  /* Workspace — black + purple */
-  --ws-bg: #000000;
-  --ws-panel: #0a0a0c;
-  --ws-hover: #1a1428;
-  --ws-hover-deep: #241c38;
-  --ws-border: #2a2438;
-  --ws-border-subtle: #121018;
-  --ws-border-strong: #3d3554;
+  /* Workspace — deep ink + cooler violet */
+  --ws-bg: #0c0b10;
+  --ws-panel: #121018;
+  --ws-stage: #0e0d14;
+  --ws-chip: #1a1624;
+  --ws-hover: #1c172a;
+  --ws-hover-deep: #261e3a;
+  --ws-border: #2c2640;
+  --ws-border-subtle: #1a1626;
+  --ws-border-strong: #3f3658;
   --ws-text: #f3f0ff;
   --ws-text-secondary: #c8c0dc;
   --ws-text-muted: #8b839e;
-  --ws-accent: #8b5cf6;
-  --ws-accent-hover: #7c3aed;
+  --ws-accent: #9b87f5;
+  --ws-accent-hover: #8b5cf6;
   --ws-accent-soft: #c4b5fd;
-  --ws-link: #a78bfa;
+  --ws-link: #b4a3fa;
   --ws-success: #6aab73;
   --ws-danger: #ff6b68;
   --ws-danger-soft: #ff8a85;
   --ws-danger-bg: #c42b1c;
   --ws-danger-bg-hover: #a82418;
   --ws-mark: #3b2760;
-  --ws-menu-focus: #6d28d9;
+  --ws-menu-focus: #7c3aed;
   --ws-danger-focus: #5c2b29;
-  --ws-purple: #8b5cf6;
+  --ws-purple: #9b87f5;
   --ws-warning: #c9a227;
   --ws-danger-surface: #3a2323;
 }
@@ -320,17 +328,22 @@
   background-color: var(--sdm-tbg, transparent) !important;
 }
 
+/* Workspace chrome uses Manrope; editor/terminal stay mono */
+.ws-chrome {
+  font-family: var(--font-display);
+}
+
 /* ── Polaris Monaco: JetBrains-leaning chrome, not stock VS Code ── */
 .polaris-monaco {
   height: 100%;
   min-height: 0;
-  background: var(--ws-bg);
+  background: var(--ws-stage);
 }
 
 .polaris-monaco .monaco-editor,
 .polaris-monaco .monaco-editor-background,
 .polaris-monaco .monaco-editor .margin {
-  background-color: var(--ws-bg) !important;
+  background-color: var(--ws-stage) !important;
 }
 
 .polaris-monaco .monaco-editor .lines-content {

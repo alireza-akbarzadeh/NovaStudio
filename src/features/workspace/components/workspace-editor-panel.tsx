@@ -12,6 +12,7 @@ import {
   Settings2Icon,
   XIcon,
 } from "lucide-react";
+import Image from "next/image";
 import {
   type DragEvent,
   type ReactNode,
@@ -86,8 +87,8 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
 
   if (tabs.length === 0) {
     return (
-      <div className="flex h-7 shrink-0 items-center border-b border-ws-panel bg-ws-panel px-3">
-        <p className="truncate text-[11px] font-semibold tracking-wide text-ws-text">
+      <div className="flex h-9 shrink-0 items-center px-3">
+        <p className="truncate text-[11px] font-medium text-ws-text-muted">
           Editor
         </p>
       </div>
@@ -128,7 +129,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
     <div
       role="tablist"
       aria-label="Editor tabs"
-      className="flex h-7 shrink-0 items-stretch overflow-x-auto border-b border-ws-border-subtle bg-ws-panel"
+      className="flex h-9 shrink-0 items-center gap-1 overflow-x-auto px-2 pt-1.5"
     >
       {tabs.map((tab, index) => {
         const active = tab.id === activeTabId;
@@ -154,14 +155,14 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                   if (dropTargetId === tab.id) setDropTargetId(null);
                 }}
                 className={cn(
-                  "group relative flex max-w-[180px] min-w-[96px] cursor-grab items-center gap-1 border-r border-ws-border-subtle px-2.5 text-[11px] active:cursor-grabbing",
+                  "group relative flex max-w-[180px] min-w-[88px] cursor-grab items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] active:cursor-grabbing",
                   active
-                    ? "bg-ws-bg text-ws-text after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-ws-accent"
-                    : "bg-ws-panel text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+                    ? "bg-ws-chip text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/40"
+                    : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
                   isDragging && "opacity-50",
                   isDropTarget &&
-                    "before:absolute before:inset-y-0 before:left-0 before:z-10 before:w-0.5 before:bg-ws-accent",
-                  showPinnedDivider && "border-r-ws-border-strong",
+                    "before:absolute before:inset-y-1 before:left-0 before:z-10 before:w-0.5 before:rounded-full before:bg-ws-accent",
+                  showPinnedDivider && "mr-1 after:ml-1 after:h-4 after:w-px after:bg-ws-border-strong after:content-['']",
                 )}
               >
                 <button
@@ -180,7 +181,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                   )}
                   <span
                     className={cn(
-                      "truncate tracking-wide",
+                      "truncate",
                       tab.preview
                         ? "font-normal italic text-ws-text-secondary"
                         : "font-medium",
@@ -198,7 +199,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                     closeTab(tab.id);
                   }}
                   className={cn(
-                    "inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-ws-text-muted opacity-0 transition-opacity hover:bg-ws-hover hover:text-ws-text group-hover:opacity-100",
+                    "inline-flex size-4 shrink-0 items-center justify-center rounded-md text-ws-text-muted opacity-0 transition-opacity hover:bg-ws-hover-deep hover:text-ws-text group-hover:opacity-100",
                     active && "opacity-70",
                   )}
                 >
@@ -206,7 +207,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                 </button>
               </div>
             </ContextMenuTrigger>
-            <ContextMenuContent className="min-w-48 rounded-md border-ws-border bg-ws-hover p-1 text-ws-text shadow-lg">
+            <ContextMenuContent className="min-w-48 rounded-lg border-ws-border bg-ws-hover p-1 text-ws-text shadow-lg">
               {tab.preview ? (
                 <ContextMenuItem
                   className={TAB_MENU_ITEM}
@@ -310,11 +311,11 @@ function EditorSplitPane({
   onClose: () => void;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col bg-ws-bg">
-      <div className="flex h-7 shrink-0 items-center gap-1 border-b border-ws-border-subtle bg-ws-panel px-2.5">
+    <div className="flex h-full min-h-0 flex-col bg-ws-stage">
+      <div className="flex h-8 shrink-0 items-center gap-1.5 border-b border-ws-border-subtle px-2.5">
         <TabIcon tab={tab} />
         <span
-          className="min-w-0 flex-1 truncate text-[11px] font-medium tracking-wide text-ws-text"
+          className="min-w-0 flex-1 truncate text-[11px] font-medium text-ws-text"
           title={tab.path ?? tab.title}
         >
           {tab.title}
@@ -323,7 +324,7 @@ function EditorSplitPane({
           type="button"
           aria-label="Close split window"
           onClick={onClose}
-          className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           <XIcon className="size-3" />
         </button>
@@ -354,11 +355,22 @@ function EditorPrimarySurface({
 
   if (tabs.length === 0) {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-ws-bg px-6 text-center">
-        <p className="text-sm text-ws-text-muted">No open editors</p>
-        <p className="text-[12px] text-ws-text-muted/80">
-          Open a file from the explorer to start editing
-        </p>
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-ws-stage px-6 text-center">
+        <Image
+          src="/logo.svg"
+          alt=""
+          width={28}
+          height={28}
+          className="size-7 opacity-80"
+        />
+        <div className="space-y-1">
+          <p className="font-[family-name:var(--font-display)] text-sm font-semibold text-ws-text">
+            Start writing
+          </p>
+          <p className="text-[12px] text-ws-text-muted">
+            Open a file from the sidebar, or press ⌘P to jump
+          </p>
+        </div>
       </div>
     );
   }
@@ -409,7 +421,7 @@ export function WorkspaceEditorPanel({
     : null;
 
   return (
-    <main className="flex h-full min-h-0 flex-col bg-ws-bg">
+    <main className="flex h-full min-h-0 flex-col bg-ws-stage">
       <WorkspaceEditorTabs projectId={projectId} />
       {splitTab ? (
         <ResizablePanelGroup
@@ -427,7 +439,7 @@ export function WorkspaceEditorPanel({
               </EditorPrimarySurface>
             </div>
           </ResizablePanel>
-          <ResizableHandle className="w-px bg-ws-border-subtle after:hidden hover:bg-ws-accent" />
+          <ResizableHandle className="w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40" />
           <ResizablePanel id="editor-split" minSize="20%" defaultSize="50">
             <EditorSplitPane
               projectId={projectId}

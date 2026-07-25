@@ -1,12 +1,13 @@
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { ClerkProvider, useAuth, useClerk } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import {
   Authenticated,
   AuthLoading,
   ConvexReactClient,
   Unauthenticated,
+  useConvexAuth,
 } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { usePathname } from "next/navigation";
@@ -18,6 +19,7 @@ import { NotificationProvider } from "@/features/notifications/components/notifi
 import { ProjectsDialogProvider } from "@/features/projects/components/projects-dialog";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
 import { PromptDialogProvider } from "@/components/prompt-dialog";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import ThemeProvider from "./theme-provider";
 
@@ -33,9 +35,45 @@ function isPublicPath(pathname: string) {
   );
 }
 
+function AuthBridgeMismatch() {
+  const { signOut } = useClerk();
+
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#1e1f22] px-6 text-center text-zinc-200">
+      <p className="text-lg font-medium">Session couldn&apos;t reach the workspace</p>
+      <p className="max-w-md text-sm text-zinc-400">
+        You&apos;re signed in with Clerk, but Convex didn&apos;t accept the session
+        token. Sign out once, then sign back in. If it keeps happening, confirm the
+        Clerk → Convex integration JWT template is enabled.
+      </p>
+      <Button
+        type="button"
+        onClick={() => void signOut({ redirectUrl: "/" })}
+        className="rounded-lg"
+      >
+        Sign out and retry
+      </Button>
+    </div>
+  );
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const publicRoute = isPublicPath(pathname);
+  const { isSignedIn, isLoaded: clerkLoaded } = useAuth();
+  const { isAuthenticated, isLoading: convexAuthLoading } = useConvexAuth();
+
+  // Clerk session exists but Convex rejected the token (wrong issuer / missing
+  // JWT template). Don't replace the hub with the marketing landing page.
+  if (
+    clerkLoaded &&
+    isSignedIn &&
+    !convexAuthLoading &&
+    !isAuthenticated &&
+    !publicRoute
+  ) {
+    return <AuthBridgeMismatch />;
+  }
 
   return (
     <>

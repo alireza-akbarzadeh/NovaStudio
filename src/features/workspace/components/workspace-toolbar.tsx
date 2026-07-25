@@ -62,9 +62,9 @@ function ToolbarTooltipButton({
           aria-pressed={pressed}
           onClick={onClick}
           className={cn(
-            "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+            "relative size-8 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
             pressed &&
-            "bg-ws-hover after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-t-sm after:bg-ws-accent",
+              "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/30",
           )}
         >
           {children}
@@ -112,14 +112,17 @@ export function WorkspaceToolbar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="flex h-9 shrink-0 items-center gap-1 border-b border-ws-border-subtle bg-ws-panel px-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-1.5">
+      <header className="ws-chrome flex h-11 shrink-0 items-center gap-1.5 border-b border-ws-border-subtle bg-ws-panel px-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
           <WorkspaceBreadcrumb
             projectId={projectId}
             projectName={projectName}
           />
           {access?.role === "viewer" ? (
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+            <Badge
+              variant="secondary"
+              className="h-5 rounded-md px-1.5 text-[10px]"
+            >
               View only
             </Badge>
           ) : null}
@@ -127,11 +130,11 @@ export function WorkspaceToolbar({
 
         <ProjectPresenceAvatars projectId={projectId} />
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => runCommand("openCommandPalette")}
-            className="mr-1 hidden h-7 items-center gap-2 rounded-sm border border-ws-border-subtle bg-ws-bg px-2 text-[11px] text-ws-text-muted transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text sm:inline-flex"
+            className="mr-1 hidden h-8 items-center gap-2 rounded-full border border-ws-border-subtle bg-ws-stage px-3 text-[12px] text-ws-text-muted shadow-sm transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text sm:inline-flex"
             title="Command palette"
           >
             <SearchIcon className="size-3.5 opacity-70" />
@@ -186,7 +189,7 @@ export function WorkspaceToolbar({
 
           <Separator
             orientation="vertical"
-            className="mx-1 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
+            className="mx-1 data-[orientation=vertical]:h-5 data-[orientation=vertical]:bg-ws-border"
           />
 
           <WorkspaceGitMenu projectId={projectId} />
@@ -195,16 +198,16 @@ export function WorkspaceToolbar({
 
         <Separator
           orientation="vertical"
-          className="mx-1.5 data-[orientation=vertical]:h-4 data-[orientation=vertical]:bg-ws-border"
+          className="mx-1.5 data-[orientation=vertical]:h-5 data-[orientation=vertical]:bg-ws-border"
         />
 
-        <div className="flex items-center gap-1.5 pr-1 [&_.cl-userButtonAvatarBox]:size-6 [&_.cl-userButtonTrigger]:rounded-sm">
+        <div className="flex items-center gap-1.5 pr-0.5 [&_.cl-userButtonAvatarBox]:size-7 [&_.cl-userButtonTrigger]:rounded-lg">
           {isLoaded && !isPro ? (
             <Button
               type="button"
               size="sm"
               onClick={() => openPricing()}
-              className="h-6 rounded-sm bg-ws-accent px-2.5 text-[11px] font-medium text-white hover:bg-ws-accent-hover"
+              className="h-7 rounded-lg bg-ws-accent px-2.5 text-[11px] font-medium text-white hover:bg-ws-accent-hover"
             >
               Upgrade
             </Button>
@@ -213,8 +216,8 @@ export function WorkspaceToolbar({
             onOpenSettings={() => openTab({ kind: "settings" })}
             appearance={{
               elements: {
-                userButtonAvatarBox: "size-6",
-                userButtonTrigger: "rounded-sm focus:shadow-none",
+                userButtonAvatarBox: "size-7",
+                userButtonTrigger: "rounded-lg focus:shadow-none",
               },
             }}
           />

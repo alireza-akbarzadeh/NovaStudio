@@ -1,6 +1,9 @@
 "use client";
 
-import { WorkspaceActivityBar } from "@/features/workspace/components/workspace-activity-bar";
+import {
+  WorkspaceSidebarUtilities,
+  WorkspaceViewSwitcher,
+} from "@/features/workspace/components/workspace-activity-bar";
 import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceExtensionsPanel } from "@/features/workspace/components/workspace-extensions-panel";
@@ -20,33 +23,32 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
 
   return (
-    <div className="flex h-full">
-      <WorkspaceActivityBar />
-      <aside className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-7 items-center border-b border-ws-border-subtle px-3">
+    <aside className="ws-chrome flex h-full min-w-0 flex-1 flex-col">
+      <div className="shrink-0 border-b border-ws-border-subtle">
+        <WorkspaceViewSwitcher />
+        <div className="flex h-7 items-center px-3">
           <p className="text-[11px] font-semibold tracking-wide text-ws-text">
             {LEFT_PANEL_LABELS[leftPanelView]}
           </p>
         </div>
-        <div className="flex-1 overflow-hidden">
-          {leftPanelView === "explorer" ? (
-            <WorkspaceExplorerPanel projectId={projectId} />
-          ) : null}
-          {leftPanelView === "search" ? (
-            <WorkspaceSearchPanel projectId={projectId} />
-          ) : null}
-          {leftPanelView === "git" ? (
-            <WorkspaceGitPanel projectId={projectId} />
-          ) : null}
-          {leftPanelView === "outline" ? <WorkspaceOutlinePanel /> : null}
-          {leftPanelView === "dependencies" ? (
-            <WorkspaceDependenciesPanel projectId={projectId} />
-          ) : null}
-          {leftPanelView === "extensions" ? (
-            <WorkspaceExtensionsPanel />
-          ) : null}
-        </div>
-      </aside>
-    </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {leftPanelView === "explorer" ? (
+          <WorkspaceExplorerPanel projectId={projectId} />
+        ) : null}
+        {leftPanelView === "search" ? (
+          <WorkspaceSearchPanel projectId={projectId} />
+        ) : null}
+        {leftPanelView === "git" ? (
+          <WorkspaceGitPanel projectId={projectId} />
+        ) : null}
+        {leftPanelView === "outline" ? <WorkspaceOutlinePanel /> : null}
+        {leftPanelView === "dependencies" ? (
+          <WorkspaceDependenciesPanel projectId={projectId} />
+        ) : null}
+        {leftPanelView === "extensions" ? <WorkspaceExtensionsPanel /> : null}
+      </div>
+      <WorkspaceSidebarUtilities />
+    </aside>
   );
 }

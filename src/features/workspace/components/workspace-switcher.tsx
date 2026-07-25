@@ -215,7 +215,7 @@ export function WorkspaceSwitcher({
         <Button
           type="button"
           variant="ghost"
-          className="-ml-4 h-7 max-w-55 gap-2 rounded-sm text-ws-text hover:bg-ws-hover hover:text-white"
+          className="-ml-1 h-8 max-w-55 gap-2 rounded-lg text-ws-text hover:bg-ws-hover hover:text-ws-text"
         >
           <Image
             src="/logo.svg"

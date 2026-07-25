@@ -467,19 +467,19 @@ function WorkspaceAiChatSession({
   return (
     <AiCodeActionsProvider value={codeActions}>
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
         <Button
           type="button"
           variant="ghost"
           size="icon-sm"
           aria-label="Back to agents"
-          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          className="size-7 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={onBack}
         >
           <ArrowLeftIcon className="size-3.5" />
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[12px] font-semibold tracking-wide text-ws-text">
+          <p className="truncate text-[13px] font-semibold text-ws-text">
             {session.title}
           </p>
         </div>
@@ -488,7 +488,7 @@ function WorkspaceAiChatSession({
           variant="ghost"
           size="icon-sm"
           aria-label="Reset chat"
-          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          className="size-7 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={resetChat}
         >
           <RotateCcwIcon className="size-3.5" />
@@ -498,7 +498,7 @@ function WorkspaceAiChatSession({
           variant="ghost"
           size="icon-sm"
           aria-label="Close AI panel"
-          className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          className="size-7 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
           onClick={() => runCommand("toggleAiPanel")}
         >
           <XIcon className="size-3.5" />
@@ -509,7 +509,7 @@ function WorkspaceAiChatSession({
         <Badge
           variant="outline"
           className={cn(
-            "h-5 gap-1 rounded-sm border-ws-border px-1.5 text-[10px] font-normal",
+            "h-5 gap-1 rounded-md border-ws-border px-1.5 text-[10px] font-normal",
             mode === "plan"
               ? "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300"
               : "bg-ws-accent/15 text-ws-accent-soft",
@@ -531,7 +531,7 @@ function WorkspaceAiChatSession({
         {activeFilePath ? (
           <Badge
             variant="outline"
-            className="h-5 max-w-[140px] truncate rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
+            className="h-5 max-w-[140px] truncate rounded-md border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
             title={activeFilePath}
           >
             {activeFilePath}
@@ -540,7 +540,7 @@ function WorkspaceAiChatSession({
         {(workspaceContext.fileTree?.length ?? 0) > 0 ? (
           <Badge
             variant="outline"
-            className="h-5 rounded-sm border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
+            className="h-5 rounded-md border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
           >
             {workspaceContext.fileTree!.length} files in context
           </Badge>
@@ -829,18 +829,18 @@ export function WorkspaceAiSidebar({
   };
 
   return (
-    <aside className="flex h-full flex-col border-l border-ws-border-subtle bg-ws-panel">
+    <aside className="ws-chrome flex h-full flex-col bg-ws-panel">
       {panelView === "history" ? (
         <>
-          <div className="flex h-9 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
-            <div className="flex size-5 items-center justify-center rounded-sm bg-ws-accent/15">
+          <div className="flex h-10 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
+            <div className="flex size-6 items-center justify-center rounded-lg bg-ws-accent/15">
               <SparklesIcon
-                className="size-3 text-ws-accent-soft"
+                className="size-3.5 text-ws-accent-soft"
                 strokeWidth={1.75}
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold tracking-wide text-ws-text">
+              <p className="truncate text-[13px] font-semibold text-ws-text">
                 Polaris Agents
               </p>
             </div>
@@ -849,7 +849,7 @@ export function WorkspaceAiSidebar({
               variant="ghost"
               size="icon-sm"
               aria-label="Close AI panel"
-              className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              className="size-7 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
               onClick={() => runCommand("toggleAiPanel")}
             >
               <XIcon className="size-3.5" />

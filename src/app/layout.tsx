@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, Inter, JetBrains_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Inter, JetBrains_Mono, Manrope } from "next/font/google";
 
 import { Providers } from "@/components/providers";
 
@@ -22,6 +22,12 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
 export const metadata: Metadata = {
   title: "Polaris — The AI workspace for building software",
   description:
@@ -36,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${ibmPlexMono.variable} ${jetbrainsMono.variable} antialiased`}
+        className={`${inter.variable} ${manrope.variable} ${ibmPlexMono.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <Providers>
           {children}
