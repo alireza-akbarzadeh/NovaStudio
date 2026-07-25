@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feature roadmap
+    url: https://github.com/alireza-akbarzadeh/polaris/blob/main/FEATURES.md
+    about: See what is shipped, in review, and still todo before opening a duplicate request.
+  - name: Contributing guide
+    url: https://github.com/alireza-akbarzadeh/polaris/blob/main/CONTRIBUTING.md
+    about: Setup, coding guidelines, and how to pick work.

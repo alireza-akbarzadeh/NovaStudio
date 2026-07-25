@@ -1,0 +1,97 @@
+name: Feature request
+description: Suggest a new feature or improvement for Polaris
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape Polaris. Please search [existing issues](https://github.com/alireza-akbarzadeh/polaris/issues) and read [`FEATURES.md`](https://github.com/alireza-akbarzadeh/polaris/blob/main/FEATURES.md) before filing.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What friction or gap did you hit? Be specific.
+      placeholder: "When I try to … I cannot … because …"
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should Polaris do instead? Describe user-visible behavior.
+      placeholder: "Add a Template gallery on New Project with starters for React, Vite, Next, Node, and static."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches or existing features that almost work.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Projects hub
+        - Workspace / editor
+        - Git / GitHub
+        - AI
+        - Collaboration / sharing
+        - Integrations
+        - Auth / billing
+        - Notifications
+        - Docs / DX
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Likely scope
+      options:
+        - Frontend only
+        - Convex / backend
+        - API / Inngest
+        - Third-party integration
+        - Docs only
+        - Unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: implement
+    attributes:
+      label: Are you willing to implement this?
+      description: Saying yes helps us add the help wanted label.
+      options:
+        - "Yes — I can open a PR"
+        - "Maybe — I need guidance"
+        - "No — request only"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mocks
+    attributes:
+      label: Screenshots / mocks
+      description: Optional. Drag images here or link to a design.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and FEATURES.md for duplicates
+          required: true
+        - label: This request is one feature (not a bundle of unrelated ideas)
+          required: true
