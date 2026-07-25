@@ -7,6 +7,7 @@ import {
   ListTreeIcon,
   MoonIcon,
   PackageIcon,
+  PuzzleIcon,
   SearchIcon,
   SettingsIcon,
   SquareTerminalIcon,
@@ -76,6 +77,12 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
     label: "Dependencies",
     icon: <PackageIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧D",
+  },
+  {
+    view: "extensions",
+    label: "Extensions",
+    icon: <PuzzleIcon className="size-4" strokeWidth={1.75} />,
+    shortcut: "⌘⇧X",
   },
 ];
 

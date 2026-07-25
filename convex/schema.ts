@@ -304,4 +304,16 @@ export default defineSchema({
     limitBytes: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  userExtensions: defineTable({
+    userId: v.string(),
+    extensionId: v.string(),
+    version: v.string(),
+    enabled: v.boolean(),
+    installedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_extension", ["userId", "extensionId"]),
 });
+

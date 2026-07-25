@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/resizable";
 import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
 import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
+import { useExtensionsSync } from "@/features/extensions/hooks/use-extensions-sync";
 import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import { WorkspaceAiSidebar } from "@/features/workspace/components/workspace-ai-sidebar";
 import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-bottom-panel";
@@ -49,6 +50,7 @@ function WorkspaceLayoutInner({
   useWorkspaceShortcuts();
   useWorkspacePrefsSync();
   useEditorSettingsSync();
+  useExtensionsSync();
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
   useUserJsonTabShortcut(projectId);

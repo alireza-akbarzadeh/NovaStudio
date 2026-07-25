@@ -61,6 +61,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘⇧D",
   },
   {
+    id: "showExtensions",
+    label: "Show Extensions",
+    keywords: "marketplace themes languages vue plugins install",
+    shortcut: "⌘⇧X",
+  },
+  {
     id: "showGitChanges",
     label: "Git: Changes",
     keywords: "stage commit diff",

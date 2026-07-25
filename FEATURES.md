@@ -65,7 +65,7 @@ These are the biggest daily-friction gaps you called out.
 | 17 | Full Next/Vite host (beyond esbuild) | `later` | |
 | 18 | Debugger | `later` | |
 | 19 | Workspace-wide Live Share (terminal + preview) | `later` | Beyond per-file Yjs |
-| 20 | Extensions marketplace | `later` | |
+| 20 | Extensions marketplace | `review` | Curated themes + Vue language; installs persisted per user |
 
 ---
 
@@ -187,3 +187,11 @@ These are the biggest daily-friction gaps you called out.
 - Console shows server logs + preview errors (`forwardPreviewErrors` + injected bridge)
 - Falls back to server esbuild `srcDoc` when there is no runnable script / WC offline
 - Preview pane stays mounted when switching Code ↔ Preview so HMR state survives
+
+### 20. Extensions marketplace — ready for review
+
+- Activity bar **Extensions** view (⌘⇧X) with Marketplace / Installed tabs
+- Curated catalog: GitHub Dark, Dracula, Nord, Solarized Light, Vue SFC highlighting
+- Install / uninstall / enable persisted per user in Convex (`userExtensions`)
+- One active editor theme at a time; language packs toggle independently
+- Survives reload — no reinstall needed

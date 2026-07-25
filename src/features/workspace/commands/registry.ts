@@ -24,6 +24,7 @@ export type CommandId =
   | "showGit"
   | "showOutline"
   | "showDependencies"
+  | "showExtensions"
   | "showGitChanges"
   | "showGitHistory"
   | "findInFiles"
@@ -170,6 +171,12 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+d",
     allowInInput: true,
     run: () => showPanel("dependencies"),
+  },
+  {
+    id: "showExtensions",
+    shortcut: "mod+shift+x",
+    allowInInput: true,
+    run: () => showPanel("extensions"),
   },
   {
     id: "showGitChanges",

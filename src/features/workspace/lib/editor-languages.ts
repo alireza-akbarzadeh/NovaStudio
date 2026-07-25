@@ -1,7 +1,13 @@
+import { VUE_EXTENSION_ID } from "@/features/extensions/lib/catalog";
+import { isExtensionEnabled } from "@/features/extensions/lib/extensions-state";
+
 /** Monaco language id keyed by file path. */
 export function monacoLanguageForPath(filePath: string): string {
   const lower = filePath.toLowerCase();
 
+  if (/\.vue$/.test(lower) && isExtensionEnabled(VUE_EXTENSION_ID)) {
+    return "vue";
+  }
   if (/\.tsx$/.test(lower)) return "typescript";
   if (/\.ts$/.test(lower)) return "typescript";
   if (/\.jsx$/.test(lower)) return "javascript";
@@ -32,6 +38,7 @@ export function supportsAiSuggestion(filePath: string): boolean {
 }
 
 const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [
+  { test: /\.vue$/i, label: "Vue" },
   { test: /\.tsx$/i, label: "TypeScript React" },
   { test: /\.ts$/i, label: "TypeScript" },
   { test: /\.jsx$/i, label: "JavaScript React" },

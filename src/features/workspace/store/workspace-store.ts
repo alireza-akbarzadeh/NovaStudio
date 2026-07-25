@@ -11,7 +11,8 @@ export type LeftPanelView =
   | "search"
   | "git"
   | "outline"
-  | "dependencies";
+  | "dependencies"
+  | "extensions";
 
 export type GitPanelTab = "changes" | "history" | "info";
 
@@ -176,6 +177,7 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   git: "Git",
   outline: "Outline",
   dependencies: "Dependencies",
+  extensions: "Extensions",
 };
 
 function lastPinnedIndex(tabs: EditorTab[]): number {

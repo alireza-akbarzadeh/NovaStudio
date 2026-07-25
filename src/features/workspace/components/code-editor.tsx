@@ -5,6 +5,12 @@ import type { editor, IDisposable } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
+import { useExtensionsState } from "@/features/extensions/hooks/use-user-extensions";
+import {
+  activateExtensions,
+  monacoThemeIdForActiveExtension,
+  registerExtensionThemes,
+} from "@/features/extensions/lib/activate";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import {
   monacoLanguageForPath,
@@ -63,6 +69,7 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
   const { resolvedTheme } = useTheme();
+  const { enabledIds, activeThemeId } = useExtensionsState();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -96,10 +103,14 @@ export function CodeEditor({
 
   const language = useMemo(
     () => monacoLanguageForPath(filePath),
-    [filePath],
+    // Re-resolve when Vue (or other language packs) toggle.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filePath, enabledIds],
   );
 
-  const theme = isDark ? POLARIS_THEME_DARK : POLARIS_THEME_LIGHT;
+  const extensionTheme = monacoThemeIdForActiveExtension(activeThemeId);
+  const theme =
+    extensionTheme ?? (isDark ? POLARIS_THEME_DARK : POLARIS_THEME_LIGHT);
 
   const options = useMemo(
     () =>
@@ -173,6 +184,8 @@ export function CodeEditor({
     disposablesRef.current = [];
 
     registerPolarisThemes(monaco);
+    registerExtensionThemes(monaco);
+    activateExtensions(monaco, enabledIds);
     monaco.editor.setTheme(theme);
     configureMonacoLanguages(monaco);
 
@@ -242,6 +255,8 @@ export function CodeEditor({
         options={options}
         beforeMount={(monaco) => {
           registerPolarisThemes(monaco);
+          registerExtensionThemes(monaco);
+          activateExtensions(monaco, enabledIds);
           configureMonacoLanguages(monaco);
         }}
         onMount={handleMount}

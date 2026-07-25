@@ -77,6 +77,7 @@ File tree, Monaco editor, AI sidebar, terminal, and preview — the full coding 
 | **Preview** | Device presets, URL bar, console overlay, error overlay, HMR when WC is running |
 | **Collaboration** | Live presence, shared editing (Liveblocks + Yjs), invite / share flows |
 | **AI** | In-workspace chat grounded in open files & project tree, model picker, plan / tool modes |
+| **Extensions** | Marketplace for editor themes + Vue language pack; installs sync to your account |
 | **Auth & billing** | Clerk sign-in, orgs / workspaces, pricing & Pro upgrade surface |
 | **Notifications** | In-app alerts + optional web push |
 | **Integrations** | GitHub live; Slack, Linear, Discord, Vercel, Notion marked coming soon |
@@ -107,10 +108,6 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 | **Team hub** | `todo` | Members, roles, pending requests UI |
 | **Slack / Linear / Discord / Vercel / Notion** | `coming-soon` | Integrations beyond GitHub |
 
-### In review / polish
-
-Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview — see [`FEATURES.md`](./FEATURES.md).
-
 ### Later (hard infrastructure)
 
 | Feature | Notes |
@@ -118,7 +115,10 @@ Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal
 | Full Next/Vite host beyond esbuild | Deeper framework runtime |
 | Debugger | Breakpoints & inspect |
 | Workspace-wide Live Share | Terminal + preview beyond per-file Yjs |
-| Extensions marketplace | Pluggable workspace tools |
+
+### In review / polish
+
+Pin tabs, drag-drop uploads, dependencies panel, WebContainer install + terminal, hot reload preview, **Extensions marketplace** (themes + Vue, persisted per user) — see [`FEATURES.md`](./FEATURES.md).
 
 > Want something not listed? Open a **Feature request** — see [below](#feature-requests).
 

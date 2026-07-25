@@ -5,6 +5,12 @@ import type { editor } from "monaco-editor";
 import { useTheme } from "next-themes";
 import { useMemo, useSyncExternalStore } from "react";
 
+import { useExtensionsState } from "@/features/extensions/hooks/use-user-extensions";
+import {
+  activateExtensions,
+  monacoThemeIdForActiveExtension,
+  registerExtensionThemes,
+} from "@/features/extensions/lib/activate";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import { monacoLanguageForPath } from "@/features/workspace/lib/editor-languages";
 import {
@@ -30,6 +36,7 @@ export function WorkspaceDiffEditor({
   modified,
 }: WorkspaceDiffEditorProps) {
   const { resolvedTheme } = useTheme();
+  const { enabledIds, activeThemeId } = useExtensionsState();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -48,7 +55,15 @@ export function WorkspaceDiffEditor({
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
   const monacoOverrides = useEditorSettingsStore((s) => s.monacoOverrides);
 
-  const language = useMemo(() => monacoLanguageForPath(filePath), [filePath]);
+  const language = useMemo(
+    () => monacoLanguageForPath(filePath),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filePath, enabledIds],
+  );
+
+  const extensionTheme = monacoThemeIdForActiveExtension(activeThemeId);
+  const theme =
+    extensionTheme ?? (isDark ? POLARIS_THEME_DARK : POLARIS_THEME_LIGHT);
 
   const options = useMemo((): editor.IDiffEditorConstructionOptions => {
     const base = buildMonacoOptions(
@@ -104,10 +119,12 @@ export function WorkspaceDiffEditor({
       modified={modified}
       originalModelPath={monacoModelPath(`diff-original/${filePath}`)}
       modifiedModelPath={monacoModelPath(`diff-modified/${filePath}`)}
-      theme={isDark ? POLARIS_THEME_DARK : POLARIS_THEME_LIGHT}
+      theme={theme}
       options={options}
       beforeMount={(monaco) => {
         registerPolarisThemes(monaco);
+        registerExtensionThemes(monaco);
+        activateExtensions(monaco, enabledIds);
         configureMonacoLanguages(monaco);
       }}
       loading={
