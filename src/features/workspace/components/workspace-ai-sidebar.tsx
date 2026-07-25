@@ -23,6 +23,7 @@ import {
 } from "ai";
 import { toast } from "sonner";
 
+import { useAiDoneSound } from "@/features/notifications/hooks/use-ai-done-sound";
 import { Shimmer as TextShimmer } from "@/components/ai-elements/shimmer";
 import {
   Conversation,
@@ -344,6 +345,8 @@ function WorkspaceAiChatSession({
       });
     },
   });
+
+  useAiDoneSound({ status, projectId });
 
   addToolOutputRef.current = addToolOutput as typeof addToolOutputRef.current;
 

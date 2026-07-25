@@ -1,25 +1,72 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+const projectStatus = v.union(
+  v.literal("in-progress"),
+  v.literal("review"),
+  v.literal("shipped"),
+  v.literal("archived"),
+);
+
+const collectionIcon = v.union(
+  v.literal("pin"),
+  v.literal("sparkles"),
+  v.literal("user"),
+  v.literal("briefcase"),
+  v.literal("archive"),
+);
+
+const activityType = v.union(
+  v.literal("updated"),
+  v.literal("contributor"),
+  v.literal("merged"),
+  v.literal("comment"),
+  v.literal("released"),
+  v.literal("joined"),
+);
+
+const deadlineTone = v.union(
+  v.literal("orange"),
+  v.literal("blue"),
+  v.literal("violet"),
+  v.literal("green"),
+);
+
+const notificationTone = v.union(
+  v.literal("violet"),
+  v.literal("green"),
+  v.literal("blue"),
+  v.literal("orange"),
+);
+
 export default defineSchema({
   projects: defineTable({
     name: v.string(),
     ownerId: v.string(),
     updatedAt: v.number(),
+    description: v.optional(v.string()),
+    visibility: v.optional(
+      v.union(v.literal("private"), v.literal("public")),
+    ),
+    status: v.optional(projectStatus),
+    tech: v.optional(v.array(v.string())),
+    coverTone: v.optional(v.string()),
+    lastOpenedAt: v.optional(v.number()),
+    progress: v.optional(v.number()),
     importStatus: v.optional(
       v.union(
         v.literal("importing"),
         v.literal("completed"),
         v.literal("failed"),
-      )
+      ),
     ),
     exportStatus: v.optional(
       v.union(
         v.literal("exporting"),
         v.literal("completed"),
         v.literal("failed"),
-        v.literal("cancelled")
-      )
+        v.literal("cancelled"),
+      ),
     ),
     exportRepoUrl: v.optional(v.string()),
     githubRepoUrl: v.optional(v.string()),
@@ -40,7 +87,8 @@ export default defineSchema({
     ),
   })
     .index("by_owner", ["ownerId"])
-    .index("by_owner_updated", ["ownerId", "updatedAt"]),
+    .index("by_owner_updated", ["ownerId", "updatedAt"])
+    .index("by_visibility_updated", ["visibility", "updatedAt"]),
 
   githubConnections: defineTable({
     userId: v.string(),
@@ -57,9 +105,7 @@ export default defineSchema({
     parentId: v.optional(v.id("projectFiles")),
     kind: v.union(v.literal("file"), v.literal("folder")),
     content: v.optional(v.string()),
-    /** Content last synced with GitHub (baseline for discard / change detection). */
     syncedContent: v.optional(v.string()),
-    /** Whether the file is staged for the next commit. */
     staged: v.optional(v.boolean()),
     path: v.string(),
     updatedAt: v.number(),
@@ -89,7 +135,6 @@ export default defineSchema({
         lineHeight: v.number(),
       }),
     ),
-    /** VS Code–style user settings.json (flat key/value JSON string). */
     settingsJson: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
@@ -122,7 +167,6 @@ export default defineSchema({
       v.literal("accepted"),
       v.literal("revoked"),
     ),
-    /** Secret token for accept-via-link. Optional for legacy invites. */
     token: v.optional(v.string()),
     createdAt: v.number(),
   })
@@ -131,16 +175,13 @@ export default defineSchema({
     .index("by_project_email", ["projectId", "email"])
     .index("by_token", ["token"]),
 
-  /** Yjs document state for real-time collaborative editing. */
   collabDocuments: defineTable({
     projectId: v.id("projects"),
     path: v.string(),
-    /** Full Yjs state encoded as bytes. */
     state: v.bytes(),
     updatedAt: v.number(),
   }).index("by_project_path", ["projectId", "path"]),
 
-  /** Ephemeral editor cursors / selections for an open file. */
   collabCursors: defineTable({
     projectId: v.id("projects"),
     path: v.string(),
@@ -154,4 +195,111 @@ export default defineSchema({
   })
     .index("by_project_path", ["projectId", "path"])
     .index("by_session", ["sessionId"]),
+
+  projectPins: defineTable({
+    userId: v.string(),
+    projectId: v.id("projects"),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_project", ["userId", "projectId"])
+    .index("by_project", ["projectId"]),
+
+  collections: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    color: v.string(),
+    icon: collectionIcon,
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  collectionProjects: defineTable({
+    collectionId: v.id("collections"),
+    projectId: v.id("projects"),
+    addedAt: v.number(),
+  })
+    .index("by_collection", ["collectionId"])
+    .index("by_collection_project", ["collectionId", "projectId"])
+    .index("by_project", ["projectId"]),
+
+  projectActivity: defineTable({
+    projectId: v.id("projects"),
+    actorUserId: v.string(),
+    actorName: v.optional(v.string()),
+    actorColor: v.optional(v.string()),
+    type: activityType,
+    title: v.string(),
+    detail: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_project_created", ["projectId", "createdAt"]),
+
+  projectDeadlines: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    dueAt: v.number(),
+    tone: v.optional(deadlineTone),
+    createdBy: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_dueAt", ["dueAt"]),
+
+  projectAccessRequests: defineTable({
+    projectId: v.id("projects"),
+    requesterUserId: v.string(),
+    requesterName: v.optional(v.string()),
+    requesterEmail: v.optional(v.string()),
+    roleLabel: v.optional(v.string()),
+    experienceLevel: v.optional(v.string()),
+    message: v.optional(v.string()),
+    portfolioUrl: v.optional(v.string()),
+    github: v.optional(v.string()),
+    linkedin: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("denied"),
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_project_status", ["projectId", "status"])
+    .index("by_requester", ["requesterUserId"]),
+
+  notifications: defineTable({
+    userId: v.string(),
+    title: v.string(),
+    tone: v.optional(notificationTone),
+    href: v.optional(v.string()),
+    projectId: v.optional(v.id("projects")),
+    soundKind: v.optional(
+      v.union(
+        v.literal("notify"),
+        v.literal("success"),
+        v.literal("warning"),
+        v.literal("error"),
+        v.literal("message"),
+        v.literal("aiDone"),
+      ),
+    ),
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_user_created", ["userId", "createdAt"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.string(),
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    userAgent: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_endpoint", ["endpoint"]),
+
+  userStorageQuotas: defineTable({
+    userId: v.string(),
+    limitBytes: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

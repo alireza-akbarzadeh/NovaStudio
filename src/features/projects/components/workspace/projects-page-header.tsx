@@ -1,6 +1,6 @@
 "use client";
 
-import { BellIcon, PlusIcon, UploadIcon } from "lucide-react";
+import { PlusIcon, UploadIcon } from "lucide-react";
 import { Manrope } from "next/font/google";
 import { useRouter } from "next/navigation";
 
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { AppUserButton } from "@/features/billing/components/app-user-button";
+import { NotificationControls } from "@/features/notifications/components/notification-controls";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -62,13 +63,7 @@ export function ProjectsPageHeader({
             <UploadIcon className="size-4" />
             Import Project
           </Button>
-          <button
-            type="button"
-            className="inline-flex size-10 items-center justify-center rounded-2xl border border-border/70 bg-card/80 text-muted-foreground transition hover:text-foreground"
-            aria-label="Notifications"
-          >
-            <BellIcon className="size-4" />
-          </button>
+          <NotificationControls />
           <AppUserButton />
         </div>
       </div>

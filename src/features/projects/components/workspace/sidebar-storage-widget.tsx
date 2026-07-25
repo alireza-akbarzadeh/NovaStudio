@@ -1,9 +1,10 @@
 "use client";
 
+import { useWorkspaceStorage } from "@/features/projects/hooks/use-workspace";
+
 export function SidebarStorageWidget() {
-  const used = 219;
-  const total = 300;
-  const percent = Math.round((used / total) * 100);
+  const storage = useWorkspaceStorage();
+  const percent = storage?.percent ?? 0;
 
   return (
     <section className="rounded-[20px] border border-border/60 bg-card/80 p-4 shadow-[0_12px_36px_-28px_rgba(76,29,149,0.4)] backdrop-blur-xl">
@@ -13,12 +14,14 @@ export function SidebarStorageWidget() {
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400"
+          className="h-full rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-orange-400 transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {used} GB of {total} GB used
+        {storage
+          ? `${storage.usedLabel} of ${storage.limitLabel} used`
+          : "Calculating…"}
       </p>
     </section>
   );

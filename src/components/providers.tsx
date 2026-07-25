@@ -14,9 +14,11 @@ import { usePathname } from "next/navigation";
 import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
 import { LandingView } from "@/features/auth/components/unauthenticated-view";
 import { PricingDialogProvider } from "@/features/billing/components/pricing-dialog";
+import { NotificationProvider } from "@/features/notifications/components/notification-provider";
 import { ProjectsDialogProvider } from "@/features/projects/components/projects-dialog";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
 import { PromptDialogProvider } from "@/components/prompt-dialog";
+import { Toaster } from "@/components/ui/sonner";
 import ThemeProvider from "./theme-provider";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -66,7 +68,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
             <ProjectsDialogProvider>
               <AuthGate>
                 <ConfirmDialogProvider>
-                  <PromptDialogProvider>{children}</PromptDialogProvider>
+                  <PromptDialogProvider>
+                    <NotificationProvider>
+                      {children}
+                      <Toaster />
+                    </NotificationProvider>
+                  </PromptDialogProvider>
                 </ConfirmDialogProvider>
               </AuthGate>
             </ProjectsDialogProvider>

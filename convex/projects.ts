@@ -14,7 +14,10 @@ import {
   listTemplateMeta,
   templateIdValidator,
 } from "./lib/projectTemplates";
+import { recordProjectActivity } from "./lib/recordActivity";
 import { verifyAuth } from "./auth";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 export const listTemplates = query({
   args: {},
@@ -42,14 +45,26 @@ export const createProject = mutation({
       name,
       ownerId,
       updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
       source: "template",
       templateId,
+      visibility: "private",
+      status: "in-progress",
+      progress: 5,
     });
     await seedProjectFiles(ctx, projectId, templateId);
     await ensureOwnerMembership(ctx, projectId, ownerId, {
       email: identityEmail(identity) ?? undefined,
       name: identityDisplayName(identity),
       imageUrl: identity.pictureUrl,
+    });
+    await recordProjectActivity(ctx, {
+      projectId,
+      actorUserId: ownerId,
+      actorName: identityDisplayName(identity),
+      type: "released",
+      title: "New project created",
+      detail: name,
     });
     return projectId;
   },
@@ -66,11 +81,22 @@ export const updateProject = mutation({
       throw new Error("Project name is required");
     }
 
-    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const { userId, project } = await verifyProjectOwnerAccess(
+      ctx,
+      args.projectId,
+    );
 
     await ctx.db.patch(args.projectId, {
       name,
       updatedAt: Date.now(),
+    });
+
+    await recordProjectActivity(ctx, {
+      projectId: args.projectId,
+      actorUserId: userId,
+      type: "updated",
+      title: "Project updated",
+      detail: `${project.name} → ${name}`,
     });
   },
 });
@@ -92,35 +118,113 @@ export const deleteProject = mutation({
       .query("projectMembers")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
-    for (const member of members) {
-      await ctx.db.delete(member._id);
-    }
+    for (const row of members) await ctx.db.delete(row._id);
 
     const invites = await ctx.db
       .query("projectInvites")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
-    for (const invite of invites) {
-      await ctx.db.delete(invite._id);
-    }
+    for (const row of invites) await ctx.db.delete(row._id);
 
     const collabDocs = await ctx.db
       .query("collabDocuments")
       .withIndex("by_project_path", (q) => q.eq("projectId", args.projectId))
       .collect();
-    for (const doc of collabDocs) {
-      await ctx.db.delete(doc._id);
-    }
+    for (const row of collabDocs) await ctx.db.delete(row._id);
 
     const cursors = await ctx.db
       .query("collabCursors")
       .withIndex("by_project_path", (q) => q.eq("projectId", args.projectId))
       .collect();
-    for (const cursor of cursors) {
-      await ctx.db.delete(cursor._id);
-    }
+    for (const row of cursors) await ctx.db.delete(row._id);
+
+    const pins = await ctx.db
+      .query("projectPins")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of pins) await ctx.db.delete(row._id);
+
+    const collectionLinks = await ctx.db
+      .query("collectionProjects")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of collectionLinks) await ctx.db.delete(row._id);
+
+    const activity = await ctx.db
+      .query("projectActivity")
+      .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of activity) await ctx.db.delete(row._id);
+
+    const deadlines = await ctx.db
+      .query("projectDeadlines")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of deadlines) await ctx.db.delete(row._id);
+
+    await deleteAccessRequests(ctx, args.projectId);
 
     await ctx.db.delete(args.projectId);
+  },
+});
+
+async function deleteAccessRequests(
+  ctx: MutationCtx,
+  projectId: Id<"projects">,
+) {
+  for (const status of ["pending", "approved", "denied"] as const) {
+    const rows = await ctx.db
+      .query("projectAccessRequests")
+      .withIndex("by_project_status", (q) =>
+        q.eq("projectId", projectId).eq("status", status),
+      )
+      .collect();
+    for (const row of rows) {
+      await ctx.db.delete(row._id);
+    }
+  }
+}
+
+export const updateProjectMeta = mutation({
+  args: {
+    projectId: v.id("projects"),
+    description: v.optional(v.string()),
+    visibility: v.optional(
+      v.union(v.literal("private"), v.literal("public")),
+    ),
+    status: v.optional(
+      v.union(
+        v.literal("in-progress"),
+        v.literal("review"),
+        v.literal("shipped"),
+        v.literal("archived"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const { userId, project } = await verifyProjectOwnerAccess(
+      ctx,
+      args.projectId,
+    );
+    const patch: {
+      description?: string;
+      visibility?: "private" | "public";
+      status?: "in-progress" | "review" | "shipped" | "archived";
+      updatedAt: number;
+    } = { updatedAt: Date.now() };
+    if (args.description !== undefined) {
+      patch.description = args.description.trim();
+    }
+    if (args.visibility !== undefined) patch.visibility = args.visibility;
+    if (args.status !== undefined) patch.status = args.status;
+    await ctx.db.patch(args.projectId, patch);
+    await recordProjectActivity(ctx, {
+      projectId: args.projectId,
+      actorUserId: userId,
+      type: "updated",
+      title: "Project details updated",
+      detail: project.name,
+    });
   },
 });
 

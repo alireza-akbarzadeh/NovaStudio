@@ -20,6 +20,7 @@ const typeMeta = {
     tone: "bg-orange-500/15 text-orange-600",
   },
   released: { icon: RocketIcon, tone: "bg-fuchsia-500/15 text-fuchsia-600" },
+  joined: { icon: UserPlusIcon, tone: "bg-emerald-500/15 text-emerald-600" },
 } as const;
 
 type ActivityFeedItemProps = {

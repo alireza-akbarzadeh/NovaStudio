@@ -5,7 +5,9 @@ import { motion } from "motion/react";
 
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
 import { TechBadge } from "@/features/projects/components/workspace/tech-badge";
+import { useTogglePin } from "@/features/projects/hooks/use-workspace";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
+import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
 type PinnedProjectCardProps = {
@@ -14,6 +16,8 @@ type PinnedProjectCardProps = {
 };
 
 export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
+  const togglePin = useTogglePin();
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
@@ -28,6 +32,9 @@ export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
           type="button"
           className="absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-full bg-black/25 text-amber-300 backdrop-blur transition hover:scale-105 hover:bg-black/35"
           aria-label="Favourite project"
+          onClick={() =>
+            void togglePin({ projectId: project.id as Id<"projects"> })
+          }
         >
           <StarIcon className="size-4 fill-current" />
         </button>

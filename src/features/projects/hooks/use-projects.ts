@@ -43,9 +43,14 @@ export function useCreateProject() {
         name: args.name,
         ownerId: userId ?? "anonymous",
         updatedAt: now,
+        lastOpenedAt: now,
         source: "template" as const,
         templateId: args.templateId,
-      }
+        visibility: "private" as const,
+        status: "in-progress" as const,
+        progress: 5,
+        role: "owner" as const,
+      };
       localstore.setQuery(api.projects.getProject, {}, [...(existingProjects ?? []), newProject]);
     }
   });

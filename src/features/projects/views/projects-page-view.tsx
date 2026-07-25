@@ -8,14 +8,20 @@ import { ProjectsNavSidebar } from "@/features/projects/components/workspace/pro
 import { ProjectsRightSidebar } from "@/features/projects/components/workspace/projects-right-sidebar";
 import { ProjectsWorkspaceMain } from "@/features/projects/components/workspace/projects-workspace-main";
 import { RequestAccessModal } from "@/features/projects/components/workspace/request-access-modal";
+import {
+  useEnsureWorkspaceDefaults,
+  useWorkspaceProjects,
+} from "@/features/projects/hooks/use-workspace";
 import { filterWorkspaceProjects } from "@/features/projects/lib/filter-workspace-projects";
-import { WORKSPACE_PROJECTS } from "@/features/projects/lib/projects-workspace-data";
 import type {
   ProjectFilter,
   WorkspaceProject,
 } from "@/features/projects/lib/projects-workspace-types";
 
 export function ProjectsPageView() {
+  useEnsureWorkspaceDefaults();
+
+  const remoteProjects = useWorkspaceProjects();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ProjectFilter>("all");
   const [sort, setSort] = useState("newest");
@@ -24,9 +30,14 @@ export function ProjectsPageView() {
     null,
   );
 
+  const catalog = useMemo(
+    () => (remoteProjects ?? []) as WorkspaceProject[],
+    [remoteProjects],
+  );
+
   const projects = useMemo(
-    () => filterWorkspaceProjects(WORKSPACE_PROJECTS, filter, search, sort),
-    [filter, search, sort],
+    () => filterWorkspaceProjects(catalog, filter, search, sort),
+    [catalog, filter, search, sort],
   );
 
   return (
@@ -58,7 +69,10 @@ export function ProjectsPageView() {
             onSortChange={setSort}
             onImport={() => setCloneOpen(true)}
             onRequestAccess={setAccessProject}
-            isEmptyCatalog={WORKSPACE_PROJECTS.length === 0}
+            isEmptyCatalog={
+              remoteProjects !== undefined && catalog.length === 0
+            }
+            isLoading={remoteProjects === undefined}
           />
           <ProjectsRightSidebar />
         </div>

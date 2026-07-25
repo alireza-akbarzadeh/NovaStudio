@@ -55,7 +55,8 @@ export type WorkspaceActivity = {
     | "contributor"
     | "merged"
     | "comment"
-    | "released";
+    | "released"
+    | "joined";
   title: string;
   detail: string;
   time: string;
@@ -84,6 +85,14 @@ export type WorkspaceNotification = {
   title: string;
   time: string;
   tone: "violet" | "green" | "blue" | "orange";
+  href?: string;
+  soundKind?:
+    | "notify"
+    | "success"
+    | "warning"
+    | "error"
+    | "message"
+    | "aiDone";
 };
 
 export type AccessRole =

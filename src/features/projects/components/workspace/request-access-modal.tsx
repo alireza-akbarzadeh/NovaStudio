@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useCreateAccessRequest } from "@/features/projects/hooks/use-workspace";
 import type {
   AccessRole,
   WorkspaceProject,
@@ -43,8 +45,41 @@ export function RequestAccessModal({
   open,
   onOpenChange,
 }: RequestAccessModalProps) {
+  const createRequest = useCreateAccessRequest();
   const [role, setRole] = useState<AccessRole>("Developer");
   const [level, setLevel] = useState<(typeof LEVELS)[number]>("Mid");
+  const [message, setMessage] = useState("");
+  const [portfolioUrl, setPortfolioUrl] = useState("");
+  const [github, setGithub] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (!project) return;
+    setPending(true);
+    setError(null);
+    try {
+      await createRequest({
+        projectId: project.id as Id<"projects">,
+        roleLabel: role,
+        experienceLevel: level,
+        message: message.trim() || undefined,
+        portfolioUrl: portfolioUrl.trim() || undefined,
+        github: github.trim() || undefined,
+        linkedin: linkedin.trim() || undefined,
+      });
+      onOpenChange(false);
+      setMessage("");
+      setPortfolioUrl("");
+      setGithub("");
+      setLinkedin("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send request");
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -79,10 +114,6 @@ export function RequestAccessModal({
               </div>
               <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
                 {project.description}
-              </p>
-              <p className="mt-3 text-[11px] text-muted-foreground">
-                Contribution guidelines: keep PRs focused, follow the tech
-                stack conventions, and discuss large changes first.
               </p>
             </div>
 
@@ -134,6 +165,8 @@ export function RequestAccessModal({
               </Label>
               <Textarea
                 id="access-message"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
                 placeholder="Share your experience and what you'd like to work on..."
                 className="min-h-24 rounded-2xl"
               />
@@ -144,6 +177,8 @@ export function RequestAccessModal({
                 <Label htmlFor="portfolio">Portfolio link</Label>
                 <Input
                   id="portfolio"
+                  value={portfolioUrl}
+                  onChange={(event) => setPortfolioUrl(event.target.value)}
                   placeholder="https://"
                   className="rounded-xl"
                 />
@@ -152,6 +187,8 @@ export function RequestAccessModal({
                 <Label htmlFor="github">GitHub</Label>
                 <Input
                   id="github"
+                  value={github}
+                  onChange={(event) => setGithub(event.target.value)}
                   placeholder="@username"
                   className="rounded-xl"
                 />
@@ -160,11 +197,16 @@ export function RequestAccessModal({
                 <Label htmlFor="linkedin">LinkedIn</Label>
                 <Input
                   id="linkedin"
+                  value={linkedin}
+                  onChange={(event) => setLinkedin(event.target.value)}
                   placeholder="linkedin.com/in/..."
                   className="rounded-xl"
                 />
               </div>
             </div>
+            {error ? (
+              <p className="text-xs text-destructive">{error}</p>
+            ) : null}
           </div>
         ) : null}
 
@@ -176,8 +218,12 @@ export function RequestAccessModal({
           >
             Cancel
           </Button>
-          <Button className="rounded-xl" onClick={() => onOpenChange(false)}>
-            Send Request
+          <Button
+            className="rounded-xl"
+            disabled={pending || !project}
+            onClick={() => void submit()}
+          >
+            {pending ? "Sending…" : "Send Request"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -115,7 +115,7 @@ export function ContinueProjectCard({
         <Button
           size="sm"
           className="rounded-xl"
-          onClick={() => router.push("/projects/new")}
+          onClick={() => router.push(`/projects/${project.id}`)}
         >
           Open Project
         </Button>

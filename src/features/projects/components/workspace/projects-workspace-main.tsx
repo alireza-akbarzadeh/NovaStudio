@@ -26,6 +26,7 @@ type ProjectsWorkspaceMainProps = {
   onImport: () => void;
   onRequestAccess: (project: WorkspaceProject) => void;
   isEmptyCatalog: boolean;
+  isLoading?: boolean;
 };
 
 export function ProjectsWorkspaceMain({
@@ -39,6 +40,7 @@ export function ProjectsWorkspaceMain({
   onImport,
   onRequestAccess,
   isEmptyCatalog,
+  isLoading = false,
 }: ProjectsWorkspaceMainProps) {
   return (
     <div className="min-w-0 flex-1 space-y-8">
@@ -48,7 +50,11 @@ export function ProjectsWorkspaceMain({
         onImport={onImport}
       />
 
-      {isEmptyCatalog ? (
+      {isLoading ? (
+        <div className="rounded-[22px] border border-border/60 bg-card/60 px-6 py-16 text-center text-sm text-muted-foreground backdrop-blur">
+          Loading your workspace…
+        </div>
+      ) : isEmptyCatalog ? (
         <ProjectsEmptyState onImport={onImport} />
       ) : (
         <>
@@ -68,11 +74,8 @@ export function ProjectsWorkspaceMain({
               <ProjectsStatsRow />
               <PinnedProjectsSection projects={projects} />
               <ContinueWorkingSection projects={projects} />
-              <CommunityProjectsSection
-                projects={projects}
-                onRequestAccess={onRequestAccess}
-              />
-              <TrendingProjectsSection projects={projects} />
+              <CommunityProjectsSection onRequestAccess={onRequestAccess} />
+              <TrendingProjectsSection />
               <CollectionsSection />
               <ActivityFeedSection />
             </>
