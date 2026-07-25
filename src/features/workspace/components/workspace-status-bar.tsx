@@ -103,7 +103,7 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const wcError = wcStatus === "error";
 
   return (
-    <footer className="ws-chrome flex h-9 shrink-0 items-center justify-between gap-2 border-t border-ws-border-subtle bg-ws-panel px-3">
+    <footer className="ws-chrome flex h-8 shrink-0 items-center justify-between gap-2 bg-ws-bg px-3 pb-1">
       <div className="flex min-w-0 items-center gap-1.5">
         {isGitHub ? (
           isPushing ? (

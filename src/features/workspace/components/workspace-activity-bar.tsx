@@ -1,7 +1,8 @@
 "use client";
 
 import {
-  ChevronDownIcon,
+  BellIcon,
+  BellOffIcon,
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -11,11 +12,15 @@ import {
   PuzzleIcon,
   SearchIcon,
   SettingsIcon,
+  SparklesIcon,
   SquareTerminalIcon,
   SunIcon,
+  Volume2Icon,
+  VolumeXIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +34,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { usePushSubscription } from "@/features/notifications/hooks/use-push-subscription";
+import {
+  getSoundPrefs,
+  playSoundIfEnabled,
+  setSoundPrefs,
+} from "@/features/notifications/lib/play-sound";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import {
@@ -40,120 +51,141 @@ import { cn } from "@/lib/utils";
 type ActivityItem = {
   view: LeftPanelView;
   label: string;
-  shortLabel: string;
   icon: React.ReactNode;
   shortcut: string;
 };
 
-type UtilityItem = {
-  id: string;
+type RailButtonProps = {
   label: string;
   shortcut?: string;
-  icon: React.ReactNode;
   active?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
+  children: React.ReactNode;
+  side?: "left" | "right";
+  className?: string;
 };
 
-const PRIMARY_ITEMS: ActivityItem[] = [
+const LEFT_ITEMS: ActivityItem[] = [
   {
     view: "explorer",
     label: "Explorer",
-    shortLabel: "Files",
-    icon: <FolderTreeIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <FolderTreeIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧E",
   },
   {
     view: "search",
     label: "Find in Files",
-    shortLabel: "Search",
-    icon: <SearchIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <SearchIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧F",
   },
   {
     view: "git",
     label: "Git",
-    shortLabel: "Git",
-    icon: <GitBranchIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <GitBranchIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘9",
   },
-];
-
-const OVERFLOW_ITEMS: ActivityItem[] = [
   {
     view: "outline",
     label: "Outline",
-    shortLabel: "Outline",
-    icon: <ListTreeIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <ListTreeIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧O",
   },
   {
     view: "dependencies",
     label: "Dependencies",
-    shortLabel: "Deps",
-    icon: <PackageIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <PackageIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧D",
   },
   {
     view: "extensions",
     label: "Extensions",
-    shortLabel: "Ext",
-    icon: <PuzzleIcon className="size-3.5" strokeWidth={1.75} />,
+    icon: <PuzzleIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧X",
   },
 ];
 
-function ViewTabButton({
-  item,
+function RailButton({
+  label,
+  shortcut,
   active,
-  onSelect,
-}: {
-  item: ActivityItem;
-  active: boolean;
-  onSelect: (view: LeftPanelView) => void;
-}) {
+  onClick,
+  children,
+  side = "left",
+  className,
+}: RailButtonProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <button
           type="button"
-          aria-label={item.label}
+          aria-label={label}
           aria-pressed={active}
-          onClick={() => onSelect(item.view)}
+          onClick={onClick}
           className={cn(
-            "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium transition-colors",
-            active
-              ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35"
-              : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+            "relative flex size-9 items-center justify-center rounded-lg text-ws-text-muted transition-colors",
+            "hover:bg-ws-hover hover:text-ws-text",
+            active &&
+              "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35",
+            className,
           )}
         >
-          {item.icon}
-          <span>{item.shortLabel}</span>
+          {active ? (
+            <span
+              aria-hidden
+              className={cn(
+                "absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-ws-accent",
+                side === "left" ? "left-0" : "right-0",
+              )}
+            />
+          ) : null}
+          {children}
         </button>
       </TooltipTrigger>
       <TooltipContent
-        side="bottom"
-        sideOffset={6}
+        side={side === "left" ? "right" : "left"}
+        sideOffset={8}
         className="flex items-center gap-2 border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
       >
-        <span className="text-xs">{item.label}</span>
-        <span className="text-[10px] text-ws-text-muted">{item.shortcut}</span>
+        <span className="text-xs">{label}</span>
+        {shortcut ? (
+          <span className="text-[10px] text-ws-text-muted">{shortcut}</span>
+        ) : null}
       </TooltipContent>
     </Tooltip>
   );
 }
 
-/** Horizontal view switcher — replaces the VS Code-style activity rail. */
-export function WorkspaceViewSwitcher() {
+function ActivityRailShell({
+  label,
+  side,
+  children,
+}: {
+  label: string;
+  side: "left" | "right";
+  children: React.ReactNode;
+}) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <nav
+        aria-label={label}
+        className={cn(
+          "flex w-11 shrink-0 flex-col items-center gap-0.5 py-1.5",
+          side === "left" ? "pr-0.5" : "pl-0.5",
+        )}
+      >
+        {children}
+      </nav>
+    </TooltipProvider>
+  );
+}
+
+/** JetBrains-style left activity rail — explorer / search / git / … */
+export function WorkspaceLeftActivityBar() {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
-  const [overflowOpen, setOverflowOpen] = useState(false);
-
-  const overflowActive =
-    sidebarOpen && OVERFLOW_ITEMS.some((item) => item.view === leftPanelView);
 
   const onSelect = (view: LeftPanelView) => {
-    setOverflowOpen(false);
     if (leftPanelView === view && sidebarOpen) {
       runCommand("toggleSidebar");
     } else {
@@ -162,91 +194,142 @@ export function WorkspaceViewSwitcher() {
   };
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <nav
-        aria-label="Sidebar views"
-        className="flex items-center gap-0.5 overflow-x-auto px-1.5 py-1"
-      >
-        {PRIMARY_ITEMS.map((item) => (
-          <ViewTabButton
-            key={item.view}
-            item={item}
-            active={sidebarOpen && leftPanelView === item.view}
-            onSelect={onSelect}
-          />
-        ))}
-
-        <Popover open={overflowOpen} onOpenChange={setOverflowOpen}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="More views"
-                  aria-pressed={overflowActive}
-                  className={cn(
-                    "inline-flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors",
-                    overflowActive
-                      ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35"
-                      : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
-                  )}
-                >
-                  <ChevronDownIcon
-                    className={cn(
-                      "size-3.5 transition-transform duration-150",
-                      overflowOpen && "rotate-180",
-                    )}
-                    strokeWidth={1.75}
-                  />
-                </button>
-              </PopoverTrigger>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              sideOffset={6}
-              className="border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
-            >
-              <span className="text-xs">More views</span>
-            </TooltipContent>
-          </Tooltip>
-
-          <PopoverContent
-            align="end"
-            sideOffset={6}
-            className="w-52 border-ws-border bg-ws-panel p-1 text-ws-text shadow-lg"
-          >
-            {OVERFLOW_ITEMS.map((item) => {
-              const active = sidebarOpen && leftPanelView === item.view;
-              return (
-                <button
-                  key={item.view}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => onSelect(item.view)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] transition-colors",
-                    active
-                      ? "bg-ws-accent/15 text-ws-text"
-                      : "text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text",
-                  )}
-                >
-                  {item.icon}
-                  <span className="flex-1">{item.label}</span>
-                  <span className="text-[10px] text-ws-text-muted">
-                    {item.shortcut}
-                  </span>
-                </button>
-              );
-            })}
-          </PopoverContent>
-        </Popover>
-      </nav>
-    </TooltipProvider>
+    <ActivityRailShell label="Sidebar views" side="left">
+      {LEFT_ITEMS.map((item) => (
+        <RailButton
+          key={item.view}
+          label={item.label}
+          shortcut={item.shortcut}
+          active={sidebarOpen && leftPanelView === item.view}
+          onClick={() => onSelect(item.view)}
+          side="left"
+        >
+          {item.icon}
+        </RailButton>
+      ))}
+    </ActivityRailShell>
   );
 }
 
-/** Compact utility chips for sidebar footer (Problems, Terminal, theme, settings). */
-export function WorkspaceSidebarUtilities() {
+function WorkspaceNotificationRailButton() {
+  const push = usePushSubscription();
+  const [soundsOn, setSoundsOn] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setSoundsOn(getSoundPrefs().enabled);
+  }, []);
+
+  const toggleSounds = () => {
+    const next = setSoundPrefs({ enabled: !soundsOn });
+    setSoundsOn(next.enabled);
+    if (next.enabled) void playSoundIfEnabled("aiDone");
+  };
+
+  const togglePush = async () => {
+    try {
+      if (push.subscribed) {
+        await push.disablePush();
+        toast.success("Push notifications disabled");
+      } else {
+        await push.enablePush();
+        toast.success("Push notifications enabled");
+        void playSoundIfEnabled("success");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not update push",
+      );
+    }
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label="Notifications"
+              aria-pressed={open}
+              className={cn(
+                "relative flex size-9 items-center justify-center rounded-lg text-ws-text-muted transition-colors",
+                "hover:bg-ws-hover hover:text-ws-text",
+                open &&
+                  "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35",
+              )}
+            >
+              {push.subscribed ? (
+                <BellIcon className="size-4" strokeWidth={1.75} />
+              ) : (
+                <BellOffIcon className="size-4" strokeWidth={1.75} />
+              )}
+              {push.subscribed ? (
+                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-ws-accent" />
+              ) : null}
+            </button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent
+          side="left"
+          sideOffset={8}
+          className="border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
+        >
+          <span className="text-xs">Notifications</span>
+        </TooltipContent>
+      </Tooltip>
+
+      <PopoverContent
+        align="end"
+        side="left"
+        sideOffset={10}
+        className="w-56 border-ws-border bg-ws-panel p-2 text-ws-text shadow-lg"
+      >
+        <p className="mb-2 px-1 text-[11px] font-medium text-ws-text">
+          Notifications
+        </p>
+        <p className="mb-2 px-1 text-[11px] leading-relaxed text-ws-text-muted">
+          Alerts for AI runs and project updates. Inbox coming soon.
+        </p>
+        <div className="flex flex-col gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 justify-start gap-2 rounded-lg px-2 text-[12px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
+            onClick={toggleSounds}
+          >
+            {soundsOn ? (
+              <Volume2Icon className="size-3.5" strokeWidth={1.75} />
+            ) : (
+              <VolumeXIcon className="size-3.5" strokeWidth={1.75} />
+            )}
+            {soundsOn ? "Sounds on" : "Sounds muted"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={push.busy || !push.configured}
+            className="h-8 justify-start gap-2 rounded-lg px-2 text-[12px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
+            onClick={() => void togglePush()}
+          >
+            {push.subscribed ? (
+              <BellIcon className="size-3.5 text-ws-accent" strokeWidth={1.75} />
+            ) : (
+              <BellOffIcon className="size-3.5" strokeWidth={1.75} />
+            )}
+            {push.subscribed ? "Push enabled" : "Enable push"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/** JetBrains-style right activity rail — AI, notifications, terminal, settings. */
+export function WorkspaceRightActivityBar() {
+  const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
@@ -261,94 +344,85 @@ export function WorkspaceSidebarUtilities() {
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
   const problemCount = errorCount + warningCount;
 
-  const utilityItems: UtilityItem[] = [
-    {
-      id: "problems",
-      label: "Problems",
-      shortcut: "⌘⇧M",
-      icon: (
-        <span className="relative">
-          <CircleAlertIcon className="size-3.5" strokeWidth={1.75} />
-          {problemCount > 0 ? (
-            <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-ws-danger-bg" />
-          ) : null}
-        </span>
-      ),
-      active: terminalOpen && bottomPanelTab === "problems",
-      onClick: () => runCommand("showProblems"),
-    },
-    {
-      id: "terminal",
-      label: "Terminal",
-      shortcut: "⌘J",
-      icon: <SquareTerminalIcon className="size-3.5" strokeWidth={1.75} />,
-      active: terminalOpen && bottomPanelTab === "terminal",
-      onClick: () => runCommand("toggleTerminal"),
-    },
-    {
-      id: "theme",
-      label: isDark ? "Switch to Light Theme" : "Switch to Dark Theme",
-      icon: isDark ? (
-        <SunIcon className="size-3.5" strokeWidth={1.75} />
-      ) : (
-        <MoonIcon className="size-3.5" strokeWidth={1.75} />
-      ),
-      onClick: () => setTheme(isDark ? "light" : "dark"),
-    },
-    {
-      id: "settings",
-      label: "Settings",
-      shortcut: "⌘,",
-      icon: <SettingsIcon className="size-3.5" strokeWidth={1.75} />,
-      active: settingsOpen,
-      onClick: () => runCommand("openSettings"),
-    },
-  ];
-
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="flex items-center justify-between gap-1 border-t border-ws-border-subtle px-2 py-1.5">
-        <div className="flex items-center gap-0.5">
-          {utilityItems.map((item) => (
-            <Tooltip key={item.id}>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={item.label}
-                  aria-pressed={item.active}
-                  onClick={item.onClick}
-                  className={cn(
-                    "size-7 rounded-lg text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
-                    item.active &&
-                      "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/30",
-                  )}
-                >
-                  {item.icon}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="top"
-                sideOffset={6}
-                className="flex items-center gap-2 border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
-              >
-                <span className="text-xs">{item.label}</span>
-                {item.shortcut ? (
-                  <span className="text-[10px] text-ws-text-muted">
-                    {item.shortcut}
-                  </span>
-                ) : null}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </div>
+    <ActivityRailShell label="Tool windows" side="right">
+      <div className="flex flex-col items-center gap-0.5">
+        <RailButton
+          label="AI Assistant"
+          shortcut="⌘L"
+          active={aiPanelOpen}
+          onClick={() => runCommand("toggleAiPanel")}
+          side="right"
+        >
+          <SparklesIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+
+        <WorkspaceNotificationRailButton />
       </div>
-    </TooltipProvider>
+
+      <div className="mt-auto flex flex-col items-center gap-0.5">
+        <RailButton
+          label="Problems"
+          shortcut="⌘⇧M"
+          active={terminalOpen && bottomPanelTab === "problems"}
+          onClick={() => runCommand("showProblems")}
+          side="right"
+        >
+          <span className="relative">
+            <CircleAlertIcon className="size-4" strokeWidth={1.75} />
+            {problemCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-ws-danger-bg" />
+            ) : null}
+          </span>
+        </RailButton>
+
+        <RailButton
+          label="Terminal"
+          shortcut="⌘J"
+          active={terminalOpen && bottomPanelTab === "terminal"}
+          onClick={() => runCommand("toggleTerminal")}
+          side="right"
+        >
+          <SquareTerminalIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+
+        <RailButton
+          label={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+          onClick={() => setTheme(isDark ? "light" : "dark")}
+          side="right"
+        >
+          {isDark ? (
+            <SunIcon className="size-4" strokeWidth={1.75} />
+          ) : (
+            <MoonIcon className="size-4" strokeWidth={1.75} />
+          )}
+        </RailButton>
+
+        <RailButton
+          label="Settings"
+          shortcut="⌘,"
+          active={settingsOpen}
+          onClick={() => runCommand("openSettings")}
+          side="right"
+        >
+          <SettingsIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+      </div>
+    </ActivityRailShell>
   );
 }
 
-/** @deprecated Prefer WorkspaceViewSwitcher — kept for any stray imports. */
+/** @deprecated Prefer WorkspaceLeftActivityBar. */
+export function WorkspaceViewSwitcher() {
+  return null;
+}
+
+/** @deprecated Utilities moved to WorkspaceRightActivityBar. */
+export function WorkspaceSidebarUtilities() {
+  return null;
+}
+
+/** @deprecated Prefer WorkspaceLeftActivityBar. */
 export function WorkspaceActivityBar() {
-  return <WorkspaceViewSwitcher />;
+  return <WorkspaceLeftActivityBar />;
 }

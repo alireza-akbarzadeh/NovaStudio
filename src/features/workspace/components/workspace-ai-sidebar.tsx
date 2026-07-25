@@ -829,7 +829,7 @@ export function WorkspaceAiSidebar({
   };
 
   return (
-    <aside className="ws-chrome flex h-full flex-col bg-ws-panel">
+    <aside className="ws-chrome flex h-full flex-col bg-transparent">
       {panelView === "history" ? (
         <>
           <div className="flex h-10 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">

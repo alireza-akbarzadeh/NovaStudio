@@ -112,7 +112,7 @@ export function WorkspaceToolbar({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <header className="ws-chrome flex h-11 shrink-0 items-center gap-1.5 border-b border-ws-border-subtle bg-ws-panel px-2.5">
+      <header className="ws-chrome flex h-10 shrink-0 items-center gap-1.5 bg-ws-bg px-2">
         <div className="flex min-w-0 flex-1 items-center gap-2 px-1">
           <WorkspaceBreadcrumb
             projectId={projectId}

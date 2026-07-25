@@ -1,9 +1,5 @@
 "use client";
 
-import {
-  WorkspaceSidebarUtilities,
-  WorkspaceViewSwitcher,
-} from "@/features/workspace/components/workspace-activity-bar";
 import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceExtensionsPanel } from "@/features/workspace/components/workspace-extensions-panel";
@@ -24,13 +20,10 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
 
   return (
     <aside className="ws-chrome flex h-full min-w-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-ws-border-subtle">
-        <WorkspaceViewSwitcher />
-        <div className="flex h-7 items-center px-3">
-          <p className="text-[11px] font-semibold tracking-wide text-ws-text">
-            {LEFT_PANEL_LABELS[leftPanelView]}
-          </p>
-        </div>
+      <div className="flex h-9 shrink-0 items-center border-b border-ws-border-subtle px-3">
+        <p className="text-[11px] font-semibold tracking-wide text-ws-text">
+          {LEFT_PANEL_LABELS[leftPanelView]}
+        </p>
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
         {leftPanelView === "explorer" ? (
@@ -48,7 +41,6 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
         ) : null}
         {leftPanelView === "extensions" ? <WorkspaceExtensionsPanel /> : null}
       </div>
-      <WorkspaceSidebarUtilities />
     </aside>
   );
 }

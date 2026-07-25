@@ -115,15 +115,15 @@
   --sidebar-border: oklch(0.922 0.01 303);
   --sidebar-ring: oklch(0.55 0.22 303.9);
 
-  /* Workspace — soft white + violet chrome */
-  --ws-bg: #f4f1fa;
+  /* Workspace — soft frame + floating panes */
+  --ws-bg: #ebe6f4;
   --ws-panel: #faf8fd;
   --ws-stage: #ffffff;
   --ws-chip: #efeaf8;
   --ws-hover: #efeaf8;
   --ws-hover-deep: #e4dcf3;
   --ws-border: #ddd6eb;
-  --ws-border-subtle: #e8e2f2;
+  --ws-border-subtle: #e0d8ee;
   --ws-border-strong: #cfc4e4;
   --ws-text: #1a1228;
   --ws-text-secondary: #4c4460;
@@ -179,15 +179,15 @@
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.65 0.24 303.9);
 
-  /* Workspace — deep ink + cooler violet */
-  --ws-bg: #0c0b10;
-  --ws-panel: #121018;
-  --ws-stage: #0e0d14;
+  /* Workspace — deep frame + floating panes (JetBrains New UI) */
+  --ws-bg: #0a090e;
+  --ws-panel: #14121c;
+  --ws-stage: #101018;
   --ws-chip: #1a1624;
   --ws-hover: #1c172a;
   --ws-hover-deep: #261e3a;
   --ws-border: #2c2640;
-  --ws-border-subtle: #1a1626;
+  --ws-border-subtle: #221e30;
   --ws-border-strong: #3f3658;
   --ws-text: #f3f0ff;
   --ws-text-secondary: #c8c0dc;
