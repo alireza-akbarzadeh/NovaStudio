@@ -5,7 +5,8 @@ import type { CommandHistory } from "./history";
 
 const DIM = "\x1b[90m";
 const RESET = "\x1b[0m";
-const CLEAR_LINE = "\r\x1b[K";
+/** Erase from cursor to end of line (does not blank the prompt). */
+const ERASE_EOL = "\x1b[K";
 
 /** Strip control chars so paste with trailing newlines still inserts. */
 function printableText(data: string): string {
@@ -59,10 +60,7 @@ export class TerminalLineEditor {
     if (this.busy) return;
     const printable = printableText(text);
     if (!printable) return;
-    this.buffer += printable;
-    this.history.resetCursor();
-    this.refreshSuggestion();
-    this.redraw();
+    this.appendText(printable);
   }
 
   handleData(data: string) {
@@ -80,11 +78,7 @@ export class TerminalLineEditor {
     }
 
     if (data === "\x7f") {
-      if (this.buffer.length === 0) return;
-      this.buffer = this.buffer.slice(0, -1);
-      this.history.resetCursor();
-      this.refreshSuggestion();
-      this.redraw();
+      this.backspace();
       return;
     }
 
@@ -167,10 +161,7 @@ export class TerminalLineEditor {
     const printable = printableText(data);
     if (!printable) return;
 
-    this.buffer += printable;
-    this.history.resetCursor();
-    this.refreshSuggestion();
-    this.redraw();
+    this.appendText(printable);
   }
 
   private async pasteFromClipboard() {
@@ -188,10 +179,10 @@ export class TerminalLineEditor {
     this.clearSuggestion();
     this.busy = true;
 
-    // Drop ghost text and keep the typed command on its own line.
-    this.term.write(CLEAR_LINE);
+    // Overwrite in place (avoid clear-then-write flash), then commit the line.
+    this.term.write("\r");
     this.writePrompt(this.term, false);
-    this.term.write(`${command}\r\n`);
+    this.term.write(`${ERASE_EOL}${command}\r\n`);
 
     try {
       await this.onSubmit(command);
@@ -227,13 +218,41 @@ export class TerminalLineEditor {
     this.ghost = "";
   }
 
+  /** Append at end of line without blanking the prompt (typing / paste hot path). */
+  private appendText(text: string) {
+    this.buffer += text;
+    this.history.resetCursor();
+    this.refreshSuggestion();
+    // Cursor sits at end of buffer; new chars overwrite any leftover ghost cells.
+    this.term.write(`${text}${ERASE_EOL}`);
+    this.paintGhost();
+  }
+
+  private backspace() {
+    if (this.buffer.length === 0) return;
+    this.buffer = this.buffer.slice(0, -1);
+    this.history.resetCursor();
+    this.refreshSuggestion();
+    // Move left one cell, erase to EOL (drops char + old ghost), then ghost again.
+    this.term.write(`\b${ERASE_EOL}`);
+    this.paintGhost();
+  }
+
+  private paintGhost() {
+    if (!this.ghost) return;
+    this.term.write(`${DIM}${this.ghost}${RESET}`);
+    this.term.write("\b".repeat(this.ghost.length));
+  }
+
+  /**
+   * Full line refresh for history / kill-word / tab / etc.
+   * Overwrites the prompt in place — never clear-then-rewrite (that flashes).
+   */
   private redraw() {
-    this.term.write(CLEAR_LINE);
+    this.term.write("\r");
     this.writePrompt(this.term, false);
+    this.term.write(ERASE_EOL);
     this.term.write(this.buffer);
-    if (this.ghost) {
-      this.term.write(`${DIM}${this.ghost}${RESET}`);
-      this.term.write("\b".repeat(this.ghost.length));
-    }
+    this.paintGhost();
   }
 }
