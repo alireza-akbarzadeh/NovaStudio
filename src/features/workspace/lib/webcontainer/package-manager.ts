@@ -99,3 +99,40 @@ export function isInstallLikeCommand(args: string[]): boolean {
     "ci",
   ].includes(head);
 }
+
+/**
+ * True when the command may create/scaffold project files that should
+ * be copied from WebContainer back into Polaris (npx / npm create / …).
+ */
+export function isScaffoldCommand(binary: string, args: string[]): boolean {
+  if (binary === "npx") return args.length > 0;
+  if (binary === "npm" || binary === "pnpm" || binary === "yarn" || binary === "bun") {
+    const head = args[0];
+    return head === "create" || head === "init";
+  }
+  return false;
+}
+
+/**
+ * Ensure `npx` skips the "Ok to proceed?" prompt.
+ * `--yes` must come *before* the package name:
+ *   npx --yes create-next-app@latest my-app
+ * (A trailing `--yes` only goes to the package, not npx.)
+ */
+export function normalizeNodeCliArgs(
+  binary: string,
+  args: string[],
+): string[] {
+  if (binary !== "npx") return args;
+  if (args.includes("--yes") || args.includes("-y")) {
+    // Move --yes/-y to the front if the user put it after the package.
+    const flags: string[] = [];
+    const rest: string[] = [];
+    for (const arg of args) {
+      if (arg === "--yes" || arg === "-y") flags.push(arg);
+      else rest.push(arg);
+    }
+    return flags.length > 0 ? [...flags, ...rest] : args;
+  }
+  return ["--yes", ...args];
+}

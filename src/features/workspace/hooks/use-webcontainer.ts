@@ -25,6 +25,8 @@ import {
   installArgs,
   installCommandLine,
   isInstallLikeCommand,
+  isScaffoldCommand,
+  normalizeNodeCliArgs,
 } from "@/features/workspace/lib/webcontainer/package-manager";
 import { spawnAndStream } from "@/features/workspace/lib/webcontainer/spawn";
 import {
@@ -32,6 +34,7 @@ import {
   mountProject,
   writeProjectFile,
 } from "@/features/workspace/lib/webcontainer/sync";
+import { syncTreeToProject } from "@/features/workspace/lib/webcontainer/tree-sync";
 
 export type WebContainerStatus =
   | "idle"
@@ -52,6 +55,10 @@ export type UseWebContainerResult = {
     options: {
       cwd: string;
       onChunk: WebContainerSpawnWrite;
+      onStdin?: (write: (data: string) => void) => void;
+      onStdinEnd?: () => void;
+      cols?: number;
+      rows?: number;
       signal?: AbortSignal;
     },
   ) => Promise<number>;
@@ -67,7 +74,10 @@ export type UseWebContainerResult = {
   refreshInstallState: () => Promise<void>;
   /** Persist package.json + lockfiles from WC → Convex. */
   syncManifests: () => Promise<string[]>;
+  /** Persist scaffolded project files from WC → Convex (skips node_modules). */
+  syncTree: () => Promise<string[]>;
   shouldSyncAfterCommand: (args: string[]) => boolean;
+  shouldSyncTreeAfterCommand: (binary: string, args: string[]) => boolean;
 };
 
 export function useWebContainer(projectId: string): UseWebContainerResult {
@@ -102,6 +112,19 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     });
   }, [projectId, writeFileAtPath]);
 
+  const syncTree = useCallback(async () => {
+    const wc = getWebContainer();
+    if (!wc) return [];
+
+    return syncTreeToProject(wc, async (path, content) => {
+      await writeFileAtPath({
+        projectId: projectId as Id<"projects">,
+        path,
+        content,
+      });
+    });
+  }, [projectId, writeFileAtPath]);
+
   const refreshInstallState = useCallback(async () => {
     const wc = getWebContainer();
     if (!wc) return;
@@ -124,6 +147,10 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
       options: {
         cwd: string;
         onChunk: WebContainerSpawnWrite;
+        onStdin?: (write: (data: string) => void) => void;
+        onStdinEnd?: () => void;
+        cols?: number;
+        rows?: number;
         signal?: AbortSignal;
       },
     ) => {
@@ -131,9 +158,14 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
       if (!wc) {
         throw new Error("WebContainer is not ready");
       }
-      return spawnAndStream(wc, command, args, {
+      const normalizedArgs = normalizeNodeCliArgs(command, args);
+      return spawnAndStream(wc, command, normalizedArgs, {
         cwd: options.cwd,
         onChunk: options.onChunk,
+        onStdin: options.onStdin,
+        onStdinEnd: options.onStdinEnd,
+        cols: options.cols,
+        rows: options.rows,
         signal: options.signal,
       });
     },
@@ -260,7 +292,9 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     installAttempted,
     refreshInstallState,
     syncManifests,
+    syncTree,
     shouldSyncAfterCommand: isInstallLikeCommand,
+    shouldSyncTreeAfterCommand: isScaffoldCommand,
   };
 }
 

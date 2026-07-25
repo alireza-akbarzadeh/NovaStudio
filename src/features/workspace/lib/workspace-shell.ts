@@ -8,7 +8,7 @@ import { resolveAbsolutePath } from "@/lib/posix-path";
 import { handleGitCommand } from "@/features/workspace/lib/terminal/git-command";
 import { HELP_TEXT } from "@/features/workspace/lib/terminal/help-text";
 import { handlePackageManagerCommand } from "@/features/workspace/lib/terminal/package-manager-command";
-import { isPackageManager } from "@/features/workspace/lib/terminal/package-scripts";
+import { isNodeCliCommand } from "@/features/workspace/lib/terminal/package-scripts";
 import {
   directoryExists,
   listDirectory,
@@ -73,7 +73,7 @@ export async function runShellCommand(
     return { output: "", exitCode: 0, cwd };
   }
 
-  if (isPackageManager(command)) {
+  if (isNodeCliCommand(command)) {
     return handlePackageManagerCommand(command, args, context, handlers);
   }
 

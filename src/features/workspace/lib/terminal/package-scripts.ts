@@ -11,13 +11,22 @@ export type PackageScriptFile = {
 
 const PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"] as const;
 
-export type PackageManager = (typeof PACKAGE_MANAGERS)[number];
+/** Package managers + `npx` — all run inside WebContainer. */
+const NODE_CLI_COMMANDS = ["npm", "pnpm", "yarn", "bun", "npx"] as const;
 
-export { PACKAGE_MANAGERS };
+export type PackageManager = (typeof PACKAGE_MANAGERS)[number];
+export type NodeCliCommand = (typeof NODE_CLI_COMMANDS)[number];
+
+export { PACKAGE_MANAGERS, NODE_CLI_COMMANDS };
 
 /** True when the token is a supported package manager binary. */
 export function isPackageManager(command: string): command is PackageManager {
   return (PACKAGE_MANAGERS as readonly string[]).includes(command);
+}
+
+/** True when the token should spawn inside WebContainer (npm family + npx). */
+export function isNodeCliCommand(command: string): command is NodeCliCommand {
+  return (NODE_CLI_COMMANDS as readonly string[]).includes(command);
 }
 
 /**

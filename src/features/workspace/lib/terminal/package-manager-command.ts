@@ -1,10 +1,10 @@
 /**
- * `npm` / `pnpm` / `yarn` / `bun` handling.
+ * `npm` / `npx` / `pnpm` / `yarn` / `bun` handling.
  * Uses WebContainer when available; otherwise explains the simulated fallback.
  */
 
 import { getPackageScripts } from "@/features/workspace/lib/terminal/package-scripts";
-import type { PackageManager } from "@/features/workspace/lib/terminal/package-scripts";
+import type { NodeCliCommand } from "@/features/workspace/lib/terminal/package-scripts";
 import type {
   ShellContext,
   ShellHandlers,
@@ -12,7 +12,7 @@ import type {
 } from "@/features/workspace/lib/terminal/types";
 
 function simulatedFallback(
-  binary: PackageManager,
+  binary: NodeCliCommand,
   args: string[],
   context: ShellContext,
 ): ShellResult {
@@ -21,7 +21,7 @@ function simulatedFallback(
   const scriptList = scripts.map((name) => `  ${name}`);
   const cmdline = [binary, ...args].join(" ");
 
-  if (scripts.length > 0 && args.length === 0) {
+  if (binary !== "npx" && scripts.length > 0 && args.length === 0) {
     return {
       output: [
         `${binary}: scripts from package.json (Tab / → to autocomplete):`,
@@ -45,7 +45,7 @@ function simulatedFallback(
 }
 
 export async function handlePackageManagerCommand(
-  binary: PackageManager,
+  binary: NodeCliCommand,
   args: string[],
   context: ShellContext,
   handlers: ShellHandlers = {},

@@ -9,6 +9,7 @@ export const SHELL_COMMANDS = [
   "echo",
   "git",
   "npm",
+  "npx",
   "pnpm",
   "yarn",
   "bun",

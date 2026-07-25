@@ -239,11 +239,39 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
           try {
             const exitCode = await wc.spawn(binary, args, {
               cwd,
+              cols: term.cols,
+              rows: term.rows,
               onChunk: (chunk) => {
                 term.write(chunk.replace(/\n/g, "\r\n"));
               },
+              onStdin: (write) => {
+                editorRef.current?.setStdinForward(write);
+              },
+              onStdinEnd: () => {
+                editorRef.current?.setStdinForward(null);
+              },
             });
-            if (wc.shouldSyncAfterCommand(args)) {
+
+            editorRef.current?.setStdinForward(null);
+
+            if (exitCode === 0 && wc.shouldSyncTreeAfterCommand(binary, args)) {
+              try {
+                term.writeln("\r\n[polaris] syncing new files into project…");
+                const synced = await wc.syncTree();
+                term.writeln(
+                  `[polaris] synced ${synced.length} file${synced.length === 1 ? "" : "s"}`,
+                );
+                await wc.refreshInstallState();
+              } catch (syncError) {
+                term.writeln(
+                  `\r\n[polaris] failed to sync files: ${
+                    syncError instanceof Error
+                      ? syncError.message
+                      : "unknown error"
+                  }`,
+                );
+              }
+            } else if (wc.shouldSyncAfterCommand(args)) {
               try {
                 const synced = await wc.syncManifests();
                 if (synced.length > 0) {
@@ -264,6 +292,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
             }
             return { output: "", exitCode, cwd };
           } catch (error) {
+            editorRef.current?.setStdinForward(null);
             return {
               output:
                 error instanceof Error
@@ -309,7 +338,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const wc = webcontainerRef.current;
     term.writeln("Polaris workspace terminal");
     term.writeln(
-      "Type 'help' for commands. Tab completes · → accepts suggestion · ↑↓ history",
+      "Type 'help' for commands. Tab completes · paste with Ctrl+V · → accepts suggestion · ↑↓ history",
     );
     term.writeln(
       statusBannerLine(wc?.status ?? "idle", wc?.error ?? null),
@@ -325,11 +354,23 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     }
 
     const dataDisposable = term.onData((data) => editor.handleData(data));
+
+    // Capture-phase paste so we handle it once (xterm's textarea would also
+    // fire onData and could double-insert or drop trailing-newline pastes).
+    const onPaste = (event: ClipboardEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+      editor.insertPaste(text);
+    };
+    container.addEventListener("paste", onPaste, true);
+
     const resizeObserver = new ResizeObserver(() => fitAddon.fit());
     resizeObserver.observe(container);
 
     return () => {
       dataDisposable.dispose();
+      container.removeEventListener("paste", onPaste, true);
       resizeObserver.disconnect();
       term.dispose();
       terminalRef.current = null;

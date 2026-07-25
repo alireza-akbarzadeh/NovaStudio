@@ -4,6 +4,7 @@ Shortcuts:
   Tab                        Autocomplete command / path / npm script
   → (right arrow)            Accept dim suggestion
   ↑ / ↓                      Browse command history
+  Ctrl+V / Cmd+V             Paste into the current line
   Ctrl+L                     Clear screen
   Ctrl+U                     Clear line
   Ctrl+W                     Delete last word
@@ -16,7 +17,7 @@ Available commands:
   cat <file>                Print file contents
   cd <path>                 Change directory
   echo <text>               Print text
-  npm|pnpm|yarn|bun …       Real install/run via WebContainer (when ready)
+  npm|npx|pnpm|yarn|bun …  Real install/run via WebContainer (when ready)
 
 Git (backed by GitHub API):
   git status                Show working tree status

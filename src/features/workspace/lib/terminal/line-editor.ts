@@ -7,6 +7,11 @@ const DIM = "\x1b[90m";
 const RESET = "\x1b[0m";
 const CLEAR_LINE = "\r\x1b[K";
 
+/** Strip control chars so paste with trailing newlines still inserts. */
+function printableText(data: string): string {
+  return data.replace(/[\x00-\x1f\x7f]/g, "");
+}
+
 export type PromptWriter = (term: Terminal, newline?: boolean) => void;
 
 /**
@@ -18,6 +23,8 @@ export class TerminalLineEditor {
   private ghost = "";
   private suggestion: string | null = null;
   private busy = false;
+  /** When set, keystrokes go to a running process stdin (interactive prompts). */
+  private stdinWrite: ((data: string) => void) | null = null;
 
   constructor(
     private readonly term: Terminal,
@@ -35,7 +42,36 @@ export class TerminalLineEditor {
     this.busy = busy;
   }
 
+  /**
+   * Forward keyboard input to a running WebContainer process.
+   * Pass `null` when the process exits.
+   */
+  setStdinForward(write: ((data: string) => void) | null) {
+    this.stdinWrite = write;
+  }
+
+  /** Insert clipboard / multi-char paste into the current line (or process stdin). */
+  insertPaste(text: string) {
+    if (this.stdinWrite) {
+      this.stdinWrite(text);
+      return;
+    }
+    if (this.busy) return;
+    const printable = printableText(text);
+    if (!printable) return;
+    this.buffer += printable;
+    this.history.resetCursor();
+    this.refreshSuggestion();
+    this.redraw();
+  }
+
   handleData(data: string) {
+    // Interactive process — pipe keys (incl. Enter / y) to stdin.
+    if (this.stdinWrite) {
+      this.stdinWrite(data);
+      return;
+    }
+
     if (this.busy) return;
 
     if (data === "\r") {
@@ -58,6 +94,12 @@ export class TerminalLineEditor {
       this.clearSuggestion();
       this.history.resetCursor();
       this.writePrompt(this.term, true);
+      return;
+    }
+
+    // Ctrl+V — some environments deliver this instead of a paste event
+    if (data === "\x16") {
+      void this.pasteFromClipboard();
       return;
     }
 
@@ -115,11 +157,28 @@ export class TerminalLineEditor {
       return;
     }
 
-    if (!/[\x00-\x1f\x7f]/.test(data)) {
-      this.buffer += data;
-      this.history.resetCursor();
-      this.refreshSuggestion();
-      this.redraw();
+    // Ignore other escape sequences (arrows without ghost, etc.)
+    if (data.startsWith("\x1b")) {
+      return;
+    }
+
+    // Paste is often one onData chunk and may include trailing \n / \r —
+    // strip controls and insert the rest (do not auto-submit).
+    const printable = printableText(data);
+    if (!printable) return;
+
+    this.buffer += printable;
+    this.history.resetCursor();
+    this.refreshSuggestion();
+    this.redraw();
+  }
+
+  private async pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      this.insertPaste(text);
+    } catch {
+      // Permission denied / insecure context — browser paste event may still work.
     }
   }
 
@@ -138,6 +197,7 @@ export class TerminalLineEditor {
       await this.onSubmit(command);
     } finally {
       this.busy = false;
+      this.stdinWrite = null;
     }
   }
 
