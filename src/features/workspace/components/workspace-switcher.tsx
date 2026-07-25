@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
@@ -18,9 +19,9 @@ import {
   SettingsIcon,
   SunIcon,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import Image from "next/image";
 import Link from "next/link";
-import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
@@ -41,16 +42,15 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useBilling } from "@/features/billing/hooks/use-billing";
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
+import { useBilling } from "@/features/billing/hooks/use-billing";
+import { useGitHubConnection } from "@/features/github/hooks/use-github-connection";
 import { getProjectsIcons } from "@/features/projects/components/project-row";
-import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import {
   useProject,
   useProjects,
   useUpdateProject,
 } from "@/features/projects/hooks/use-projects";
-import { useGitHubConnection } from "@/features/github/hooks/use-github-connection";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { exportProjectAsZip } from "@/features/workspace/lib/export-project-zip";
@@ -126,11 +126,10 @@ export function WorkspaceSwitcher({
   const updateProject = useUpdateProject();
   const { isLoaded, isPro } = useBilling();
   const { openPricing } = usePricingDialog();
-  const { openProjects } = useProjectsDialog();
   const { isConnected, connection } = useGitHubConnection();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
-    () => () => {},
+    () => () => { },
     () => true,
     () => false,
   );
@@ -240,10 +239,10 @@ export function WorkspaceSwitcher({
         <div className="flex flex-col p-1.5">
           <MenuRow
             icon={<ArrowLeftIcon />}
-            label="Go to Dashboard"
+            label="Go to Projects"
             onClick={() => {
               close();
-              openProjects();
+              router.push("/projects");
             }}
           />
         </div>

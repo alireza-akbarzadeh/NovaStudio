@@ -314,7 +314,24 @@ export function useCloneFromGitHub() {
     async (args: { repoUrl: string; branch?: string; name?: string }) => {
       setIsCloning(true);
       try {
-        return await cloneFromGitHub(args);
+        const { projectId, importJobToken } = await cloneFromGitHub(args);
+
+        const response = await fetch("/api/github/clone", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectId, jobToken: importJobToken }),
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(
+            payload?.error ?? "Failed to start background clone job",
+          );
+        }
+
+        return projectId;
       } finally {
         setIsCloning(false);
       }

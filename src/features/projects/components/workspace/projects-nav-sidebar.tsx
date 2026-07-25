@@ -17,6 +17,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { Manrope } from "next/font/google";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,8 @@ const navGroups = [
   {
     label: "Workspace",
     items: [
-      { icon: LayoutDashboardIcon, label: "Overview", href: "/" },
-      { icon: FolderKanbanIcon, label: "Projects", href: "/projects", active: true },
+      { icon: LayoutDashboardIcon, label: "Overview", href: "/projects" },
+      { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
       { icon: SparklesIcon, label: "Collections", href: "/projects" },
       { icon: ActivityIcon, label: "Activity", href: "/projects" },
       { icon: CalendarIcon, label: "Calendar", href: "/projects" },
@@ -49,19 +50,30 @@ const navGroups = [
   {
     label: "Settings",
     items: [
-      { icon: UsersIcon, label: "Team", href: "/settings" },
-      { icon: PlugIcon, label: "Integrations", href: "/settings" },
-      { icon: SettingsIcon, label: "Settings", href: "/settings" },
+      { icon: UsersIcon, label: "Team", href: "/projects/team" },
+      { icon: PlugIcon, label: "Integrations", href: "/projects/integrations" },
+      { icon: SettingsIcon, label: "Settings", href: "/projects/settings" },
     ],
   },
 ] as const;
 
+function isNavActive(pathname: string, href: string, label: string) {
+  if (href === "/projects") {
+    if (label === "Projects" || label === "Overview") {
+      return pathname === "/projects";
+    }
+    return false;
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 export function ProjectsNavSidebar() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
   const content = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2.5 px-1 pb-6">
+      <Link href="/projects" className="mb-6 flex items-center gap-2.5 px-1">
         <Image src="/logo.svg" alt="" width={32} height={32} className="size-8" />
         <div className="min-w-0">
           <p className={cn(display.className, "text-base font-semibold tracking-tight")}>
@@ -69,7 +81,7 @@ export function ProjectsNavSidebar() {
           </p>
           <p className="text-[11px] text-muted-foreground">Dev workspace</p>
         </div>
-      </div>
+      </Link>
 
       <nav className="flex-1 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (
@@ -80,9 +92,9 @@ export function ProjectsNavSidebar() {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active = "active" in item && item.active;
+                const active = isNavActive(pathname, item.href, item.label);
                 return (
-                  <li key={item.label}>
+                  <li key={`${group.label}-${item.label}`}>
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}

@@ -14,7 +14,7 @@ type AppUserButtonProps = ComponentProps<typeof UserButton> & {
 
 export function AppUserButton({
   children,
-  settingsHref = "/settings",
+  settingsHref = "/projects/settings",
   onOpenSettings,
   ...props
 }: AppUserButtonProps) {

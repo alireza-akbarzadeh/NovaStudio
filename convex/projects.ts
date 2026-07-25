@@ -237,8 +237,9 @@ export const getProjectById = query({
     if (!access) {
       return null;
     }
+    const { importJobToken: _jobToken, ...project } = access.project;
     return {
-      ...access.project,
+      ...project,
       role: access.role,
       canEdit: access.canEdit,
       canManage: access.canManage,

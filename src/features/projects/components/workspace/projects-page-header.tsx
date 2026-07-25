@@ -64,7 +64,7 @@ export function ProjectsPageHeader({
             Import Project
           </Button>
           <NotificationControls />
-          <AppUserButton />
+          <AppUserButton settingsHref="/projects/settings" />
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import {
 import type { Doc } from "@/convex/_generated/dataModel";
 import { ProjectListSkeleton } from "@/features/projects/components/project-list-loading";
 import { getProjectsIcons } from "@/features/projects/components/project-row";
+import { useImportStatusLabel } from "@/features/projects/hooks/use-import-status-label";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 
 interface ProjectCommandDialogProps {
@@ -24,12 +25,7 @@ interface ProjectCommandDialogProps {
 }
 
 function ProjectCommandItemContent({ project }: { project: Doc<"projects"> }) {
-  const status =
-    project.importStatus === "importing"
-      ? "Importing…"
-      : project.exportStatus === "exporting"
-        ? "Exporting…"
-        : null;
+  const status = useImportStatusLabel(project);
 
   return (
     <>

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 const shortcuts = [
   { icon: FolderPlusIcon, label: "Create Project", href: "/projects/new" },
   { icon: GitBranchIcon, label: "Import Repository", href: "/projects/new" },
-  { icon: UserPlusIcon, label: "Invite Team Members", href: "/settings" },
+  { icon: UserPlusIcon, label: "Invite Team Members", href: "/projects/team" },
   { icon: BookOpenIcon, label: "View Documentation", href: "/" },
 ] as const;
 

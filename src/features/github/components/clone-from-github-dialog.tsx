@@ -8,7 +8,6 @@ import {
   LockIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -59,7 +58,6 @@ export function CloneFromGitHubDialog({
   open,
   onOpenChange,
 }: CloneFromGitHubDialogProps) {
-  const router = useRouter();
   const { isConnected, isLoading } = useGitHubConnection();
   const { connect, isConnecting } = useConnectGitHub();
   const { clone, isCloning } = useCloneFromGitHub();
@@ -194,15 +192,14 @@ export function CloneFromGitHubDialog({
     }
 
     try {
-      const projectId = await clone({
+      await clone({
         repoUrl: repoUrl.trim(),
         branch: branch.trim() || "main",
         name: projectName.trim() || undefined,
       });
-      toast.success("Repository cloned into Polaris");
+      toast.success("Import started — watch the project card for progress");
       resetForm();
       onOpenChange(false);
-      router.push(`/projects/${projectId}`);
     } catch (error) {
       toast.error(
         parseConvexErrorMessage(error, "Failed to clone repository"),
@@ -464,7 +461,7 @@ export function CloneFromGitHubDialog({
               {isCloning ? (
                 <>
                   <Loader2Icon className="size-4 animate-spin" />
-                  Cloning…
+                  Starting…
                 </>
               ) : (
                 "Clone repository"

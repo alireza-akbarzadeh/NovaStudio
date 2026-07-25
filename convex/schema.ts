@@ -60,6 +60,8 @@ export default defineSchema({
         v.literal("failed"),
       ),
     ),
+    importStartedAt: v.optional(v.number()),
+    importJobToken: v.optional(v.string()),
     exportStatus: v.optional(
       v.union(
         v.literal("exporting"),
