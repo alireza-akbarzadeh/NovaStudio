@@ -2,6 +2,7 @@
 
 import {
   ChevronDownIcon,
+  ExternalLinkIcon,
   GlobeIcon,
   Maximize2Icon,
   MonitorIcon,
@@ -11,11 +12,15 @@ import {
   TabletIcon,
   TerminalIcon,
   XIcon,
+  ZapIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { reloadPreview } from "@webcontainer/api";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
+import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import {
   getPreviewDevice,
@@ -37,6 +42,8 @@ type WorkspacePreviewPanelProps = {
   code?: string;
   filePath?: string;
   projectId: string;
+  /** False when the Code tab is showing — skip esbuild work; keep HMR iframe alive. */
+  active?: boolean;
 };
 
 type ConsoleEntry = {
@@ -66,8 +73,12 @@ export function WorkspacePreviewPanel({
   code,
   filePath,
   projectId,
+  active = true,
 }: WorkspacePreviewPanelProps) {
   const projectFiles = useProjectFiles(projectId);
+  const previewServer = useOptionalPreviewServer();
+  const webcontainer = useOptionalWebContainer();
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -80,6 +91,17 @@ export function WorkspacePreviewPanel({
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const requestIdRef = useRef(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const lastWrittenRef = useRef<{ path: string; content: string } | null>(
+    null,
+  );
+  const lastPreviewErrorIdRef = useRef<string | null>(null);
+
+  const hot = previewServer?.hot ?? false;
+  const serverUrl = previewServer?.url ?? null;
+  const serverStatus = previewServer?.status ?? "idle";
+  const serverError = previewServer?.error ?? null;
+  const useHotReload = hot && serverUrl != null;
 
   const filePaths = (projectFiles ?? [])
     .filter((file) => file.kind === "file")
@@ -102,12 +124,94 @@ export function WorkspacePreviewPanel({
         ? device.width
         : device.height;
 
-  const warnCount = consoleEntries.filter((e) => e.level === "warn").length;
-  const errorCount =
-    consoleEntries.filter((e) => e.level === "error").length +
+  const displayEntries = useMemo(() => {
+    if (!useHotReload || !previewServer) return consoleEntries;
+    const fromServer: ConsoleEntry[] = previewServer.logs.map((log) => ({
+      id: log.id,
+      level: log.level,
+      message: log.message,
+      timestamp: log.timestamp,
+    }));
+    return [...fromServer, ...consoleEntries]
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .slice(-200);
+  }, [consoleEntries, previewServer, useHotReload]);
+
+  const displayWarnCount = displayEntries.filter((e) => e.level === "warn")
+    .length;
+  const displayErrorCount =
+    displayEntries.filter((e) => e.level === "error").length +
     (previewError && !errorDismissed ? 1 : 0);
 
+  const iframeSrc = useMemo(() => {
+    if (!useHotReload || !serverUrl) return null;
+    try {
+      const base = new URL(serverUrl);
+      const path = urlPath.startsWith("/") ? urlPath : `/${urlPath}`;
+      base.pathname = path;
+      base.search = "";
+      base.hash = "";
+      return base.toString();
+    } catch {
+      return serverUrl;
+    }
+  }, [serverUrl, urlPath, useHotReload]);
+
+  // Live-write the open buffer into WebContainer so Vite/HMR sees edits.
   useEffect(() => {
+    if (!filePath || code === undefined) return;
+    if (!webcontainer?.ready) return;
+
+    const last = lastWrittenRef.current;
+    if (last && last.path === filePath && last.content === code) return;
+
+    const timer = window.setTimeout(() => {
+      lastWrittenRef.current = { path: filePath, content: code };
+      void webcontainer.writeFile(filePath, code);
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [code, filePath, webcontainer]);
+
+  // Surface preview-originated server errors in the overlay once.
+  useEffect(() => {
+    if (!previewServer?.logs.length) return;
+    const lastError = [...previewServer.logs]
+      .reverse()
+      .find((l) => l.level === "error" && l.source === "preview");
+    if (!lastError || lastError.id === lastPreviewErrorIdRef.current) return;
+    lastPreviewErrorIdRef.current = lastError.id;
+    setPreviewError({
+      source: "runtime",
+      message: lastError.message,
+    });
+    setErrorDismissed(false);
+  }, [previewServer?.logs]);
+
+  // Surface server start failures as overlay errors.
+  useEffect(() => {
+    if (serverStatus === "error" && serverError) {
+      setPreviewError({ source: "build", message: serverError });
+      setErrorDismissed(false);
+    }
+  }, [serverError, serverStatus]);
+
+  // Esbuild fallback when WC hot reload is unavailable.
+  useEffect(() => {
+    if (useHotReload) {
+      setPreviewHtml(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!active) return;
+
+    if (serverStatus === "starting") {
+      setLoading(true);
+      setPreviewHtml(null);
+      return;
+    }
+
     if (!canPreview || projectFiles === undefined) {
       setPreviewHtml(null);
       setPreviewError(null);
@@ -128,7 +232,6 @@ export function WorkspacePreviewPanel({
     setLoading(true);
     setPreviewError(null);
     setErrorDismissed(false);
-    setConsoleEntries([]);
 
     const timer = window.setTimeout(() => {
       void (async () => {
@@ -182,7 +285,16 @@ export function WorkspacePreviewPanel({
     return () => {
       window.clearTimeout(timer);
     };
-  }, [canPreview, code, filePath, projectFiles, refreshKey]);
+  }, [
+    active,
+    canPreview,
+    code,
+    filePath,
+    projectFiles,
+    refreshKey,
+    serverStatus,
+    useHotReload,
+  ]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -229,10 +341,31 @@ export function WorkspacePreviewPanel({
     const next = normalizePreviewPath(urlDraft);
     setUrlPath(next);
     setUrlDraft(next);
+    if (!useHotReload) {
+      setRefreshKey((value) => value + 1);
+    }
+  };
+
+  const onRefresh = () => {
+    if (useHotReload && iframeRef.current) {
+      void reloadPreview(iframeRef.current).catch(() => {
+        setRefreshKey((value) => value + 1);
+      });
+      return;
+    }
+    if (useHotReload) {
+      previewServer?.restart();
+      return;
+    }
     setRefreshKey((value) => value + 1);
   };
 
   const showErrorOverlay = previewError != null && !errorDismissed;
+  const isStarting = !useHotReload && serverStatus === "starting";
+  const showLoading =
+    (useHotReload && !iframeSrc) ||
+    isStarting ||
+    (!useHotReload && loading && !previewHtml);
 
   const frameStyle = useMemo(() => {
     if (frameWidth == null || frameHeight == null) {
@@ -254,7 +387,7 @@ export function WorkspacePreviewPanel({
     );
   }
 
-  if (!canPreview) {
+  if (!canPreview && !useHotReload && serverStatus !== "starting") {
     return (
       <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
         Add an <code className="mx-1">index.html</code>,{" "}
@@ -278,6 +411,39 @@ export function WorkspacePreviewPanel({
             className="h-6 border-ws-border-subtle bg-ws-bg px-2 font-mono text-[11px] text-ws-text-secondary shadow-none focus-visible:ring-ws-accent"
           />
         </form>
+
+        {useHotReload ? (
+          <span
+            className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+            title={
+              previewServer?.commandLine
+                ? `Hot reload · ${previewServer.commandLine}`
+                : "Hot reload via WebContainer"
+            }
+          >
+            <ZapIcon className="size-3" strokeWidth={2} />
+            HMR
+            {previewServer?.port != null ? ` :${previewServer.port}` : ""}
+          </span>
+        ) : serverStatus === "starting" ? (
+          <span className="shrink-0 text-[10px] text-ws-text-muted">
+            Starting…
+          </span>
+        ) : null}
+
+        {useHotReload && iframeSrc ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            title="Open preview in new tab"
+            aria-label="Open preview in new tab"
+            onClick={() => window.open(iframeSrc, "_blank", "noopener,noreferrer")}
+            className="size-7 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          >
+            <ExternalLinkIcon className="size-3.5" strokeWidth={1.75} />
+          </Button>
+        ) : null}
 
         <div className="flex shrink-0 items-center gap-0.5 border-l border-ws-border-subtle pl-1">
           {PREVIEW_DEVICES.map((item) => {
@@ -338,11 +504,11 @@ export function WorkspacePreviewPanel({
           )}
         >
           <TerminalIcon className="size-3.5" strokeWidth={1.75} />
-          {errorCount + warnCount > 0 ? (
+          {displayErrorCount + displayWarnCount > 0 ? (
             <span
               className={cn(
                 "absolute top-0.5 right-0.5 size-1.5 rounded-full",
-                errorCount > 0 ? "bg-ws-danger-bg" : "bg-amber-500",
+                displayErrorCount > 0 ? "bg-ws-danger-bg" : "bg-amber-500",
               )}
             />
           ) : null}
@@ -353,11 +519,13 @@ export function WorkspacePreviewPanel({
           variant="ghost"
           size="icon-sm"
           aria-label="Refresh preview"
-          disabled={loading}
-          onClick={() => setRefreshKey((value) => value + 1)}
+          disabled={showLoading && !useHotReload}
+          onClick={onRefresh}
           className="size-7 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
-          <RefreshCwIcon className={cn("size-3.5", loading && "animate-spin")} />
+          <RefreshCwIcon
+            className={cn("size-3.5", showLoading && "animate-spin")}
+          />
         </Button>
       </div>
 
@@ -378,7 +546,16 @@ export function WorkspacePreviewPanel({
             )}
             style={frameStyle}
           >
-            {previewHtml ? (
+            {useHotReload && iframeSrc ? (
+              <iframe
+                key={`${refreshKey}:${iframeSrc}`}
+                ref={iframeRef}
+                title="Project preview"
+                src={iframeSrc}
+                allow="cross-origin-isolated"
+                className="h-full w-full border-0 bg-white"
+              />
+            ) : previewHtml ? (
               <iframe
                 key={`${refreshKey}:${urlPath}`}
                 title="Project preview"
@@ -386,9 +563,13 @@ export function WorkspacePreviewPanel({
                 sandbox="allow-scripts allow-same-origin"
                 className="h-full w-full border-0 bg-white"
               />
-            ) : loading ? (
+            ) : showLoading ? (
               <div className="flex h-full min-h-40 items-center justify-center text-[13px] text-ws-text-muted">
-                Building preview…
+                {serverStatus === "starting"
+                  ? previewServer?.commandLine
+                    ? `Starting \`${previewServer.commandLine}\`…`
+                    : "Starting preview server…"
+                  : "Building preview…"}
               </div>
             ) : (
               <div className="flex h-full min-h-40 items-center justify-center p-6 text-[13px] text-ws-text-muted">
@@ -400,7 +581,7 @@ export function WorkspacePreviewPanel({
               <PreviewErrorOverlay
                 error={previewError}
                 onDismiss={() => setErrorDismissed(true)}
-                onRefresh={() => setRefreshKey((value) => value + 1)}
+                onRefresh={onRefresh}
               />
             ) : null}
           </div>
@@ -408,8 +589,12 @@ export function WorkspacePreviewPanel({
 
         {consoleOpen ? (
           <PreviewConsolePanel
-            entries={consoleEntries}
-            onClear={() => setConsoleEntries([])}
+            entries={displayEntries}
+            hot={useHotReload}
+            onClear={() => {
+              setConsoleEntries([]);
+              previewServer?.clearLogs();
+            }}
             onClose={() => setConsoleOpen(false)}
           />
         ) : null}
@@ -492,10 +677,12 @@ function PreviewErrorOverlay({
 
 function PreviewConsolePanel({
   entries,
+  hot,
   onClear,
   onClose,
 }: {
   entries: ConsoleEntry[];
+  hot: boolean;
   onClear: () => void;
   onClose: () => void;
 }) {
@@ -515,6 +702,11 @@ function PreviewConsolePanel({
         <span className="tabular-nums text-[10px] text-ws-text-muted">
           {entries.length}
         </span>
+        {hot ? (
+          <span className="text-[10px] text-ws-text-muted">
+            · server + preview
+          </span>
+        ) : null}
         <div className="ml-auto flex items-center gap-0.5">
           <Button
             type="button"
@@ -541,7 +733,9 @@ function PreviewConsolePanel({
       <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-2 py-1">
         {entries.length === 0 ? (
           <p className="px-1 py-3 text-[11px] text-ws-text-muted">
-            No console output yet. Logs from the preview appear here.
+            {hot
+              ? "No console output yet. Dev server logs and preview errors appear here."
+              : "No console output yet. Logs from the preview appear here."}
           </p>
         ) : (
           <ul className="space-y-0.5">
@@ -553,7 +747,7 @@ function PreviewConsolePanel({
                   entry.level === "error" && "text-ws-danger-soft",
                   entry.level === "warn" && "text-amber-500",
                   entry.level === "info" && "text-ws-link",
-                  (entry.level === "log") && "text-ws-text-secondary",
+                  entry.level === "log" && "text-ws-text-secondary",
                 )}
               >
                 <span className="mr-1.5 text-[10px] uppercase text-ws-text-muted">

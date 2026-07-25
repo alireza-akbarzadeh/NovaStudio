@@ -6,6 +6,7 @@ import {
   GitBranchIcon,
   ListTreeIcon,
   MoonIcon,
+  PackageIcon,
   SearchIcon,
   SettingsIcon,
   SquareTerminalIcon,
@@ -69,6 +70,12 @@ const ACTIVITY_ITEMS: ActivityItem[] = [
     label: "Outline",
     icon: <ListTreeIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "⌘⇧O",
+  },
+  {
+    view: "dependencies",
+    label: "Dependencies",
+    icon: <PackageIcon className="size-4" strokeWidth={1.75} />,
+    shortcut: "⌘⇧D",
   },
 ];
 

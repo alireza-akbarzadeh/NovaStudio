@@ -6,9 +6,11 @@ import {
   GitBranchIcon,
   Loader2Icon,
   PackageIcon,
+  ZapIcon,
 } from "lucide-react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { WorkspaceBranchPicker } from "@/features/workspace/components/workspace-branch-picker";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
@@ -40,6 +42,7 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
   const webcontainer = useOptionalWebContainer();
+  const previewServer = useOptionalPreviewServer();
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
   const branchPickerOpen = useWorkspaceStore((s) => s.branchPickerOpen);
@@ -142,6 +145,28 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
           )}
           <span>{webContainerLabel(wcStatus)}</span>
         </button>
+
+        {previewServer?.hot ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-emerald-600 dark:text-emerald-400"
+            title={
+              previewServer.commandLine
+                ? `Hot reload · ${previewServer.commandLine}`
+                : "Hot reload preview"
+            }
+          >
+            <ZapIcon className="size-3 shrink-0" />
+            <span>
+              HMR
+              {previewServer.port != null ? ` :${previewServer.port}` : ""}
+            </span>
+          </span>
+        ) : previewServer?.status === "starting" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5">
+            <Loader2Icon className="size-3 shrink-0 animate-spin" />
+            <span>Preview…</span>
+          </span>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-3">

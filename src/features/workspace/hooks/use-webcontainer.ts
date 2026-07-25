@@ -78,6 +78,8 @@ export type UseWebContainerResult = {
   syncTree: () => Promise<string[]>;
   shouldSyncAfterCommand: (args: string[]) => boolean;
   shouldSyncTreeAfterCommand: (binary: string, args: string[]) => boolean;
+  /** Write a single file into the container (for live HMR). */
+  writeFile: (path: string, content: string) => Promise<void>;
 };
 
 export function useWebContainer(projectId: string): UseWebContainerResult {
@@ -171,6 +173,16 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     },
     [],
   );
+
+  const writeFile = useCallback(async (path: string, content: string) => {
+    const wc = getWebContainer();
+    if (!wc) return;
+    try {
+      await writeProjectFile(wc, path, content);
+    } catch {
+      // Best-effort; install or teardown may race.
+    }
+  }, []);
 
   // Boot + mount when project files are available
   useEffect(() => {
@@ -295,6 +307,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     syncTree,
     shouldSyncAfterCommand: isInstallLikeCommand,
     shouldSyncTreeAfterCommand: isScaffoldCommand,
+    writeFile,
   };
 }
 

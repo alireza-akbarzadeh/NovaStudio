@@ -55,6 +55,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘⇧O",
   },
   {
+    id: "showDependencies",
+    label: "Show Dependencies",
+    keywords: "npm packages install add remove deps node_modules",
+    shortcut: "⌘⇧D",
+  },
+  {
     id: "showGitChanges",
     label: "Git: Changes",
     keywords: "stage commit diff",

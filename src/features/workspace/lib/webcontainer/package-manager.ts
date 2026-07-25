@@ -74,6 +74,58 @@ export function installCommandLine(pm: PackageManager): string {
   return `${pm} ${installArgs(pm).join(" ")}`;
 }
 
+/** Args to add a package (`npm install lodash`, `pnpm add lodash`, …). */
+export function addPackageArgs(
+  pm: PackageManager,
+  name: string,
+  options?: { dev?: boolean },
+): string[] {
+  const pkg = name.trim();
+  switch (pm) {
+    case "yarn":
+      return options?.dev ? ["add", "--dev", pkg] : ["add", pkg];
+    case "pnpm":
+    case "bun":
+      return options?.dev ? ["add", "-D", pkg] : ["add", pkg];
+    case "npm":
+    default:
+      return options?.dev ? ["install", "-D", pkg] : ["install", pkg];
+  }
+}
+
+/** Args to remove a package. */
+export function removePackageArgs(
+  pm: PackageManager,
+  name: string,
+): string[] {
+  const pkg = name.trim();
+  switch (pm) {
+    case "yarn":
+      return ["remove", pkg];
+    case "pnpm":
+    case "bun":
+      return ["remove", pkg];
+    case "npm":
+    default:
+      return ["uninstall", pkg];
+  }
+}
+
+export function addPackageCommandLine(
+  pm: PackageManager,
+  name: string,
+  options?: { dev?: boolean },
+): string {
+  return `${pm} ${addPackageArgs(pm, name, options).join(" ")}`;
+}
+
+export function removePackageCommandLine(
+  pm: PackageManager,
+  name: string,
+): string {
+  return `${pm} ${removePackageArgs(pm, name).join(" ")}`;
+}
+
 /** Paths we may want to sync back to Convex after install/add/remove. */
 export const SYNCABLE_MANIFEST_PATHS = [
   "package.json",

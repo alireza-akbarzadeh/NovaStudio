@@ -43,7 +43,11 @@ export async function bootWebContainer(): Promise<WebContainer> {
   if (instance) return instance;
 
   if (!bootPromise) {
-    bootPromise = WebContainer.boot({ coep: "credentialless" })
+    bootPromise = WebContainer.boot({
+      coep: "credentialless",
+      // Forward preview console.error / uncaught errors to `preview-message`
+      forwardPreviewErrors: true,
+    })
       .then((wc) => {
         instance = wc;
         return wc;

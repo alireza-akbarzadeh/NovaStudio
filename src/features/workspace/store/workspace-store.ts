@@ -6,7 +6,12 @@ export type PanelSizes = {
   ai: number;
 };
 
-export type LeftPanelView = "explorer" | "search" | "git" | "outline";
+export type LeftPanelView =
+  | "explorer"
+  | "search"
+  | "git"
+  | "outline"
+  | "dependencies";
 
 export type GitPanelTab = "changes" | "history" | "info";
 
@@ -170,6 +175,7 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   search: "Find in Files",
   git: "Git",
   outline: "Outline",
+  dependencies: "Dependencies",
 };
 
 function lastPinnedIndex(tabs: EditorTab[]): number {

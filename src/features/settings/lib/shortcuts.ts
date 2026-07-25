@@ -30,6 +30,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "search", label: "Find in files", keys: "⌘ ⇧ F" },
       { id: "git", label: "Show Git panel", keys: "⌘ 9" },
       { id: "outline", label: "Show outline", keys: "⌘ ⇧ O" },
+      { id: "dependencies", label: "Show dependencies", keys: "⌘ ⇧ D" },
       { id: "git-changes", label: "Git changes", keys: "⌘ ⇧ G" },
       { id: "git-history", label: "Git history", keys: "⌘ ⇧ H" },
       { id: "escape", label: "Close dialogs", keys: "Esc" },

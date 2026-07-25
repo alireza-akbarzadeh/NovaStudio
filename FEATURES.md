@@ -45,9 +45,9 @@ These are the biggest daily-friction gaps you called out.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 10 | Dependencies panel | `todo` | Search npm, add/remove packages. |
+| 10 | Dependencies panel | `review` | Search npm, add/remove packages. |
 | 11 | Real package install + Node terminal | `review` | WebContainer — real npm/pnpm/yarn/bun + auto-install. |
-| 12 | Hot reload + preview console | `todo` | Instant feedback loop. |
+| 12 | Hot reload + preview console | `review` | Instant feedback loop. |
 | 13 | Template gallery | `todo` | React, Vite, Next, Node, static. |
 
 ### Sprint D — AI delight
@@ -170,4 +170,20 @@ These are the biggest daily-friction gaps you called out.
 - Terminal `npm` / `pnpm` / `yarn` / `bun` spawn for real with streamed output
 - After install/add/remove, `package.json` + lockfiles sync back to Convex
 - Opening a project (including after clone) with `package.json` and no `node_modules` auto-runs the detected install once
-- Preview remains on server esbuild for now (#12)
+- Preview uses WebContainer `dev`/`start` when available (#12); otherwise server esbuild
+
+### 10. Dependencies panel — ready for review
+
+- Activity bar **Dependencies** view (⌘⇧D)
+- Lists production + dev deps from root `package.json`
+- Search npm registry; **Add** / **Add as dev** / remove via WebContainer terminal
+- Uses detected package manager (`npm` / `pnpm` / `yarn` / `bun`)
+
+### 12. Hot reload + preview console — ready for review
+
+- After install, auto-starts `dev` / `start` / `preview` / `serve` inside WebContainer
+- Preview iframe uses the live WC URL (Vite HMR) with an **HMR** badge + open-in-new-tab
+- Editor buffer writes into the container so edits hot-reload without a full rebuild
+- Console shows server logs + preview errors (`forwardPreviewErrors` + injected bridge)
+- Falls back to server esbuild `srcDoc` when there is no runnable script / WC offline
+- Preview pane stays mounted when switching Code ↔ Preview so HMR state survives

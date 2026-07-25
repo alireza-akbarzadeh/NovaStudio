@@ -1,6 +1,7 @@
 "use client";
 
 import { WorkspaceActivityBar } from "@/features/workspace/components/workspace-activity-bar";
+import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceGitPanel } from "@/features/workspace/components/workspace-git-panel";
 import { WorkspaceOutlinePanel } from "@/features/workspace/components/workspace-outline-panel";
@@ -37,6 +38,9 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
             <WorkspaceGitPanel projectId={projectId} />
           ) : null}
           {leftPanelView === "outline" ? <WorkspaceOutlinePanel /> : null}
+          {leftPanelView === "dependencies" ? (
+            <WorkspaceDependenciesPanel projectId={projectId} />
+          ) : null}
         </div>
       </aside>
     </div>

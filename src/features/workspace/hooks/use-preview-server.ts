@@ -1,0 +1,382 @@
+"use client";
+
+import {
+  PreviewMessageType,
+  type PreviewMessage,
+  type WebContainerProcess,
+} from "@webcontainer/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
+import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
+import type { PreviewConsoleLevel } from "@/features/workspace/lib/preview-runtime-bridge";
+import { getWebContainer } from "@/features/workspace/lib/webcontainer/boot";
+import {
+  buildDevServerCommand,
+  detectDevScript,
+  inferServerLogLevel,
+  injectPreviewBridge,
+  spawnDevServer,
+  stripAnsi,
+  type DevServerCommand,
+} from "@/features/workspace/lib/webcontainer/dev-server";
+
+export type PreviewServerStatus =
+  | "idle"
+  | "starting"
+  | "ready"
+  | "error"
+  | "unavailable";
+
+export type PreviewServerLog = {
+  id: string;
+  level: PreviewConsoleLevel;
+  message: string;
+  timestamp: number;
+  source: "server" | "preview";
+};
+
+export type UsePreviewServerResult = {
+  status: PreviewServerStatus;
+  url: string | null;
+  port: number | null;
+  error: string | null;
+  commandLine: string | null;
+  logs: PreviewServerLog[];
+  /** True when WC-backed hot reload is active. */
+  hot: boolean;
+  restart: () => void;
+  clearLogs: () => void;
+  /** Consume a WC preview-message (errors forwarded from the iframe). */
+  pushPreviewMessage: (message: PreviewMessage) => void;
+};
+
+const MAX_LOGS = 200;
+
+function logId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Auto-starts `npm run dev` (or detected script) inside WebContainer once
+ * dependencies are installed. Falls back to "unavailable" when there is no
+ * suitable script — the preview panel then uses the esbuild path.
+ */
+export function usePreviewServer(projectId: string): UsePreviewServerResult {
+  const webcontainer = useOptionalWebContainer();
+  const files = useProjectFiles(projectId);
+
+  const [status, setStatus] = useState<PreviewServerStatus>("idle");
+  const [url, setUrl] = useState<string | null>(null);
+  const [port, setPort] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [commandLine, setCommandLine] = useState<string | null>(null);
+  const [logs, setLogs] = useState<PreviewServerLog[]>([]);
+  const [restartKey, setRestartKey] = useState(0);
+
+  const processRef = useRef<WebContainerProcess | null>(null);
+  const commandRef = useRef<DevServerCommand | null>(null);
+  const outputBufferRef = useRef("");
+  const startedForRef = useRef<string | null>(null);
+
+  const ready = webcontainer?.ready ?? false;
+  const needsInstall = webcontainer?.needsInstall ?? false;
+  const packageManager = webcontainer?.packageManager ?? "npm";
+  const wcError = webcontainer?.error ?? null;
+  const wcStatus = webcontainer?.status;
+
+  const appendLog = useCallback(
+    (
+      level: PreviewConsoleLevel,
+      message: string,
+      source: PreviewServerLog["source"] = "server",
+    ) => {
+      const trimmed = message.trim();
+      if (!trimmed) return;
+      setLogs((prev) => [
+        ...prev.slice(-(MAX_LOGS - 1)),
+        {
+          id: logId(),
+          level,
+          message: trimmed,
+          timestamp: Date.now(),
+          source,
+        },
+      ]);
+    },
+    [],
+  );
+
+  const pushPreviewMessage = useCallback(
+    (message: PreviewMessage) => {
+      if (message.type === PreviewMessageType.ConsoleError) {
+        const text = Array.isArray(message.args)
+          ? message.args.map(String).join(" ")
+          : "console.error";
+        appendLog(
+          "error",
+          message.stack ? `${text}\n${message.stack}` : text,
+          "preview",
+        );
+        return;
+      }
+
+      appendLog(
+        "error",
+        message.stack
+          ? `${message.message}\n${message.stack}`
+          : message.message,
+        "preview",
+      );
+    },
+    [appendLog],
+  );
+
+  const clearLogs = useCallback(() => setLogs([]), []);
+
+  const restart = useCallback(() => {
+    setRestartKey((k) => k + 1);
+  }, []);
+
+  const flushOutputLines = useCallback(
+    (chunk: string) => {
+      outputBufferRef.current += chunk;
+      const parts = outputBufferRef.current.split("\n");
+      outputBufferRef.current = parts.pop() ?? "";
+      for (const raw of parts) {
+        const line = stripAnsi(raw);
+        if (!line.trim()) continue;
+        appendLog(inferServerLogLevel(line), line, "server");
+      }
+    },
+    [appendLog],
+  );
+
+  // Resolve package.json (+ drafts) → decide whether a WC preview is possible
+  const packageJson = (() => {
+    if (!files) return null;
+    const file = files.find(
+      (f) => f.kind === "file" && f.path === "package.json",
+    );
+    if (!file) return null;
+    const draft = loadFileContentDraft(projectId, "package.json");
+    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+      return draft.content;
+    }
+    return file.content ?? null;
+  })();
+
+  const scriptName = packageJson ? detectDevScript(packageJson) : null;
+
+  const filesReady = files !== undefined;
+
+  // Lifecycle: start / stop the preview server
+  useEffect(() => {
+    let cancelled = false;
+    const unsubs: Array<() => void> = [];
+
+    async function stopProcess() {
+      const proc = processRef.current;
+      processRef.current = null;
+      if (proc) {
+        try {
+          proc.kill();
+        } catch {
+          // already dead
+        }
+      }
+    }
+
+    async function start() {
+      if (wcStatus === "error" || wcError) {
+        setStatus("unavailable");
+        setError(wcError);
+        setUrl(null);
+        setPort(null);
+        return;
+      }
+
+      if (!ready || !filesReady) {
+        setStatus("idle");
+        return;
+      }
+
+      if (!scriptName) {
+        setStatus("unavailable");
+        setCommandLine(null);
+        setUrl(null);
+        setPort(null);
+        setError(null);
+        await stopProcess();
+        return;
+      }
+
+      if (needsInstall) {
+        setStatus("starting");
+        setError(null);
+        setUrl(null);
+        setPort(null);
+        setCommandLine(null);
+        return;
+      }
+
+      const wc = getWebContainer();
+      if (!wc) {
+        setStatus("unavailable");
+        return;
+      }
+
+      const command = buildDevServerCommand(packageManager, scriptName);
+      commandRef.current = command;
+      setCommandLine(command.commandLine);
+      setStatus("starting");
+      setError(null);
+      setUrl(null);
+      setPort(null);
+      outputBufferRef.current = "";
+      startedForRef.current = projectId;
+
+      await stopProcess();
+      if (cancelled) return;
+
+      try {
+        await injectPreviewBridge(wc);
+      } catch {
+        // Non-fatal — preview-message + server logs still work.
+      }
+      if (cancelled) return;
+
+      const onServerReady = (readyPort: number, readyUrl: string) => {
+        if (cancelled) return;
+        setPort(readyPort);
+        setUrl(readyUrl);
+        setStatus("ready");
+        setError(null);
+        appendLog(
+          "info",
+          `Preview server ready on port ${readyPort}`,
+          "server",
+        );
+      };
+
+      const onPort = (
+        changedPort: number,
+        type: "open" | "close",
+        portUrl: string,
+      ) => {
+        if (cancelled) return;
+        if (type === "close" && processRef.current) {
+          setUrl((current) => {
+            if (current && current.includes(`:${changedPort}`)) {
+              setStatus("starting");
+              setPort(null);
+              return null;
+            }
+            return current;
+          });
+        } else if (type === "open" && !cancelled) {
+          setPort(changedPort);
+          setUrl(portUrl);
+          setStatus("ready");
+        }
+      };
+
+      const onPreviewMessage = (message: PreviewMessage) => {
+        if (cancelled) return;
+        pushPreviewMessage(message);
+      };
+
+      unsubs.push(wc.on("server-ready", onServerReady));
+      unsubs.push(wc.on("port", onPort));
+      unsubs.push(wc.on("preview-message", onPreviewMessage));
+
+      try {
+        appendLog("info", `Starting \`${command.commandLine}\`…`, "server");
+        const process = await spawnDevServer(wc, command, {
+          onChunk: flushOutputLines,
+        });
+        if (cancelled) {
+          process.kill();
+          return;
+        }
+        processRef.current = process;
+
+        void process.exit.then((code) => {
+          if (cancelled) return;
+          if (processRef.current !== process) return;
+          processRef.current = null;
+          setUrl(null);
+          setPort(null);
+          if (code === 0) {
+            setStatus("unavailable");
+            appendLog("info", "Preview server exited", "server");
+          } else {
+            setStatus("error");
+            setError(
+              `Preview server exited with code ${code}. Check the console for details.`,
+            );
+            appendLog(
+              "error",
+              `Preview server exited with code ${code}`,
+              "server",
+            );
+          }
+        });
+      } catch (err) {
+        if (cancelled) return;
+        setStatus("error");
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to start preview server",
+        );
+        appendLog(
+          "error",
+          err instanceof Error ? err.message : "Failed to start preview server",
+          "server",
+        );
+      }
+    }
+
+    void start();
+
+    return () => {
+      cancelled = true;
+      for (const unsub of unsubs) {
+        try {
+          unsub();
+        } catch {
+          // ignore
+        }
+      }
+      void stopProcess();
+    };
+  }, [
+    appendLog,
+    filesReady,
+    flushOutputLines,
+    needsInstall,
+    packageManager,
+    projectId,
+    pushPreviewMessage,
+    ready,
+    restartKey,
+    scriptName,
+    wcError,
+    wcStatus,
+  ]);
+
+  return {
+    status,
+    url,
+    port,
+    error,
+    commandLine,
+    logs,
+    hot: status === "ready" && url != null,
+    restart,
+    clearLogs,
+    pushPreviewMessage,
+  };
+}

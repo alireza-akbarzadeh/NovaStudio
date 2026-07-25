@@ -24,6 +24,7 @@ import { WorkspaceSidebar } from "@/features/workspace/components/workspace-side
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
 import { WebContainerProvider } from "@/features/workspace/components/webcontainer-provider";
+import { PreviewServerProvider } from "@/features/workspace/components/preview-server-provider";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
@@ -221,7 +222,9 @@ function WorkspaceLayoutInner({
 export function WorkspaceLayout(props: WorkspaceLayoutProps) {
   return (
     <WebContainerProvider projectId={props.projectId}>
-      <WorkspaceLayoutInner {...props} />
+      <PreviewServerProvider projectId={props.projectId}>
+        <WorkspaceLayoutInner {...props} />
+      </PreviewServerProvider>
     </WebContainerProvider>
   );
 }

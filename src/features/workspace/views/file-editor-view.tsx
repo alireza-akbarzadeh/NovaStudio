@@ -419,12 +419,19 @@ function FileEditorContent({
             onGoToDefinition={onGoToDefinition}
           />
         </div>
-        {activeTab === "preview" ? (
-          <div className="absolute inset-0">
+        {previewAvailable ? (
+          <div
+            className={cn(
+              "absolute inset-0",
+              activeTab !== "preview" && "invisible pointer-events-none",
+            )}
+            aria-hidden={activeTab !== "preview"}
+          >
             <WorkspacePreviewPanel
               code={content}
               filePath={filePath}
               projectId={projectId}
+              active={activeTab === "preview"}
             />
           </div>
         ) : null}
