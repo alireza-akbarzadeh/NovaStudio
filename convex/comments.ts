@@ -324,6 +324,8 @@ export const createThread = mutation({
       detail: `line ${Math.floor(args.line)} · ${body.slice(0, 100)}`,
       notifyUserIds,
       notificationTone: "orange",
+      notificationKind: "comment",
+      soundKind: "message",
     });
 
     return threadId;
@@ -396,6 +398,8 @@ export const addReply = mutation({
       detail: `line ${thread.line} · ${body.slice(0, 100)}`,
       notifyUserIds,
       notificationTone: "orange",
+      notificationKind: "comment",
+      soundKind: "message",
     });
 
     return replyId;

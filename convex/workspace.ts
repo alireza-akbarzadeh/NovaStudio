@@ -358,15 +358,25 @@ export const listNotifications = query({
     return rows.map((row) => ({
       id: row._id,
       title: row.title,
-      body: row.body,
       time: formatRelativeTime(row.createdAt),
       tone: row.tone ?? "violet",
       href: row.href,
+      projectId: row.projectId,
+      kind: row.kind ?? inferNotificationKind(row.title),
       read: Boolean(row.readAt),
       soundKind: row.soundKind ?? "notify",
     }));
   },
 });
+
+function inferNotificationKind(
+  title: string,
+): "chat" | "comment" | "deploy" | "general" {
+  if (/chat message/i.test(title)) return "chat";
+  if (/commented|replied|mentioned you/i.test(title)) return "comment";
+  if (/deploy (succeeded|failed)/i.test(title)) return "deploy";
+  return "general";
+}
 
 export const getStorageUsage = query({
   args: {},

@@ -287,6 +287,47 @@ export const markNotificationRead = mutation({
   },
 });
 
+export const markNotificationsReadByKind = mutation({
+  args: {
+    kind: v.union(
+      v.literal("chat"),
+      v.literal("comment"),
+      v.literal("deploy"),
+      v.literal("general"),
+    ),
+    projectId: v.optional(v.id("projects")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const rows = await ctx.db
+      .query("notifications")
+      .withIndex("by_user_created", (q) => q.eq("userId", identity.subject))
+      .order("desc")
+      .take(100);
+
+    const now = Date.now();
+    let marked = 0;
+    for (const row of rows) {
+      if (row.readAt) continue;
+      const kind = row.kind ?? inferNotificationKindFromTitle(row.title);
+      if (kind !== args.kind) continue;
+      if (args.projectId && row.projectId !== args.projectId) continue;
+      await ctx.db.patch(row._id, { readAt: now });
+      marked += 1;
+    }
+    return { marked };
+  },
+});
+
+function inferNotificationKindFromTitle(
+  title: string,
+): "chat" | "comment" | "deploy" | "general" {
+  if (/chat message/i.test(title)) return "chat";
+  if (/commented|replied|mentioned you/i.test(title)) return "comment";
+  if (/deploy (succeeded|failed)/i.test(title)) return "deploy";
+  return "general";
+}
+
 export const listPendingAccessRequests = query({
   args: {},
   handler: async (ctx) => {

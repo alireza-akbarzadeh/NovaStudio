@@ -327,6 +327,17 @@ export default defineSchema({
     filePath: v.optional(v.string()),
     /** File paths mentioned with @ in the message body. */
     mentionedPaths: v.optional(v.array(v.string())),
+    /** Uploaded files / voice notes shared in chat. */
+    attachments: v.optional(
+      v.array(
+        v.object({
+          storageId: v.id("_storage"),
+          filename: v.string(),
+          mediaType: v.string(),
+          kind: v.union(v.literal("file"), v.literal("voice")),
+        }),
+      ),
+    ),
     createdAt: v.number(),
   }).index("by_project_created", ["projectId", "createdAt"]),
 
@@ -400,6 +411,15 @@ export default defineSchema({
     tone: v.optional(notificationTone),
     href: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
+    /** Used to badge chat / comments / deploy icons separately from the bell. */
+    kind: v.optional(
+      v.union(
+        v.literal("chat"),
+        v.literal("comment"),
+        v.literal("deploy"),
+        v.literal("general"),
+      ),
+    ),
     soundKind: v.optional(
       v.union(
         v.literal("notify"),

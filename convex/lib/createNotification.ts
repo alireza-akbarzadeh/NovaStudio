@@ -10,6 +10,8 @@ export type NotificationSoundKind =
   | "message"
   | "aiDone";
 
+export type NotificationKind = "chat" | "comment" | "deploy" | "general";
+
 type NotificationTone = "violet" | "green" | "blue" | "orange";
 
 type CreateNotificationArgs = {
@@ -18,6 +20,7 @@ type CreateNotificationArgs = {
   tone?: NotificationTone;
   href?: string;
   projectId?: Id<"projects">;
+  kind?: NotificationKind;
   soundKind?: NotificationSoundKind;
   body?: string;
 };
@@ -32,6 +35,7 @@ export async function createNotification(
     tone: args.tone ?? "violet",
     href: args.href,
     projectId: args.projectId,
+    kind: args.kind ?? "general",
     soundKind: args.soundKind ?? "notify",
     createdAt: Date.now(),
   });

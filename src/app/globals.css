@@ -232,6 +232,8 @@
   --animate-cursor-blink: cursor-blink 1s step-end infinite;
   --animate-ws-deploy-live: ws-deploy-live 2.4s ease-in-out infinite;
   --animate-ws-deploy-live-dot: ws-deploy-live-dot 1.8s ease-in-out infinite;
+  --animate-ws-badge-pop: ws-badge-pop 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-ws-badge-pulse: ws-badge-pulse 1.8s ease-in-out infinite;
 
   @keyframes cell-ripple {
     0% {
@@ -288,6 +290,31 @@
       transform: scale(1.2);
       opacity: 0.85;
       box-shadow: 0 0 0 4px color-mix(in oklab, #34d399 0%, transparent);
+    }
+  }
+
+  @keyframes ws-badge-pop {
+    0% {
+      transform: scale(0.45);
+      opacity: 0;
+    }
+    70% {
+      transform: scale(1.18);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes ws-badge-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in oklab, var(--ws-accent) 50%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 4px color-mix(in oklab, var(--ws-accent) 0%, transparent);
     }
   }
 }

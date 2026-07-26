@@ -328,6 +328,7 @@ export const updateDeployment = internalMutation({
               : `Deploy for "${project?.name ?? "project"}" failed. Open the provider dashboard for logs.`,
         tone: next === "ready" ? "green" : "orange",
         soundKind: next === "ready" ? "success" : "error",
+        kind: "deploy",
         href,
         projectId: deployment.projectId,
       });

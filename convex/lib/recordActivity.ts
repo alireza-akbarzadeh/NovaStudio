@@ -1,7 +1,10 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { colorForUserId } from "./projectAccess";
-import { createNotification } from "./createNotification";
+import {
+  createNotification,
+  type NotificationKind,
+} from "./createNotification";
 
 type ActivityType =
   | "updated"
@@ -23,6 +26,8 @@ type RecordActivityArgs = {
   hasSnapshot?: boolean;
   notifyUserIds?: string[];
   notificationTone?: NotificationTone;
+  notificationKind?: NotificationKind;
+  soundKind?: "notify" | "success" | "warning" | "error" | "message" | "aiDone";
 };
 
 export async function recordProjectActivity(
@@ -51,7 +56,10 @@ export async function recordProjectActivity(
       tone: args.notificationTone ?? "violet",
       projectId: args.projectId,
       href: `/projects/${args.projectId}`,
-      soundKind: "notify",
+      kind:
+        args.notificationKind ??
+        (args.type === "comment" ? "comment" : "general"),
+      soundKind: args.soundKind ?? "notify",
     });
   }
 

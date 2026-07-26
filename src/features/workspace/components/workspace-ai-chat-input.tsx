@@ -128,7 +128,10 @@ function PromptInputAttachmentsPreview() {
             </Attachment>
           </AttachmentHoverCardTrigger>
           <AttachmentHoverCardContent>
-            <AttachmentPreview className="max-h-48 max-w-xs" />
+            {/* Hover content portals outside the trigger Attachment context. */}
+            <Attachment data={file}>
+              <AttachmentPreview className="max-h-48 max-w-xs" />
+            </Attachment>
           </AttachmentHoverCardContent>
         </AttachmentHoverCard>
       ))}

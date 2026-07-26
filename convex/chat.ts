@@ -12,7 +12,15 @@ import { recordProjectActivity } from "./lib/recordActivity";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MENTIONS = 20;
+const MAX_ATTACHMENTS = 8;
 const MENTION_TOKEN = /@([^\s@]+)/g;
+
+const chatAttachmentValidator = v.object({
+  storageId: v.id("_storage"),
+  filename: v.string(),
+  mediaType: v.string(),
+  kind: v.union(v.literal("file"), v.literal("voice")),
+});
 
 function fileBasename(path: string) {
   return path.split("/").pop() || path;
@@ -42,6 +50,16 @@ function extractMentionedPathsFromBody(
   return [...new Set(mentionedPaths)];
 }
 
+export const generateUploadUrl = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
 export const listMessages = query({
   args: {
     projectId: v.id("projects"),
@@ -58,27 +76,42 @@ export const listMessages = query({
       .order("desc")
       .take(limit);
 
-    return rows.reverse().map((row) => ({
-      id: row._id,
-      body: row.body,
-      filePath: row.filePath,
-      mentionedPaths: row.mentionedPaths ?? [],
-      createdAt: row.createdAt,
-      time: formatRelativeTime(row.createdAt),
-      author: {
-        userId: row.authorUserId,
-        name: row.authorName ?? "Someone",
-        imageUrl: row.authorImageUrl,
-        color: row.authorColor ?? colorForUserId(row.authorUserId),
-        initials:
-          (row.authorName ?? "U")
-            .split(/\s+/)
-            .map((part) => part[0] ?? "")
-            .join("")
-            .slice(0, 2)
-            .toUpperCase() || "U",
-      },
-    }));
+    return await Promise.all(
+      rows.reverse().map(async (row) => {
+        const attachments = await Promise.all(
+          (row.attachments ?? []).map(async (attachment) => {
+            const url = await ctx.storage.getUrl(attachment.storageId);
+            return {
+              ...attachment,
+              url,
+            };
+          }),
+        );
+
+        return {
+          id: row._id,
+          body: row.body,
+          filePath: row.filePath,
+          mentionedPaths: row.mentionedPaths ?? [],
+          attachments,
+          createdAt: row.createdAt,
+          time: formatRelativeTime(row.createdAt),
+          author: {
+            userId: row.authorUserId,
+            name: row.authorName ?? "Someone",
+            imageUrl: row.authorImageUrl,
+            color: row.authorColor ?? colorForUserId(row.authorUserId),
+            initials:
+              (row.authorName ?? "U")
+                .split(/\s+/)
+                .map((part) => part[0] ?? "")
+                .join("")
+                .slice(0, 2)
+                .toUpperCase() || "U",
+          },
+        };
+      }),
+    );
   },
 });
 
@@ -88,6 +121,7 @@ export const sendMessage = mutation({
     body: v.string(),
     filePath: v.optional(v.string()),
     mentionedPaths: v.optional(v.array(v.string())),
+    attachments: v.optional(v.array(chatAttachmentValidator)),
   },
   handler: async (ctx, args) => {
     const access = await resolveProjectAccess(ctx, args.projectId);
@@ -101,11 +135,20 @@ export const sendMessage = mutation({
     }
 
     const body = args.body.trim();
-    if (!body) {
+    const attachments = (args.attachments ?? []).slice(0, MAX_ATTACHMENTS);
+
+    if (!body && attachments.length === 0) {
       throw new Error("Message cannot be empty");
     }
     if (body.length > MAX_MESSAGE_LENGTH) {
       throw new Error(`Message must be under ${MAX_MESSAGE_LENGTH} characters`);
+    }
+
+    for (const attachment of attachments) {
+      const meta = await ctx.db.system.get("_storage", attachment.storageId);
+      if (!meta) {
+        throw new Error("Attachment upload not found");
+      }
     }
 
     const projectFiles = await ctx.db
@@ -152,22 +195,55 @@ export const sendMessage = mutation({
       filePath,
       mentionedPaths:
         mentionedPaths.length > 0 ? mentionedPaths : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
       createdAt: Date.now(),
     });
 
     const name = authorName?.trim() || "Someone";
+    const hasVoice = attachments.some((item) => item.kind === "voice");
+    const hasFile = attachments.some((item) => item.kind === "file");
     const mentionLabel =
       mentionedPaths[0]?.split("/").pop() ??
       filePath?.split("/").pop();
+
+    let title: string;
+    if (hasVoice && !body && !hasFile) {
+      title = `${name} sent a voice message`;
+    } else if (hasFile && !body && !hasVoice) {
+      title = `${name} shared a file`;
+    } else if (mentionLabel) {
+      title = `${name} left a chat message on ${mentionLabel}`;
+    } else {
+      title = `${name} left a chat message`;
+    }
+
+    const detail =
+      body.slice(0, 120) ||
+      attachments[0]?.filename ||
+      (hasVoice ? "Voice message" : undefined);
+
+    const members = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    const notifyUserIds = [
+      ...new Set([
+        access.project.ownerId,
+        ...members.map((m) => m.userId),
+      ]),
+    ];
+
     await recordProjectActivity(ctx, {
       projectId: args.projectId,
       actorUserId: access.userId,
       actorName: authorName,
       type: "comment",
-      title: mentionLabel
-        ? `${name} left a chat message on ${mentionLabel}`
-        : `${name} left a chat message`,
-      detail: body.slice(0, 120),
+      title,
+      detail,
+      notifyUserIds,
+      notificationTone: "blue",
+      notificationKind: "chat",
+      soundKind: "message",
     });
 
     return messageId;

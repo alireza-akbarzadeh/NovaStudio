@@ -32,6 +32,7 @@ import {
 import { useWorkspaceNotifications } from "@/features/projects/hooks/use-workspace";
 import { useProjectDeployments } from "@/features/deploy/hooks/use-deploy-connection";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { useNotificationKindBadges } from "@/features/workspace/hooks/use-notification-kind-badges";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import {
   useWorkspaceStore,
@@ -40,6 +41,30 @@ import {
 import { formatModShortcut } from "@/lib/keyboard";
 import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
+
+function formatBadgeCount(count: number) {
+  return count > 9 ? "9+" : String(count);
+}
+
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      key={count}
+      aria-hidden
+      className="pointer-events-none absolute -top-1 -right-1.5 z-10 animate-ws-badge-pulse"
+    >
+      <span
+        className={cn(
+          "flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-ws-accent px-1 text-[8px] leading-none font-semibold text-white shadow-sm",
+          "animate-ws-badge-pop",
+        )}
+      >
+        {formatBadgeCount(count)}
+      </span>
+    </span>
+  );
+}
 
 type ActivityItem = {
   view: LeftPanelView;
@@ -124,7 +149,7 @@ function RailButton({
           aria-pressed={active}
           onClick={onClick}
           className={cn(
-            "relative flex size-9 items-center justify-center rounded-lg text-ws-text-muted transition-colors",
+            "relative flex size-9 items-center justify-center overflow-visible rounded-lg text-ws-text-muted transition-colors",
             "hover:bg-ws-hover hover:text-ws-text",
             active &&
               "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35",
@@ -234,6 +259,7 @@ export function WorkspaceRightActivityBar({
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const notifications = useWorkspaceNotifications(50);
   const deployments = useProjectDeployments(projectId, 8);
+  const badgeCounts = useNotificationKindBadges(projectId);
   const { errorCount, warningCount } = useMonacoProblems();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -246,6 +272,8 @@ export function WorkspaceRightActivityBar({
   const problemCount = errorCount + warningCount;
   const unreadCount =
     notifications?.filter((item) => !item.read).length ?? 0;
+  const chatUnreadCount = badgeCounts.chat;
+  const commentsUnreadCount = badgeCounts.comment;
   // Site is "live" if any recent deploy succeeded — not only the latest attempt.
   const isDeployLive = Boolean(
     projectId &&
@@ -298,27 +326,45 @@ export function WorkspaceRightActivityBar({
         </RailButton>
 
         <RailButton
-          label="Team Chat"
+          label={
+            chatUnreadCount > 0
+              ? `Team Chat · ${chatUnreadCount} new`
+              : "Team Chat"
+          }
           shortcut={formatModShortcut("mod+shift+c", isApple)}
           active={chatPanelOpen}
           onClick={() => runCommand("toggleChatPanel")}
           side="right"
         >
-          <MessageSquareIcon className="size-4" strokeWidth={1.75} />
+          <span className="relative">
+            <MessageSquareIcon className="size-4" strokeWidth={1.75} />
+            <UnreadBadge count={chatUnreadCount} />
+          </span>
         </RailButton>
 
         <RailButton
-          label="Live Comments"
+          label={
+            commentsUnreadCount > 0
+              ? `Live Comments · ${commentsUnreadCount} new`
+              : "Live Comments"
+          }
           shortcut={formatModShortcut("mod+shift+u", isApple)}
           active={commentsPanelOpen}
           onClick={() => runCommand("toggleCommentsPanel")}
           side="right"
         >
-          <MessageCircleIcon className="size-4" strokeWidth={1.75} />
+          <span className="relative">
+            <MessageCircleIcon className="size-4" strokeWidth={1.75} />
+            <UnreadBadge count={commentsUnreadCount} />
+          </span>
         </RailButton>
 
         <RailButton
-          label="Notifications"
+          label={
+            unreadCount > 0
+              ? `Notifications · ${unreadCount} unread`
+              : "Notifications"
+          }
           shortcut={formatModShortcut("mod+shift+n", isApple)}
           active={notificationsPanelOpen}
           onClick={() => runCommand("toggleNotifications")}
@@ -326,9 +372,7 @@ export function WorkspaceRightActivityBar({
         >
           <span className="relative">
             <BellIcon className="size-4" strokeWidth={1.75} />
-            {unreadCount > 0 ? (
-              <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-ws-accent" />
-            ) : null}
+            <UnreadBadge count={unreadCount} />
           </span>
         </RailButton>
       </div>

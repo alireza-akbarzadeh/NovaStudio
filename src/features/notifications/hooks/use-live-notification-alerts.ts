@@ -50,25 +50,13 @@ export function useLiveNotificationAlerts() {
             : undefined;
 
       if (kind === "success") {
-        toast.success(item.title, {
-          description: item.body,
-          action,
-        });
+        toast.success(item.title, { action });
       } else if (kind === "error") {
-        toast.error(item.title, {
-          description: item.body,
-          action,
-        });
+        toast.error(item.title, { action });
       } else if (kind === "warning") {
-        toast.warning(item.title, {
-          description: item.body,
-          action,
-        });
+        toast.warning(item.title, { action });
       } else {
-        toast(item.title, {
-          description: item.body,
-          action,
-        });
+        toast(item.title, { action });
       }
     }
   }, [notifications]);
