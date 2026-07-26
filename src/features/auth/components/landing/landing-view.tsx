@@ -7,6 +7,8 @@ import { PricingSection } from "@/features/billing/components/pricing-section";
 import { CursorGlow } from "./cursor-glow";
 import { LandingAi } from "./landing-ai";
 import { LandingCollab } from "./landing-collab";
+import { LandingCommunity } from "./landing-community";
+import { LandingContact } from "./landing-contact";
 import { LandingCta } from "./landing-cta";
 import { LandingFaq } from "./landing-faq";
 import { LandingFeatures } from "./landing-features";
@@ -43,8 +45,10 @@ export function LandingView() {
         <LandingCollab />
         <LandingWorkflow />
         <LandingTestimonials />
+        <LandingCommunity />
         <PricingSection />
         <LandingFaq />
+        <LandingContact />
         <LandingCta />
       </main>
       <LandingFooter />

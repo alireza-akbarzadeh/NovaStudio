@@ -9,7 +9,9 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as blog from "../blog.js";
 import type * as collab from "../collab.js";
+import type * as contact from "../contact.js";
 import type * as deploy from "../deploy.js";
 import type * as deployActions from "../deployActions.js";
 import type * as github from "../github.js";
@@ -26,6 +28,7 @@ import type * as githubPush from "../githubPush.js";
 import type * as githubPushMutations from "../githubPushMutations.js";
 import type * as githubRepos from "../githubRepos.js";
 import type * as lib_accessibleProjects from "../lib/accessibleProjects.js";
+import type * as lib_blogSeed from "../lib/blogSeed.js";
 import type * as lib_createNotification from "../lib/createNotification.js";
 import type * as lib_deploy from "../lib/deploy.js";
 import type * as lib_extensionIds from "../lib/extensionIds.js";
@@ -46,6 +49,7 @@ import type * as pushSubscriptions from "../pushSubscriptions.js";
 import type * as sharing from "../sharing.js";
 import type * as userExtensions from "../userExtensions.js";
 import type * as userPreferences from "../userPreferences.js";
+import type * as waitlist from "../waitlist.js";
 import type * as workspace from "../workspace.js";
 import type * as workspaceActions from "../workspaceActions.js";
 
@@ -57,7 +61,9 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  blog: typeof blog;
   collab: typeof collab;
+  contact: typeof contact;
   deploy: typeof deploy;
   deployActions: typeof deployActions;
   github: typeof github;
@@ -74,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   githubPushMutations: typeof githubPushMutations;
   githubRepos: typeof githubRepos;
   "lib/accessibleProjects": typeof lib_accessibleProjects;
+  "lib/blogSeed": typeof lib_blogSeed;
   "lib/createNotification": typeof lib_createNotification;
   "lib/deploy": typeof lib_deploy;
   "lib/extensionIds": typeof lib_extensionIds;
@@ -94,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   sharing: typeof sharing;
   userExtensions: typeof userExtensions;
   userPreferences: typeof userPreferences;
+  waitlist: typeof waitlist;
   workspace: typeof workspace;
   workspaceActions: typeof workspaceActions;
 }>;

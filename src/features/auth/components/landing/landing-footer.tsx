@@ -27,8 +27,10 @@ const FOOTER_COLS = [
     links: [
       { label: "AI", href: "#ai" },
       { label: "Collaboration", href: "#collab" },
-      { label: "Documentation", href: "#" },
-      { label: "Guides", href: "#" },
+      { label: "Documentation", href: "/docs" },
+      { label: "Blog", href: "/blog" },
+      { label: "Community", href: "/#community" },
+      { label: "Product tour", href: "/demo" },
     ],
   },
   {
@@ -36,8 +38,8 @@ const FOOTER_COLS = [
     links: [
       { label: "About", href: "#" },
       { label: "Careers", href: "#" },
-      { label: "Contact", href: "#" },
-      { label: "Press", href: "#" },
+      { label: "Contact", href: "/contact" },
+      { label: "Waitlist", href: "/waitlist" },
     ],
   },
   {
@@ -107,6 +109,13 @@ export function LandingFooter() {
                       <PricingLink className="text-sm text-white/60 transition-colors hover:text-white">
                         {l.label}
                       </PricingLink>
+                    ) : l.href.startsWith("/") ? (
+                      <Link
+                        href={l.href}
+                        className="text-sm text-white/60 transition-colors hover:text-white"
+                      >
+                        {l.label}
+                      </Link>
                     ) : (
                       <a
                         href={l.href}

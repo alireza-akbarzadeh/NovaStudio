@@ -363,5 +363,52 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_extension", ["userId", "extensionId"]),
+
+  contactMessages: defineTable({
+    name: v.string(),
+    email: v.string(),
+    company: v.optional(v.string()),
+    topic: v.union(
+      v.literal("General"),
+      v.literal("Sales"),
+      v.literal("Support"),
+      v.literal("Press"),
+    ),
+    message: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_created", ["createdAt"]),
+
+  waitlistSignups: defineTable({
+    email: v.string(),
+    name: v.optional(v.string()),
+    source: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  blogPosts: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    category: v.union(
+      v.literal("Engineering"),
+      v.literal("AI"),
+      v.literal("Product"),
+      v.literal("Company"),
+      v.literal("Tutorials"),
+    ),
+    author: v.string(),
+    excerpt: v.string(),
+    body: v.string(),
+    readTimeMinutes: v.number(),
+    publishedAt: v.number(),
+    gradient: v.string(),
+    featured: v.boolean(),
+    published: v.boolean(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_published_publishedAt", ["published", "publishedAt"])
+    .index("by_category_published", ["category", "published", "publishedAt"])
+    .index("by_featured_published", ["featured", "published", "publishedAt"]),
 });
 

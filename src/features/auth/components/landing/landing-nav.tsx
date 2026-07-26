@@ -70,6 +70,14 @@ export function LandingNav() {
               >
                 {n.label}
               </PricingLink>
+            ) : n.href.startsWith("/") ? (
+              <Link
+                key={n.href}
+                href={n.href}
+                className="rounded-lg px-3 py-1.5 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white"
+              >
+                {n.label}
+              </Link>
             ) : (
               <a
                 key={n.href}
@@ -141,6 +149,15 @@ export function LandingNav() {
                   >
                     {n.label}
                   </PricingLink>
+                ) : n.href.startsWith("/") ? (
+                  <Link
+                    key={n.href}
+                    href={n.href}
+                    onClick={() => setOpen(false)}
+                    className="rounded-lg px-3 py-2 text-sm text-white/70 hover:bg-white/5 hover:text-white"
+                  >
+                    {n.label}
+                  </Link>
                 ) : (
                   <a
                     key={n.href}

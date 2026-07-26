@@ -26,7 +26,16 @@ import ThemeProvider from "./theme-provider";
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 /** Public marketing / invite routes — no auth required to view. */
-const PUBLIC_PATHS = ["/", "/pricing", "/invite"];
+const PUBLIC_PATHS = [
+  "/",
+  "/pricing",
+  "/invite",
+  "/docs",
+  "/demo",
+  "/blog",
+  "/contact",
+  "/waitlist",
+];
 
 function isPublicPath(pathname: string) {
   if (pathname === "/") return true;
