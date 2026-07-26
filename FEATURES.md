@@ -55,7 +55,7 @@ These are the biggest daily-friction gaps you called out.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 14 | Inline AI edit (⌘K in editor) | `review` | Selection → rewrite → Accept / Reject. |
-| 15 | Multi-file AI apply with diffs | `todo` | Per-file diff cards, Apply all / Reject. |
+| 15 | Multi-file AI apply with diffs | `review` | Per-file diff cards, Apply all / Reject. |
 | 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
 
@@ -221,3 +221,12 @@ These are the biggest daily-friction gaps you called out.
 - **Accept** keeps the change · **Reject** / **Esc** restores the original
 - Uses `QUICK_EDIT_PROMPT` + `/api/quick-edit` (Gemini)
 - Command palette: **⌘⇧P** (or **⌘K** outside the editor)
+
+### 15. Multi-file AI apply with diffs — ready for review
+
+- Task-mode `writeFile` **queues** changes instead of writing immediately
+- **Review AI changes** panel in the AI sidebar: per-file cards with +/− counts
+- Expand a card for side-by-side Current vs Proposed Monaco diff
+- **Apply** / **Reject** per file · **Apply all** / **Reject all** for the batch
+- Code-block **Apply** also queues into the same review panel
+- Agent is told not to claim files are saved until the user applies

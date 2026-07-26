@@ -5,7 +5,7 @@ import type { AiChatMode } from "@/lib/ai/chat-mode";
 
 const writeFileTool = tool({
   description:
-    "Create or overwrite a file in the NovaStudio project workspace. Creates parent folders automatically. Always pass a concrete relative path (ask the user for the file name if unknown). Prefer this over only pasting code in chat when the user wants project changes.",
+    "Propose creating or overwriting a file in the NovaStudio project. Creates parent folders when applied. Always pass a concrete relative path. Changes are queued for the user to review (diff → Apply / Reject) — do not claim the file is saved until the user applies it. Prefer this over only pasting code in chat when the user wants project changes.",
   inputSchema: z.object({
     path: z
       .string()

@@ -101,11 +101,11 @@ export function ApplyCodeToFileButton({
         ? "Apply this code to file"
         : "Enter a file path to create or update",
       description:
-        "The file will be created if it does not exist, or updated if it already does.",
+        "This will queue a diff for review — Apply or Reject in the AI panel.",
       defaultValue: suggestPath(language, actions.activeFilePath, metaPath),
       placeholder: "src/components/Example.tsx",
       inputLabel: "File path",
-      confirmLabel: "Apply",
+      confirmLabel: "Queue for review",
     });
     if (entered == null) return;
 
@@ -120,7 +120,10 @@ export function ApplyCodeToFileButton({
       const result = await actions.applyCodeToFile(path, code);
       setState("done");
       toast.success(
-        result.created ? `Created ${result.path}` : `Updated ${result.path}`,
+        result.created
+          ? `Queued create: ${result.path}`
+          : `Queued update: ${result.path}`,
+        { description: "Review the diff, then Apply or Reject." },
       );
       window.setTimeout(() => setState("idle"), 1600);
     } catch (error) {

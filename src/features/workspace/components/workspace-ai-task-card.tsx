@@ -34,7 +34,21 @@ function toolPath(input: unknown): string | null {
   return input.path;
 }
 
-function statusMeta(state: ToolPart["state"]) {
+function statusMeta(state: ToolPart["state"], output?: unknown) {
+  const pendingReview =
+    output &&
+    typeof output === "object" &&
+    "pendingReview" in output &&
+    (output as { pendingReview?: boolean }).pendingReview === true;
+
+  if (pendingReview && state === "output-available") {
+    return {
+      label: "Queued",
+      icon: CircleDashedIcon,
+      className: "text-amber-400",
+    };
+  }
+
   switch (state) {
     case "output-available":
       return {
@@ -81,7 +95,10 @@ export function WorkspaceAiTaskCard({
 }: WorkspaceAiTaskCardProps) {
   const [retrying, setRetrying] = useState(false);
   const path = toolPath("input" in part ? part.input : undefined);
-  const status = statusMeta(part.state);
+  const status = statusMeta(
+    part.state,
+    "output" in part ? part.output : undefined,
+  );
   const StatusIcon = status.icon;
   const failed = part.state === "output-error";
   const openByDefault = defaultOpen ?? part.state !== "output-available";

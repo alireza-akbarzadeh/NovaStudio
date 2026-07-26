@@ -73,10 +73,13 @@ export function ActivityDiffView({
     setCurrentFilePath,
   ]);
 
+  const historical = snapshot?.historicalContent ?? snapshot?.afterContent ?? "";
+  const current = snapshot?.currentContent ?? "";
+
   const { added, removed } = useMemo(() => {
     if (!snapshot) return { added: 0, removed: 0 };
-    return countLineDiffStats(snapshot.beforeContent, snapshot.afterContent);
-  }, [snapshot]);
+    return countLineDiffStats(historical, current);
+  }, [snapshot, historical, current]);
 
   if (snapshot === undefined) {
     return (
@@ -95,14 +98,15 @@ export function ActivityDiffView({
           Timeline snapshot unavailable
         </p>
         <p className="max-w-sm text-[12px] text-ws-text-muted">
-          This activity has no saved before/after content. Newer edits will
-          include a diff you can reopen anytime.
+          This activity has no saved file snapshot. Newer edits will include a
+          version you can compare against the current file.
         </p>
       </div>
     );
   }
 
   const filePath = snapshot.path;
+  const unchanged = snapshot.unchangedSinceThen ?? historical === current;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -115,7 +119,9 @@ export function ActivityDiffView({
             {fileNameFromPath(filePath)}
           </p>
           <p className="truncate text-[10px] text-ws-text-muted">
-            {snapshot.title} · {snapshot.time}
+            {unchanged
+              ? `No changes since ${snapshot.time}`
+              : `${snapshot.title} · then (${snapshot.time}) vs now`}
           </p>
         </div>
 
@@ -142,18 +148,19 @@ export function ActivityDiffView({
 
       <div className="flex h-7 shrink-0 items-center border-b border-ws-border-subtle bg-ws-panel/60 text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
         <div className="flex h-full min-w-0 flex-1 items-center border-r border-ws-border-subtle px-3">
-          Before · {snapshot.actorName}
+          Then · {snapshot.time}
+          {snapshot.actorName ? ` · ${snapshot.actorName}` : ""}
         </div>
         <div className="flex h-full min-w-0 flex-1 items-center px-3">
-          After · {snapshot.time}
+          Current
         </div>
       </div>
 
       <div className="min-h-0 flex-1">
         <WorkspaceDiffEditor
           filePath={filePath}
-          original={snapshot.beforeContent}
-          modified={snapshot.afterContent}
+          original={historical}
+          modified={current}
         />
       </div>
     </div>

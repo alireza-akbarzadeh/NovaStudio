@@ -179,7 +179,10 @@ export const listProjectActivity = query({
   },
 });
 
-/** Load a timeline snapshot for the activity diff view. */
+/**
+ * Timeline diff: file as it was at this activity vs the live file now.
+ * Historical side uses the snapshot's afterContent (state right after that save).
+ */
 export const getActivityDiff = query({
   args: {
     activityId: v.id("projectActivity"),
@@ -197,17 +200,31 @@ export const getActivityDiff = query({
 
     if (!snapshot) return null;
 
+    const liveFile = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project_path", (q) =>
+        q.eq("projectId", activity.projectId).eq("path", snapshot.path),
+      )
+      .unique();
+
+    const historicalContent = snapshot.afterContent;
+    const currentContent = liveFile?.content ?? "";
+
     return {
       id: activity._id,
       projectId: activity.projectId,
       path: snapshot.path,
-      beforeContent: snapshot.beforeContent,
-      afterContent: snapshot.afterContent,
+      historicalContent,
+      currentContent,
+      unchangedSinceThen: historicalContent === currentContent,
       title: activity.title,
       actorName: activity.actorName ?? "Someone",
       actorColor: activity.actorColor ?? colorForUserId(activity.actorUserId),
       time: formatTimelineTime(activity.createdAt),
       createdAt: activity.createdAt,
+      /** Kept for older clients / debugging the original save delta. */
+      beforeContent: snapshot.beforeContent,
+      afterContent: snapshot.afterContent,
     };
   },
 });

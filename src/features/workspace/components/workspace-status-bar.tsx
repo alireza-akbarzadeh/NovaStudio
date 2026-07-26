@@ -5,18 +5,25 @@ import {
   CircleXIcon,
   GitBranchIcon,
   Loader2Icon,
+  LockIcon,
+  LockOpenIcon,
   PackageIcon,
   ZapIcon,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
+import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { WorkspaceBranchPicker } from "@/features/workspace/components/workspace-branch-picker";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
+import { getActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
 import { getLanguageLabel } from "@/features/workspace/lib/editor-languages";
+import { useLockedFilesStore } from "@/features/workspace/store/locked-files-store";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -30,25 +37,34 @@ function StatusChip({
   active,
   onClick,
   title,
+  disabled,
 }: {
   children: ReactNode;
   className?: string;
   active?: boolean;
   onClick?: () => void;
   title?: string;
+  disabled?: boolean;
 }) {
   const classes = cn(
     "inline-flex h-6 max-w-55 items-center gap-1.5 truncate rounded-full bg-ws-chip px-2.5 text-[11px] transition-colors",
     active
       ? "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/30"
       : "text-ws-text-muted",
-    onClick && !active && "hover:bg-ws-hover hover:text-ws-text",
+    onClick && !active && !disabled && "hover:bg-ws-hover hover:text-ws-text",
+    disabled && "cursor-not-allowed opacity-60",
     className,
   );
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} title={title} className={classes}>
+      <button
+        type="button"
+        onClick={onClick}
+        title={title}
+        disabled={disabled}
+        className={classes}
+      >
         {children}
       </button>
     );
@@ -78,6 +94,7 @@ function webContainerLabel(status: string | undefined): string {
 
 export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const project = useProject({ projectId });
+  const access = useProjectAccess(projectId);
   const changedFiles = useChangedFiles(projectId);
   const webcontainer = useOptionalWebContainer();
   const previewServer = useOptionalPreviewServer();
@@ -89,7 +106,19 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const setBottomPanelTab = useWorkspaceStore((s) => s.setBottomPanelTab);
+  const tabSize = useEditorSettingsStore((s) => s.tabSize);
+  const hydrateLocks = useLockedFilesStore((s) => s.hydrate);
+  const toggleFileLock = useLockedFilesStore((s) => s.toggleFileLock);
+  const isFileLocked = useLockedFilesStore((s) =>
+    currentFilePath
+      ? (s.byProject[projectId]?.includes(currentFilePath) ?? false)
+      : false,
+  );
   const { errorCount, warningCount } = useMonacoProblems();
+
+  useEffect(() => {
+    hydrateLocks();
+  }, [hydrateLocks]);
 
   const changeCount = changedFiles?.length ?? 0;
   const branch = project?.githubBranch ?? "main";
@@ -101,6 +130,15 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
   const wcBusy =
     wcStatus === "booting" || wcStatus === "mounting" || wcStatus === "idle";
   const wcError = wcStatus === "error";
+  const permissionReadOnly = access ? !access.canEdit : false;
+  const fileReadOnly = permissionReadOnly || isFileLocked;
+
+  const onToggleLock = () => {
+    if (!currentFilePath || permissionReadOnly) return;
+    const locked = toggleFileLock(projectId, currentFilePath);
+    const ed = getActiveMonacoEditor(currentFilePath);
+    ed?.updateOptions({ readOnly: locked });
+  };
 
   return (
     <footer className="ws-chrome flex h-8 shrink-0 items-center justify-between gap-2 bg-ws-bg px-3 pb-1">
@@ -112,15 +150,13 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
               <span className="truncate">{branch}</span>
             </StatusChip>
           ) : (
-            <div className="[&_button]:h-6 [&_button]:rounded-full [&_button]:bg-ws-chip [&_button]:px-2.5 [&_button]:text-[11px]">
-              <WorkspaceBranchPicker
-                projectId={projectId}
-                branch={branch}
-                changeCount={changeCount}
-                open={branchPickerOpen}
-                onOpenChange={setBranchPickerOpen}
-              />
-            </div>
+            <WorkspaceBranchPicker
+              projectId={projectId}
+              branch={branch}
+              changeCount={changeCount}
+              open={branchPickerOpen}
+              onOpenChange={setBranchPickerOpen}
+            />
           )
         ) : (
           <StatusChip onClick={openGitInitDialog} title="Initialize Git repository">
@@ -200,11 +236,35 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
 
       <div className="flex items-center gap-1.5">
         {currentFilePath ? (
-          <StatusChip className="hidden sm:inline-flex" title={currentFilePath}>
-            <span className="truncate font-mono text-[10px]">
-              {currentFilePath}
-            </span>
-          </StatusChip>
+          <>
+            <StatusChip className="hidden lg:inline-flex" title={currentFilePath}>
+              <span className="truncate font-mono text-[10px]">
+                {currentFilePath}
+              </span>
+            </StatusChip>
+            <StatusChip title="Line ending">LF</StatusChip>
+            <StatusChip title="Encoding">UTF-8</StatusChip>
+            <StatusChip title="Indentation">{tabSize} spaces</StatusChip>
+            <StatusChip
+              title={
+                permissionReadOnly
+                  ? "Read-only — you don’t have edit access"
+                  : fileReadOnly
+                    ? "File locked — click to make writable"
+                    : "File writable — click to lock"
+              }
+              onClick={onToggleLock}
+              disabled={permissionReadOnly}
+              active={fileReadOnly}
+              className={cn("px-2", fileReadOnly && "text-ws-text")}
+            >
+              {fileReadOnly ? (
+                <LockIcon className="size-3.5" strokeWidth={1.75} />
+              ) : (
+                <LockOpenIcon className="size-3.5" strokeWidth={1.75} />
+              )}
+            </StatusChip>
+          </>
         ) : null}
         <StatusChip className="text-ws-text-secondary">{language}</StatusChip>
       </div>

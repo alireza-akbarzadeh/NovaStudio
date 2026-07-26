@@ -12,6 +12,7 @@ import {
   useCallback,
   useMemo,
   useState,
+  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
@@ -129,7 +130,7 @@ function ChatMessageBody({
         <button
           key={`${match.index}-${path}`}
           type="button"
-          className="inline rounded-sm bg-ws-accent/15 px-1 py-0.5 font-medium text-ws-accent hover:bg-ws-accent/25"
+          className="inline font-medium text-sky-400 underline decoration-sky-400/50 underline-offset-2 hover:text-sky-300 hover:decoration-sky-300"
           onClick={() => onOpenFile(path)}
           title={`Open ${path}`}
         >
@@ -153,60 +154,60 @@ function ChatMessageBody({
   );
 }
 
+type MentionFileOption = {
+  path: string;
+  name: string;
+  value: string;
+};
+
+function filterMentionFiles(
+  files: ReturnType<typeof useProjectFiles>,
+  query: string,
+): MentionFileOption[] {
+  const all = (files ?? [])
+    .filter((file) => file.kind === "file")
+    .map((file) => ({
+      path: file.path,
+      name: file.name,
+      value: `${file.path} ${file.name}`,
+    }));
+  const q = query.trim().toLowerCase();
+  if (!q) return all.slice(0, 40);
+  return all
+    .filter(
+      (file) =>
+        file.path.toLowerCase().includes(q) ||
+        file.name.toLowerCase().includes(q),
+    )
+    .slice(0, 40);
+}
+
 function ChatMentionPicker({
-  projectId,
   open,
-  onClose,
   query = "",
+  fileOptions,
+  selectedValue,
+  onSelectedValueChange,
+  onSelect,
+  isLoading,
 }: {
-  projectId: string;
   open: boolean;
-  onClose: () => void;
   query?: string;
+  fileOptions: MentionFileOption[];
+  selectedValue: string;
+  onSelectedValueChange: (value: string) => void;
+  onSelect: (path: string) => void;
+  isLoading: boolean;
 }) {
-  const files = useProjectFiles(projectId);
-  const controller = usePromptInputController();
-
-  const fileOptions = useMemo(() => {
-    const all = (files ?? [])
-      .filter((file) => file.kind === "file")
-      .map((file) => ({
-        path: file.path,
-        name: file.name,
-      }));
-    const q = query.trim().toLowerCase();
-    if (!q) return all.slice(0, 40);
-    return all
-      .filter(
-        (file) =>
-          file.path.toLowerCase().includes(q) ||
-          file.name.toLowerCase().includes(q),
-      )
-      .slice(0, 40);
-  }, [files, query]);
-
-  const insertMention = useCallback(
-    (path: string) => {
-      const current = controller.textInput.value;
-      const atIndex = current.lastIndexOf("@");
-      const prefix = atIndex >= 0 ? current.slice(0, atIndex) : current;
-      const needsSpace =
-        prefix.length > 0 && !prefix.endsWith(" ") && !prefix.endsWith("\n");
-      controller.textInput.setInput(
-        `${prefix}${needsSpace && atIndex < 0 ? " " : ""}@${path} `,
-      );
-      onClose();
-    },
-    [controller.textInput, onClose],
-  );
-
   if (!open) return null;
-
-  const isLoading = files === undefined;
 
   return (
     <div className="absolute right-2 bottom-full left-2 z-50 mb-1 max-h-56 overflow-hidden rounded-lg border border-ws-border bg-ws-panel shadow-lg">
-      <PromptInputCommand>
+      <PromptInputCommand
+        shouldFilter={false}
+        value={selectedValue}
+        onValueChange={onSelectedValueChange}
+      >
         <PromptInputCommandInput
           placeholder="Mention a file…"
           value={query}
@@ -220,8 +221,8 @@ function ChatMentionPicker({
             {fileOptions.map((file) => (
               <PromptInputCommandItem
                 key={file.path}
-                value={`${file.path} ${file.name}`}
-                onSelect={() => insertMention(file.path)}
+                value={file.value}
+                onSelect={() => onSelect(file.path)}
               >
                 <FileTextIcon className="size-3.5 shrink-0 text-ws-accent-soft" />
                 <span className="truncate">{file.path}</span>
@@ -246,6 +247,7 @@ function ChatComposer({
   const controller = usePromptInputController();
   const files = useProjectFiles(projectId);
   const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
 
   const projectFilePaths = useMemo(
     () =>
@@ -257,18 +259,86 @@ function ChatComposer({
     [files],
   );
 
-  const handleTextChange = useCallback(
-    (value: string) => {
-      controller.textInput.setInput(value);
-      setMentionOpen(/@[\w./-]*$/.test(value) || value.endsWith("@"));
-    },
-    [controller.textInput],
-  );
-
   const mentionQuery = useMemo(() => {
     const match = controller.textInput.value.match(/@([\w./-]*)$/);
     return match?.[1] ?? "";
   }, [controller.textInput.value]);
+
+  const fileOptions = useMemo(
+    () => filterMentionFiles(files, mentionQuery),
+    [files, mentionQuery],
+  );
+
+  const safeMentionIndex =
+    fileOptions.length === 0
+      ? 0
+      : Math.min(mentionIndex, fileOptions.length - 1);
+  const selectedValue = fileOptions[safeMentionIndex]?.value ?? "";
+
+  const insertMention = useCallback(
+    (path: string) => {
+      const current = controller.textInput.value;
+      const atIndex = current.lastIndexOf("@");
+      const prefix = atIndex >= 0 ? current.slice(0, atIndex) : current;
+      const needsSpace =
+        prefix.length > 0 && !prefix.endsWith(" ") && !prefix.endsWith("\n");
+      controller.textInput.setInput(
+        `${prefix}${needsSpace && atIndex < 0 ? " " : ""}@${path} `,
+      );
+      setMentionOpen(false);
+      setMentionIndex(0);
+    },
+    [controller.textInput],
+  );
+
+  const handleTextChange = useCallback(
+    (value: string) => {
+      controller.textInput.setInput(value);
+      const open = /@[\w./-]*$/.test(value) || value.endsWith("@");
+      setMentionOpen(open);
+      setMentionIndex(0);
+    },
+    [controller.textInput],
+  );
+
+  const handleMentionKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!mentionOpen) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMentionOpen(false);
+        return;
+      }
+
+      if (fileOptions.length === 0) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionIndex((index) => (index + 1) % fileOptions.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionIndex(
+          (index) => (index - 1 + fileOptions.length) % fileOptions.length,
+        );
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        const selected =
+          fileOptions[
+            fileOptions.length === 0
+              ? 0
+              : Math.min(mentionIndex, fileOptions.length - 1)
+          ] ?? fileOptions[0];
+        if (!selected) return;
+        event.preventDefault();
+        insertMention(selected.path);
+      }
+    },
+    [fileOptions, insertMention, mentionIndex, mentionOpen],
+  );
 
   const submitWithMentions = useCallback(
     async (message: PromptInputMessage) => {
@@ -289,15 +359,22 @@ function ChatComposer({
       onSubmit={submitWithMentions}
     >
       <ChatMentionPicker
-        projectId={projectId}
         open={mentionOpen}
-        onClose={() => setMentionOpen(false)}
         query={mentionQuery}
+        fileOptions={fileOptions}
+        selectedValue={selectedValue}
+        onSelectedValueChange={(value) => {
+          const index = fileOptions.findIndex((file) => file.value === value);
+          if (index >= 0) setMentionIndex(index);
+        }}
+        onSelect={insertMention}
+        isLoading={files === undefined}
       />
       <PromptInputBody>
         <PromptInputTextarea
           value={controller.textInput.value}
           onChange={(event) => handleTextChange(event.target.value)}
+          onKeyDown={handleMentionKeyDown}
           placeholder="Message the team… (@ to mention a file)"
           className="min-h-12 text-[12px] text-ws-text placeholder:text-ws-text-muted"
           disabled={sending}
@@ -317,6 +394,7 @@ function ChatComposer({
                 : `${current}${current && !current.endsWith(" ") ? " " : ""}@`;
               controller.textInput.setInput(next);
               setMentionOpen(true);
+              setMentionIndex(0);
             }}
           >
             <AtSignIcon className="size-3.5" />

@@ -49,6 +49,7 @@ import {
 import type { DefinitionTarget } from "@/features/workspace/lib/monaco-go-to-definition";
 import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { useLockedFilesStore } from "@/features/workspace/store/locked-files-store";
 import { cn } from "@/lib/utils";
 
 type EditorPanelTab = "code" | "preview";
@@ -459,7 +460,16 @@ export function FileEditorView({
   const access = useProjectAccess(projectId);
   const setCurrentFilePath = useWorkspaceStore((s) => s.setCurrentFilePath);
   const setBreadcrumb = useWorkspaceStore((s) => s.setBreadcrumb);
-  const readOnly = access ? !access.canEdit : false;
+  const isLocked = useLockedFilesStore((s) =>
+    filePath ? (s.byProject[projectId]?.includes(filePath) ?? false) : false,
+  );
+  const hydrateLocks = useLockedFilesStore((s) => s.hydrate);
+  const permissionReadOnly = access ? !access.canEdit : false;
+  const readOnly = permissionReadOnly || isLocked;
+
+  useEffect(() => {
+    hydrateLocks();
+  }, [hydrateLocks]);
 
   useFileLineComments({
     projectId,

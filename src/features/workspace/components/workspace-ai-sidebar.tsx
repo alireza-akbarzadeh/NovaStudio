@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import {
   ArrowLeftIcon,
   ListTodoIcon,
@@ -48,10 +48,11 @@ import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
 import { WorkspaceAiPlanCard } from "@/features/workspace/components/workspace-ai-plan-card";
 import { WorkspaceAiTaskCard } from "@/features/workspace/components/workspace-ai-task-card";
+import { WorkspaceAiPendingApplies } from "@/features/workspace/components/workspace-ai-pending-applies";
+import { useAiPendingAppliesStore } from "@/features/workspace/store/ai-pending-applies-store";
 import { WorkspaceMessageResponse } from "@/features/workspace/components/workspace-message-response";
 import { AiCodeActionsProvider } from "@/features/workspace/context/ai-code-actions-context";
 import { runCommand } from "@/features/workspace/commands/registry";
-import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useProjectFile,
@@ -65,7 +66,6 @@ import {
   saveAiChatSessions,
   type AiChatSession,
 } from "@/features/workspace/lib/ai-chat-sessions";
-import { saveFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import {
   DEFAULT_AI_CHAT_MODE,
@@ -171,17 +171,14 @@ function WorkspaceAiChatSession({
   workspaceContextRef.current = workspaceContext;
 
   const convex = useConvex();
-  const writeFileAtPath = useMutation(api.projectFiles.writeFileAtPath);
-  const { openTab } = useEditorTabs(projectId);
 
-  const writeFileRef = useRef(writeFileAtPath);
-  writeFileRef.current = writeFileAtPath;
-  const openTabRef = useRef(openTab);
-  openTabRef.current = openTab;
   const convexRef = useRef(convex);
   convexRef.current = convex;
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
+  const queuePendingApply = useAiPendingAppliesStore((s) => s.queue);
+  const queuePendingApplyRef = useRef(queuePendingApply);
+  queuePendingApplyRef.current = queuePendingApply;
 
   const addToolOutputRef = useRef<
     | ((args: {
@@ -223,22 +220,49 @@ function WorkspaceAiChatSession({
             });
             return;
           }
-          const result = await writeFileRef.current({
+          if (!typed.path?.trim()) {
+            add({
+              tool: "writeFile",
+              toolCallId,
+              state: "output-error",
+              errorText: "writeFile requires a path",
+            });
+            return;
+          }
+
+          const existing = await convexRef.current.query(
+            api.projectFiles.getByPath,
+            { projectId: pid, path: typed.path },
+          );
+          const previousContent =
+            existing?.kind === "file" ? (existing.content ?? "") : "";
+          const isNew = !existing || existing.kind !== "file";
+
+          queuePendingApplyRef.current({
             projectId: pid,
             path: typed.path,
-            content: typed.content,
+            previousContent,
+            nextContent: typed.content,
+            isNew,
+            toolCallId,
           });
-          saveFileContentDraft(pid, result.path, typed.content);
+
           add({
             tool: "writeFile",
             toolCallId,
-            output: result,
+            output: {
+              pendingReview: true,
+              path: typed.path,
+              created: isNew,
+              message:
+                "Queued for user review. Wait for Apply before treating the file as saved.",
+            },
           });
-          openTabRef.current({ kind: "file", path: result.path });
-          toast.success(
-            result.created
-              ? `Created ${result.path}`
-              : `Updated ${result.path}`,
+          toast.message(
+            isNew
+              ? `Queued create: ${typed.path}`
+              : `Queued update: ${typed.path}`,
+            { description: "Review the diff, then Apply or Reject." },
           );
           return;
         }
@@ -442,16 +466,25 @@ function WorkspaceAiChatSession({
 
   const applyCodeToFile = useCallback(
     async (path: string, content: string) => {
-      const result = await writeFileAtPath({
+      const existing = await convex.query(api.projectFiles.getByPath, {
         projectId: projectId as Id<"projects">,
         path,
-        content,
       });
-      saveFileContentDraft(projectId, result.path, content);
-      openTab({ kind: "file", path: result.path });
-      return result;
+      const previousContent =
+        existing?.kind === "file" ? (existing.content ?? "") : "";
+      const isNew = !existing || existing.kind !== "file";
+      const toolCallId = `manual-${Date.now()}-${path}`;
+      queuePendingApply({
+        projectId,
+        path,
+        previousContent,
+        nextContent: content,
+        isNew,
+        toolCallId,
+      });
+      return { path, created: isNew };
     },
-    [openTab, projectId, writeFileAtPath],
+    [convex, projectId, queuePendingApply],
   );
 
   const codeActions = useMemo(
@@ -720,6 +753,8 @@ function WorkspaceAiChatSession({
         </ConversationContent>
         <ConversationScrollButton className="border-ws-border bg-ws-hover text-ws-text hover:bg-ws-hover-deep" />
       </Conversation>
+
+      <WorkspaceAiPendingApplies projectId={projectId} />
 
       <div className="shrink-0 space-y-2 border-t border-ws-border-subtle p-3">
         <Suggestions className="gap-1.5 px-0.5">

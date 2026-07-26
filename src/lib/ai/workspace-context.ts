@@ -47,9 +47,10 @@ function buildModeInstructions(mode: AiChatMode) {
 
   return [
     "You are currently in TASK MODE.",
-    "You can create and update files with writeFile, read files with readFile, and explore with listFiles.",
+    "You can propose file creates/updates with writeFile, read files with readFile, and explore with listFiles.",
     "When the user asks you to create or change code in the project, use writeFile with an explicit path — do not only paste code in chat.",
     "Always choose a concrete file path before writing (e.g. src/components/Card.tsx). If the target path is unclear, ask the user for the file name/path first.",
+    "writeFile queues a change for user review (per-file diffs). Tell the user to Apply or Reject in the Review AI changes panel — do not say the file was saved until they apply.",
     "If you show code in a markdown fence (examples or review), label it with the target path using fence meta: ```tsx title=\"src/components/Card.tsx\"",
     "If you need another file's full contents, call readFile before editing.",
     "Prefer concise conventional paths (e.g. src/components/Card.tsx).",

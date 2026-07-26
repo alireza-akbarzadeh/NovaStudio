@@ -117,9 +117,9 @@ export function WorkspaceActivityPanel({
       });
       return;
     }
+    // No timeline snapshot — open the live file (not the working-tree git diff).
     if (item.type === "updated" && item.detail) {
-      // Older events without a snapshot — open working-tree diff as fallback.
-      openTab({ kind: "diff", path: item.detail });
+      openTab({ kind: "file", path: item.detail });
     }
   };
 
@@ -199,7 +199,7 @@ export function WorkspaceActivityPanel({
                       {item.detail ? (
                         <p className="mt-0.5 truncate text-[10px] text-ws-text-muted">
                           {item.detail}
-                          {item.hasDiff ? " · view diff" : ""}
+                          {item.hasDiff ? " · vs current" : ""}
                         </p>
                       ) : null}
                     </button>
