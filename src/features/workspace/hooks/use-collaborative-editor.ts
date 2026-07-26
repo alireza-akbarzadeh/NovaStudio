@@ -98,18 +98,15 @@ export function useCollaborativeEditor({
   const [ready, setReady] = useState(false);
   const [collabReady, setCollabReady] = useState(false);
   /**
-   * Once Yjs has owned this file's Monaco model, never hand control back to
-   * React `value` — @monaco-editor/react full-replaces the model on every
-   * controlled update, which wipes keystrokes during reconnect / status blips.
+   * After the first successful collab ready for this file, keep Monaco
+   * uncontrolled across Liveblocks reconnects. Switching back to a controlled
+   * React `value` makes monaco-react full-replace the model and drops typing.
    */
-  const [docOwnedByCollab, setDocOwnedByCollab] = useState(false);
+  const [keepUncontrolled, setKeepUncontrolled] = useState(false);
   const [value, setValue] = useState(initialContent);
 
-  // New file identity → allow a fresh controlled seed until Yjs binds again.
   useEffect(() => {
-    setDocOwnedByCollab(false);
-    setReady(false);
-    setCollabReady(false);
+    setKeepUncontrolled(false);
   }, [filePath, projectId]);
 
   useEffect(() => {
@@ -207,13 +204,20 @@ export function useCollaborativeEditor({
         markFileDirty(projectId, filePath, false);
 
         // Keep Liveblocks room aligned with what we just persisted.
+        // Never full-replace while the user is typing — delete+insert of the
+        // whole doc makes the caret jump to line 1.
         const ytext = ytextRef.current;
         const ydoc = ydocRef.current;
-        if (ytext && ydoc && ytext.toString() !== content) {
+        const ed = editorRef.current;
+        if (
+          ytext &&
+          ydoc &&
+          ytext.toString() !== content &&
+          !ed?.hasTextFocus()
+        ) {
           applyingExternalRef.current = true;
           try {
             replaceYText(ydoc, ytext, content);
-            const ed = editorRef.current;
             const model = ed?.getModel();
             if (ed && model && model.getValue() !== content) {
               replaceMonacoContentPreservingCursor(ed, model, content);
@@ -326,16 +330,32 @@ export function useCollaborativeEditor({
     const awareness = awarenessRef.current;
     const model = ed.getModel();
     if (!ytext || !awareness || !model) return;
+    // Already bound to this model — avoid destroy/recreate churn mid-typing.
+    if (
+      bindingRef.current &&
+      bindingRef.current.monacoModel === model &&
+      bindingRef.current.ytext === ytext
+    ) {
+      setCollabReady(true);
+      setKeepUncontrolled(true);
+      return;
+    }
 
-    bindingRef.current?.destroy();
-    bindingRef.current = new MonacoBinding(
-      ytext,
-      model,
-      new Set([ed]),
-      awareness,
-    );
+    // Suppress onChange/onText echoes from the binding's initial sync.
+    applyingExternalRef.current = true;
+    try {
+      bindingRef.current?.destroy();
+      bindingRef.current = new MonacoBinding(
+        ytext,
+        model,
+        new Set([ed]),
+        awareness,
+      );
+    } finally {
+      applyingExternalRef.current = false;
+    }
     setCollabReady(true);
-    setDocOwnedByCollab(true);
+    setKeepUncontrolled(true);
   }, []);
 
   /**
@@ -351,9 +371,27 @@ export function useCollaborativeEditor({
       if (applyingExternalRef.current) return;
       const asSaved = options?.asSaved !== false;
 
+      const edFocused = editorRef.current;
       const currentY = ytextRef.current?.toString() ?? "";
       const currentEditor =
-        editorRef.current?.getModel()?.getValue() ?? value;
+        edFocused?.getModel()?.getValue() ?? value;
+
+      // Full-doc replace while typing always risks caret → (1,1). If the
+      // focused buffer already matches (or is ahead), only sync metadata.
+      if (
+        edFocused?.hasTextFocus() &&
+        currentEditor &&
+        currentEditor !== next
+      ) {
+        // Intentional AI/server write stamped into the draft — still apply.
+        const draft = loadFileContentDraft(projectId, filePath);
+        if (!(draft && draft.content === next && asSaved)) {
+          saveFileContentDraft(projectId, filePath, currentEditor);
+          publishLocal(currentEditor);
+          return;
+        }
+      }
+
       if (currentY === next || currentEditor === next) {
         saveFileContentDraft(projectId, filePath, next);
         if (asSaved) {
@@ -420,12 +458,15 @@ export function useCollaborativeEditor({
 
   // ── Liveblocks room lifecycle ────────────────────────────────────────
   //
-  // Important: do NOT null `editorRef` here. Monaco's onMount fires once;
-  // clearing the ref on every status blip permanently orphans the Yjs bind
-  // (typing stays local, refresh loses the file). Only tear down on cleanup.
+  // Important:
+  // - Do NOT null `editorRef` (Monaco onMount is once-only).
+  // - Treat "reconnecting" as still usable — tearing down on that blip
+  //   destroys the Yjs bind mid-keystroke and is what made typing feel worse.
+  const roomUsable = status === "connected" || status === "reconnecting";
+  const roomId = room.id;
 
   useEffect(() => {
-    if (status !== "connected") return;
+    if (!roomUsable) return;
 
     seededRef.current = false;
     acceptRemoteEditsRef.current = false;
@@ -558,6 +599,12 @@ export function useCollaborativeEditor({
       // Empty Liveblocks pulse must never blank the UI or Convex after AI writes.
       if (!text && known) {
         if (!acceptRemoteEditsRef.current) return;
+        // While typing, never full-replace — that jumps the caret to line 1.
+        if (editorRef.current?.hasTextFocus()) {
+          const live = editorRef.current.getModel()?.getValue() || known;
+          publishLocal(live);
+          return;
+        }
         const now = Date.now();
         // Avoid a tight reseed loop if Y.Text keeps bouncing empty.
         if (now - lastEmptyReseedAtRef.current < EMPTY_RESEED_COOLDOWN_MS) {
@@ -636,11 +683,11 @@ export function useCollaborativeEditor({
       awarenessRef.current = null;
       setReady(false);
       setCollabReady(false);
-      // Keep editorRef + docOwnedByCollab: Monaco stays mounted/uncontrolled
-      // across Liveblocks status transitions so typing is not wiped.
+      // Keep editorRef + keepUncontrolled: Monaco stays mounted/uncontrolled
+      // across brief Liveblocks gaps so typing is not wiped.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room/file identity
-  }, [filePath, projectId, room, status]);
+  }, [filePath, projectId, roomId, roomUsable]);
 
   // Monaco onMount is once-only; if Liveblocks becomes ready after mount
   // (the common case), finishSetup may have missed editorRef — bind here.
@@ -737,10 +784,10 @@ export function useCollaborativeEditor({
 
   // ── View model ───────────────────────────────────────────────────────
 
-  const reconnecting = status === "disconnected";
+  const reconnecting = status === "disconnected" || status === "reconnecting";
   const connecting =
     status === "connecting" || status === "initial" || !ready;
-  const yjsBound = collabReady && ready && !reconnecting;
+  const yjsBound = Boolean(bindingRef.current) && collabReady && ready;
 
   // Prefer live buffer, then durable draft, then Convex — never let an empty
   // pulse hide in-progress edits (especially on newly created files).
@@ -751,6 +798,8 @@ export function useCollaborativeEditor({
     ? undefined
     : (next: string) => {
         if (!next && knownContent()) return;
+        // While Yjs owns the model (or bind is syncing), ignore React onChange.
+        if (bindingRef.current || applyingExternalRef.current) return;
         publishLocal(next);
         saveFileContentDraft(projectId, filePath, next);
         scheduleServerSave(next);
@@ -759,6 +808,9 @@ export function useCollaborativeEditor({
   const onCreateEditor = useCallback(
     (ed: editor.IStandaloneCodeEditor) => {
       editorRef.current = ed;
+      // Freeze uncontrolled mode immediately so later publishLocal/React
+      // state updates cannot full-replace the model (caret → line 1).
+      setKeepUncontrolled(true);
       if (ready) {
         bindMonaco(ed);
       }
@@ -770,14 +822,12 @@ export function useCollaborativeEditor({
     displayValue,
     filePath,
     readOnly,
-    // Uncontrolled as soon as collab is ready (and forever after first bind).
-    // Prevents monaco-react controlled replaces from fighting Yjs/Liveblocks.
-    collaborative: docOwnedByCollab || ready,
+    collaborative: keepUncontrolled || ready,
     connecting,
     reconnecting,
     definitionFiles,
     onGoToDefinition,
-    // While unbound, persist via React onChange. While bound, Yjs owns saves.
+    // Persist via onChange only when unbound (connecting / reconnect gap).
     onChange: yjsBound ? undefined : fallbackOnChange,
     onCreateEditor,
   };

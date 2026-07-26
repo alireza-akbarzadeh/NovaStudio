@@ -349,23 +349,17 @@ export function CodeEditor({
           path={modelPath}
           language={language}
           theme={theme}
-          // When collaborative, never pass controlled `value` — monaco-react
-          // full-replaces the model on each update and fights Yjs/Liveblocks.
+          // Collab: uncontrolled — monaco-react controlled updates full-replace
+          // the model and fight Yjs. onChange may still be set for reconnect
+          // draft persistence without owning the buffer.
           value={collaborative ? undefined : value}
           onChange={
-            collaborative
-              ? onChange
-                ? (next) => {
-                    // Uncontrolled + onChange: persist during reconnect without
-                    // letting React own the buffer.
-                    if (next == null) return;
-                    onChange(next);
-                  }
-                : undefined
-              : (next) => {
+            onChange
+              ? (next) => {
                   if (next == null) return;
-                  onChange?.(next);
+                  onChange(next);
                 }
+              : undefined
           }
           options={options}
           beforeMount={(monaco) => {

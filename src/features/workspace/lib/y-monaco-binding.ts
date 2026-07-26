@@ -188,6 +188,31 @@ export class MonacoBinding {
 
     this._ytextObserver = (event) => {
       this.mux(() => {
+        // Full-doc replace (delete-all + insert) invalidates Y relative
+        // positions and y-monaco restores selection to (1,1). Capture
+        // absolute offsets before applying so we can put the caret back.
+        const absBefore = new Map<
+          monaco.editor.IStandaloneCodeEditor,
+          { anchor: number; head: number; dir: monaco.SelectionDirection }
+        >();
+        const startsWithDeleteAll =
+          event.delta.length > 0 &&
+          event.delta[0]?.delete !== undefined &&
+          event.delta[0].retain === undefined &&
+          event.delta[0].insert === undefined;
+        if (startsWithDeleteAll) {
+          editors.forEach((editor) => {
+            if (editor.getModel() !== monacoModel) return;
+            const sel = editor.getSelection();
+            if (!sel) return;
+            absBefore.set(editor, {
+              anchor: monacoModel.getOffsetAt(sel.getStartPosition()),
+              head: monacoModel.getOffsetAt(sel.getEndPosition()),
+              dir: sel.getDirection(),
+            });
+          });
+        }
+
         let index = 0;
         event.delta.forEach((op) => {
           if (op.retain !== undefined) {
@@ -221,15 +246,34 @@ export class MonacoBinding {
             unexpectedCase();
           }
         });
+
+        const docLen = monacoModel.getValueLength();
         this._savedSelections.forEach((rsel, editor) => {
-          const sel = createMonacoSelectionFromRelativeSelection(
+          const relSel = createMonacoSelectionFromRelativeSelection(
             editor,
             ytext,
             rsel,
             this.doc,
           );
-          if (sel !== null) {
-            editor.setSelection(sel);
+          const abs = absBefore.get(editor);
+          if (abs && startsWithDeleteAll) {
+            const anchor = Math.min(abs.anchor, docLen);
+            const head = Math.min(abs.head, docLen);
+            const a = monacoModel.getPositionAt(anchor);
+            const h = monacoModel.getPositionAt(head);
+            editor.setSelection(
+              monaco.Selection.createWithDirection(
+                a.lineNumber,
+                a.column,
+                h.lineNumber,
+                h.column,
+                abs.dir,
+              ),
+            );
+            return;
+          }
+          if (relSel !== null) {
+            editor.setSelection(relSel);
           }
         });
       });
@@ -238,27 +282,49 @@ export class MonacoBinding {
     ytext.observe(this._ytextObserver);
 
     {
-      // Initial sync. Prefer Monaco when it is ahead of Y (empty room or
-      // typed-ahead during seed/bind). lib0 mutex skips nested work, so
-      // seeding Y inside mux does not echo through `_ytextObserver`.
+      // Initial sync. Never use model.setValue — it always moves the caret
+      // to (1,1), which feels like "typing on line 4 jumps to line 1".
       const ytextValue = ytext.toString();
       const monacoValue = monacoModel.getValue();
       if (monacoValue !== ytextValue) {
-        const monacoAhead =
-          !!monacoValue &&
-          (!ytextValue ||
-            (monacoValue.length > ytextValue.length &&
-              monacoValue.startsWith(ytextValue)));
-        if (monacoAhead) {
+        if (!ytextValue && monacoValue) {
           this.mux(() => {
             this.doc.transact(() => {
-              const len = ytext.toString().length;
-              if (len > 0) ytext.delete(0, len);
-              if (monacoValue) ytext.insert(0, monacoValue);
+              ytext.insert(0, monacoValue);
             }, this);
           });
         } else {
-          monacoModel.setValue(ytextValue);
+          const editor =
+            [...editors].find((ed) => ed.getModel() === monacoModel) ?? null;
+          const sel = editor?.getSelection() ?? null;
+          const anchor = sel
+            ? monacoModel.getOffsetAt(sel.getStartPosition())
+            : 0;
+          const head = sel
+            ? monacoModel.getOffsetAt(sel.getEndPosition())
+            : 0;
+          const dir = sel?.getDirection() ?? monaco.SelectionDirection.LTR;
+          monacoModel.applyEdits([
+            {
+              range: monacoModel.getFullModelRange(),
+              text: ytextValue,
+              forceMoveMarkers: true,
+            },
+          ]);
+          if (editor) {
+            const max = monacoModel.getValueLength();
+            const a = monacoModel.getPositionAt(Math.min(anchor, max));
+            const h = monacoModel.getPositionAt(Math.min(head, max));
+            editor.setSelection(
+              monaco.Selection.createWithDirection(
+                a.lineNumber,
+                a.column,
+                h.lineNumber,
+                h.column,
+                dir,
+              ),
+            );
+          }
         }
       }
     }
