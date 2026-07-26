@@ -31,6 +31,10 @@ import "@xterm/xterm/css/xterm.css";
 
 type WorkspaceTerminalProps = {
   projectId: string;
+  /** Stable id for this terminal instance (multi-terminal). */
+  sessionId?: string;
+  /** Only the active session consumes cwd / command requests. */
+  active?: boolean;
 };
 
 function statusBannerLine(
@@ -51,7 +55,11 @@ function statusBannerLine(
   }
 }
 
-export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
+export function WorkspaceTerminal({
+  projectId,
+  sessionId = "default",
+  active = true,
+}: WorkspaceTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const cwdRef = useRef("/");
@@ -60,6 +68,8 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const executeRef = useRef<(command: string) => Promise<void>>(
     async () => undefined,
   );
+  const activeRef = useRef(active);
+  activeRef.current = active;
 
   const { resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -105,6 +115,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   }, [projectName, branch, dirty, isDark, getContext, createHandlers]);
 
   useEffect(() => {
+    if (!active) return;
     if (!terminalCwdRequest) return;
 
     cwdRef.current = terminalCwdRequest;
@@ -122,9 +133,10 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
       });
     }
     clearTerminalCwdRequest();
-  }, [clearTerminalCwdRequest, terminalCwdRequest]);
+  }, [active, clearTerminalCwdRequest, setTerminalCwd, terminalCwdRequest]);
 
   useEffect(() => {
+    if (!active) return;
     if (!terminalCommandRequest) return;
     // Wait until xterm + execute are ready so we don't drop the command.
     if (!terminalRef.current || !editorRef.current) return;
@@ -134,7 +146,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     const term = terminalRef.current;
     term.writeln(`\r\n→ ${command}`);
     void executeRef.current(command);
-  }, [clearTerminalCommandRequest, terminalCommandRequest]);
+  }, [active, clearTerminalCommandRequest, terminalCommandRequest]);
 
   // Surface WebContainer status changes in the terminal
   const lastStatusRef = useRef<string | null>(null);
@@ -335,7 +347,9 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
       if (result.cwd) {
         cwdRef.current = result.cwd;
-        setTerminalCwd(result.cwd);
+        if (activeRef.current) {
+          setTerminalCwd(result.cwd);
+        }
       }
 
       if (result.output === CLEAR_SCREEN) {
@@ -374,7 +388,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
     // Consume any command queued before the terminal finished mounting.
     const pending = useWorkspaceStore.getState().terminalCommandRequest;
-    if (pending) {
+    if (pending && activeRef.current) {
       useWorkspaceStore.getState().clearTerminalCommandRequest();
       term.writeln(`\r\n→ ${pending}`);
       void execute(pending);
@@ -419,7 +433,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   }, [isDark]);
 
   return (
-    <div className="flex h-full flex-col bg-ws-panel">
+    <div className="flex h-full flex-col bg-ws-panel" data-terminal-session={sessionId}>
       <div
         ref={containerRef}
         className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 font-terminal [&_.xterm]:h-full [&_.xterm-viewport]:bg-transparent! [&_.xterm-screen]:h-full"

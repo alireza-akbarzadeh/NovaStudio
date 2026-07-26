@@ -9,7 +9,7 @@ import {
 
 import { WorkspaceDebugPanel } from "@/features/workspace/components/workspace-debug-panel";
 import { WorkspaceProblemsPanel } from "@/features/workspace/components/workspace-problems-panel";
-import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
+import { WorkspaceTerminalPanel } from "@/features/workspace/components/workspace-terminal-panel";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import { useDebugStore } from "@/features/workspace/store/debug-store";
 import {
@@ -93,7 +93,7 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
           )}
           aria-hidden={activeTab !== "terminal"}
         >
-          <WorkspaceTerminal projectId={projectId} />
+          <WorkspaceTerminalPanel projectId={projectId} />
         </div>
         {activeTab === "problems" ? (
           <div className="absolute inset-0">
