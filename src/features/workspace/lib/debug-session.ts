@@ -1,6 +1,6 @@
 /**
- * Instrument Node sources with `debugger;` at breakpoint lines and run
- * them inside WebContainer.
+ * Instrument sources with `debugger;` at breakpoint lines and run them
+ * inside WebContainer (Node for JS, `tsx` for TS/TSX/JSX).
  */
 
 import { getWebContainer } from "@/features/workspace/lib/webcontainer/boot";
@@ -9,9 +9,9 @@ import { useDebugStore } from "@/features/workspace/store/debug-store";
 
 const DEBUG_DIR = ".novastudio-debug";
 
-/** JS/TS Node scripts (not JSX/TSX React modules). */
+/** Any script / module we can set breakpoints on and Run. */
 export function isDebuggableScriptPath(path: string): boolean {
-  return /\.(js|mjs|cjs|ts)$/i.test(path);
+  return /\.(js|mjs|cjs|jsx|ts|tsx)$/i.test(path);
 }
 
 /**
@@ -41,18 +41,22 @@ function debugOutputPath(sourcePath: string): string {
   return `${DEBUG_DIR}/${base}`;
 }
 
-function buildNodeArgs(instrumentedPath: string): {
+function needsTsxRunner(path: string): boolean {
+  return /\.(tsx?|jsx)$/i.test(path);
+}
+
+function buildRunCommand(instrumentedPath: string): {
   binary: string;
   args: string[];
   commandLine: string;
 } {
-  const isTs = /\.ts$/i.test(instrumentedPath);
-  if (isTs) {
-    const args = ["--experimental-strip-types", instrumentedPath];
+  // TS / TSX / JSX need a loader that understands types + JSX.
+  if (needsTsxRunner(instrumentedPath)) {
+    const args = ["--yes", "tsx", instrumentedPath];
     return {
-      binary: "node",
+      binary: "npx",
       args,
-      commandLine: `node ${args.join(" ")}`,
+      commandLine: `npx ${args.join(" ")}`,
     };
   }
   return {
@@ -70,7 +74,7 @@ export function stopDebugSession(): void {
 }
 
 /**
- * Write an instrumented copy into WC and run it with Node.
+ * Write an instrumented copy into WC and run it.
  * Open Chrome DevTools on this tab so `debugger` statements pause.
  */
 export async function startDebugSession(options: {
@@ -94,12 +98,17 @@ export async function startDebugSession(options: {
     options.breakpoints,
   );
   const outPath = debugOutputPath(options.path);
-  const { binary, args, commandLine } = buildNodeArgs(outPath);
+  const { binary, args, commandLine } = buildRunCommand(outPath);
 
   store.beginSession(options.path, commandLine);
   store.appendOutput(
     "Open browser DevTools (F12) before continuing so `debugger` pauses.\n",
   );
+  if (needsTsxRunner(options.path)) {
+    store.appendOutput(
+      "Note: .ts/.tsx/.jsx runs via `npx tsx` (first run may download tsx).\n",
+    );
+  }
   store.appendOutput(`$ ${commandLine}\n`);
 
   abortController = new AbortController();

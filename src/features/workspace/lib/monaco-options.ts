@@ -37,6 +37,7 @@ export function buildMonacoOptions(
     lineNumbers: settings.lineNumbers ? "on" : "off",
     lineNumbersMinChars: 3,
     glyphMargin: true,
+    lineDecorationsWidth: 10,
     folding: true,
     foldingHighlight: false,
     showFoldingControls: "mouseover",

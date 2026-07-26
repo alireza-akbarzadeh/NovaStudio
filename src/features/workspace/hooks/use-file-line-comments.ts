@@ -104,9 +104,10 @@ export function useFileLineComments({
     const attach = (ed: editor.IStandaloneCodeEditor) => {
       applyDecorations(ed);
 
-      // Monaco MouseTargetType.GUTTER_GLYPH_MARGIN === 2
+      // Glyph margin left-click → comments only with Alt (breakpoints own the default click).
       mouseDisposable = ed.onMouseDown((event) => {
         if (event.target.type !== 2) return;
+        if (!event.event.altKey) return;
         const line = event.target.position?.lineNumber;
         if (!line) return;
         openForLine(line);

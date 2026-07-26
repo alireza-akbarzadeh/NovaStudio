@@ -458,21 +458,25 @@
   background: color-mix(in oklab, var(--ws-accent) 8%, transparent);
 }
 
-/* Debugger breakpoints (line-number gutter click) */
+/* Debugger breakpoints — red circle in glyph margin (left of line numbers) */
+.polaris-monaco .margin-view-overlays .cgmr {
+  cursor: pointer;
+}
+
 .polaris-monaco .polaris-breakpoint-glyph {
-  background: #e5484d;
+  background: #e5484d !important;
   border-radius: 50%;
-  margin-left: 3px;
-  width: 8px !important;
-  height: 8px !important;
-  min-width: 8px !important;
+  width: 10px !important;
+  height: 10px !important;
+  min-width: 10px !important;
+  margin-left: 4px;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
 }
 
 .polaris-monaco .polaris-breakpoint-line {
-  background: color-mix(in oklab, #e5484d 10%, transparent);
+  background: color-mix(in oklab, #e5484d 12%, transparent);
 }
 
 /* y-monaco remote cursors / selections

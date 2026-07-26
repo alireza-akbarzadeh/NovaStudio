@@ -130,7 +130,7 @@ export function WorkspaceDebugPanel({ projectId }: WorkspaceDebugPanelProps) {
                 !wcReady
                   ? "WebContainer not ready"
                   : !activePath
-                    ? "Open a .js / .ts file"
+                    ? "Open a .js / .jsx / .ts / .tsx file"
                     : "Run with breakpoints"
               }
             >
@@ -169,8 +169,10 @@ export function WorkspaceDebugPanel({ projectId }: WorkspaceDebugPanelProps) {
           <div className="min-h-0 flex-1 overflow-auto">
             {breakpoints.length === 0 ? (
               <p className="px-2.5 py-2 text-[11px] leading-relaxed text-ws-text-muted">
-                Click a line number in a <code>.js</code> / <code>.ts</code>{" "}
-                file to toggle a breakpoint.
+                Click the gutter left of a line number (or press{" "}
+                <kbd className="rounded bg-ws-hover px-1">F9</kbd>) in a{" "}
+                <code>.js</code> / <code>.jsx</code> / <code>.ts</code> /{" "}
+                <code>.tsx</code> file. Then open DevTools (F12) and hit Run.
               </p>
             ) : (
               <ul>
@@ -232,7 +234,7 @@ export function WorkspaceDebugPanel({ projectId }: WorkspaceDebugPanelProps) {
                   ? wcReady
                     ? `Ready to debug ${activePath}. Set breakpoints, open DevTools (F12), then Run.`
                     : "Waiting for WebContainer…"
-                  : "Open a Node script (.js / .ts) to debug. For Vite/React preview, use browser DevTools on the Preview tab."}
+                  : "Open a .js / .jsx / .ts / .tsx file to debug. For live Vite/React UI, you can also use Preview + browser DevTools."}
               </span>
             )}
           </pre>

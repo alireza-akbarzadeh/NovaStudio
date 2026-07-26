@@ -250,10 +250,10 @@ These are the biggest daily-friction gaps you called out.
 ### 18. Debugger — ready for review
 
 - Bottom panel **Debug** tab (Problems · Debug · Terminal) · **⌘⇧Y** · activity bar
-- Click **line numbers** in `.js` / `.ts` files to toggle breakpoints (glyph margin stays for comments)
-- **Run** instruments `debugger;` at BPs and executes via WebContainer Node (open DevTools / F12 to pause)
-- Breakpoint list → jump to line · session console with Start / Stop / Clear
-- Vite / React client code: use Preview + browser DevTools (not Monaco stepping)
+- Click the **glyph gutter** (left of line numbers) or press **F9** in `.js` / `.jsx` / `.ts` / `.tsx`
+- **Run** instruments `debugger;` and executes via WebContainer (`node` or `npx tsx`) — open DevTools (F12) to pause
+- Alt+click gutter still opens line comments · Breakpoint list → jump to line
+- Live Vite/React UI debugging: Preview tab + browser DevTools still works alongside
 
 ### 19. Workspace Live Share (Follow) — ready for review
 

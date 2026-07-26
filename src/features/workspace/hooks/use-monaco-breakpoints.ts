@@ -1,7 +1,9 @@
 "use client";
 
 import type { editor } from "monaco-editor";
+import { KeyCode } from "monaco-editor";
 import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 import { getActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
 import { isDebuggableScriptPath } from "@/features/workspace/lib/debug-session";
@@ -25,7 +27,7 @@ function breakpointDecorations(lines: number[]) {
       isWholeLine: true,
       linesDecorationsClassName: "polaris-breakpoint-line",
       glyphMarginClassName: "polaris-breakpoint-glyph",
-      glyphMarginHoverMessage: { value: "Breakpoint" },
+      glyphMarginHoverMessage: { value: "Breakpoint — click to remove" },
       overviewRuler: {
         color: "#e5484d",
         position: 1,
@@ -35,8 +37,8 @@ function breakpointDecorations(lines: number[]) {
 }
 
 /**
- * Toggle breakpoints by clicking the line-number gutter (glyph margin stays
- * reserved for line comments). Syncs decorations with the debug store.
+ * Toggle breakpoints by clicking the glyph margin (left of line numbers),
+ * matching VS Code. Also supports F9 and line-number clicks.
  */
 export function useMonacoBreakpoints({
   filePath,
@@ -50,26 +52,56 @@ export function useMonacoBreakpoints({
   const linesRef = useRef(lines);
   linesRef.current = lines;
 
-  // Attach line-number click handler once per editor.
   useEffect(() => {
-    if (!enabled || !filePath || !isDebuggableScriptPath(filePath)) return;
+    if (!enabled || !filePath) return;
 
     let disposed = false;
     let mouseDisposable: { dispose: () => void } | null = null;
+    let actionDisposable: { dispose: () => void } | null = null;
     let pollId = 0;
 
-    const attach = (ed: editor.IStandaloneCodeEditor) => {
-      decorationIdsRef.current = ed.deltaDecorations(
-        decorationIdsRef.current,
-        breakpointDecorations(linesRef.current),
-      );
+    const toggleAt = (line: number) => {
+      if (!isDebuggableScriptPath(filePath)) {
+        toast.message("Breakpoints need a code file", {
+          description: "Open a .js, .jsx, .ts, or .tsx file.",
+        });
+        return;
+      }
+      toggleBreakpoint(filePath, line);
+    };
 
-      // Monaco MouseTargetType.GUTTER_LINE_NUMBERS === 3
+    const attach = (ed: editor.IStandaloneCodeEditor) => {
+      if (isDebuggableScriptPath(filePath)) {
+        decorationIdsRef.current = ed.deltaDecorations(
+          decorationIdsRef.current,
+          breakpointDecorations(linesRef.current),
+        );
+      }
+
+      // Glyph margin (2) or line numbers (3) — left-click toggles BP.
+      // Alt+glyph is reserved for line comments.
       mouseDisposable = ed.onMouseDown((event) => {
-        if (event.target.type !== 3) return;
+        const type = event.target.type;
+        if (type !== 2 && type !== 3) return;
+        if (type === 2 && event.event.altKey) return;
         const line = event.target.position?.lineNumber;
         if (!line) return;
-        toggleBreakpoint(filePath, line);
+        event.event.preventDefault();
+        event.event.stopPropagation();
+        toggleAt(line);
+      });
+
+      actionDisposable = ed.addAction({
+        id: "polaris.toggleBreakpoint",
+        label: "Toggle Breakpoint",
+        keybindings: [KeyCode.F9],
+        contextMenuGroupId: "navigation",
+        contextMenuOrder: 1.5,
+        run: (editorInstance) => {
+          const line = editorInstance.getPosition()?.lineNumber;
+          if (!line) return;
+          toggleAt(line);
+        },
       });
     };
 
@@ -89,6 +121,7 @@ export function useMonacoBreakpoints({
       disposed = true;
       window.clearTimeout(pollId);
       mouseDisposable?.dispose();
+      actionDisposable?.dispose();
       const ed = getActiveMonacoEditor(filePath);
       if (ed && decorationIdsRef.current.length > 0) {
         decorationIdsRef.current = ed.deltaDecorations(
@@ -100,7 +133,6 @@ export function useMonacoBreakpoints({
     };
   }, [enabled, filePath, toggleBreakpoint]);
 
-  // Refresh decorations when breakpoints change.
   useEffect(() => {
     if (!enabled || !filePath || !isDebuggableScriptPath(filePath)) return;
     const ed = getActiveMonacoEditor(filePath);
