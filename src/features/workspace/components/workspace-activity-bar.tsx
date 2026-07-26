@@ -31,6 +31,8 @@ import {
   useWorkspaceStore,
   type LeftPanelView,
 } from "@/features/workspace/store/workspace-store";
+import { formatModShortcut } from "@/lib/keyboard";
+import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
 type ActivityItem = {
@@ -55,37 +57,37 @@ const LEFT_ITEMS: ActivityItem[] = [
     view: "explorer",
     label: "Explorer",
     icon: <FolderTreeIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘⇧E",
+    shortcut: "mod+shift+e",
   },
   {
     view: "search",
     label: "Find in Files",
     icon: <SearchIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘⇧F",
+    shortcut: "mod+shift+f",
   },
   {
     view: "git",
     label: "Git",
     icon: <GitBranchIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘9",
+    shortcut: "mod+9",
   },
   {
     view: "outline",
     label: "Outline",
     icon: <ListTreeIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘⇧O",
+    shortcut: "mod+shift+o",
   },
   {
     view: "dependencies",
     label: "Dependencies",
     icon: <PackageIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘⇧D",
+    shortcut: "mod+shift+d",
   },
   {
     view: "extensions",
     label: "Extensions",
     icon: <PuzzleIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "⌘⇧X",
+    shortcut: "mod+shift+x",
   },
 ];
 
@@ -166,6 +168,7 @@ function ActivityRailShell({
 
 /** JetBrains-style left activity rail — explorer / search / git / … */
 export function WorkspaceLeftActivityBar() {
+  const isApple = useIsApplePlatform();
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
@@ -184,7 +187,7 @@ export function WorkspaceLeftActivityBar() {
         <RailButton
           key={item.view}
           label={item.label}
-          shortcut={item.shortcut}
+          shortcut={formatModShortcut(item.shortcut, isApple)}
           active={sidebarOpen && leftPanelView === item.view}
           onClick={() => onSelect(item.view)}
           side="left"
@@ -198,6 +201,7 @@ export function WorkspaceLeftActivityBar() {
 
 /** JetBrains-style right activity rail — AI, notifications, terminal, settings. */
 export function WorkspaceRightActivityBar() {
+  const isApple = useIsApplePlatform();
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const notificationsPanelOpen = useWorkspaceStore(
     (s) => s.notificationsPanelOpen,
@@ -224,7 +228,7 @@ export function WorkspaceRightActivityBar() {
       <div className="flex flex-col items-center gap-0.5">
         <RailButton
           label="AI Assistant"
-          shortcut="⌘L"
+          shortcut={formatModShortcut("mod+l", isApple)}
           active={aiPanelOpen}
           onClick={() => runCommand("toggleAiPanel")}
           side="right"
@@ -234,7 +238,7 @@ export function WorkspaceRightActivityBar() {
 
         <RailButton
           label="Notifications"
-          shortcut="⌘⇧N"
+          shortcut={formatModShortcut("mod+shift+n", isApple)}
           active={notificationsPanelOpen}
           onClick={() => runCommand("toggleNotifications")}
           side="right"
@@ -251,7 +255,7 @@ export function WorkspaceRightActivityBar() {
       <div className="mt-auto flex flex-col items-center gap-0.5">
         <RailButton
           label="Problems"
-          shortcut="⌘⇧M"
+          shortcut={formatModShortcut("mod+shift+m", isApple)}
           active={terminalOpen && bottomPanelTab === "problems"}
           onClick={() => runCommand("showProblems")}
           side="right"
@@ -266,7 +270,7 @@ export function WorkspaceRightActivityBar() {
 
         <RailButton
           label="Terminal"
-          shortcut="⌘J"
+          shortcut={formatModShortcut("mod+j", isApple)}
           active={terminalOpen && bottomPanelTab === "terminal"}
           onClick={() => runCommand("toggleTerminal")}
           side="right"
@@ -288,7 +292,7 @@ export function WorkspaceRightActivityBar() {
 
         <RailButton
           label="Settings"
-          shortcut="⌘,"
+          shortcut={formatModShortcut("mod+,", isApple)}
           active={settingsOpen}
           onClick={() => runCommand("openSettings")}
           side="right"

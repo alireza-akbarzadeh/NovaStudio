@@ -31,6 +31,7 @@ import {
   pushRecentFilePath,
 } from "@/features/workspace/lib/recent-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
 type WorkspaceCommandPaletteProps = {
@@ -98,7 +99,11 @@ export function WorkspaceCommandPalette({
     [editorTabs],
   );
 
-  const commands = useMemo(() => visiblePaletteCommands(), []);
+  const isApple = useIsApplePlatform();
+  const commands = useMemo(
+    () => visiblePaletteCommands(isApple),
+    [isApple],
+  );
 
   const onOpenChange = (next: boolean) => {
     if (!next) closeCommandPalette();

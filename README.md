@@ -69,7 +69,7 @@ File tree, Monaco editor, AI sidebar, terminal, and preview — the full coding 
 | Area | What you get |
 |------|----------------|
 | **Projects hub** | Create / import projects, search & filter, continue working, storage usage, shortcuts |
-| **Monaco workspace** | Multi-file tabs, split views, Prettier, settings, outline / symbols, command palette (⌘K) |
+| **Monaco workspace** | Multi-file tabs, split views, Prettier, settings, outline / symbols, command palette (⌘⇧P) |
 | **Navigation** | Go to File, Find in Files, Go to Definition (⌘/Ctrl-click · F12), Problems panel |
 | **Git** | Status, history, stage / unstage, discard, side-by-side diff, commit & push / pull |
 | **GitHub** | Connect account, clone repos, sync branches, publish from the workspace |
@@ -101,7 +101,7 @@ We implement **one feature at a time**, review UI + behavior, then move on.
 
 | Feature | Status | Why it matters |
 |---------|--------|----------------|
-| **Inline AI edit (⌘K in editor)** | `todo` | Select code → rewrite → Accept / Reject |
+| **Inline AI edit (⌘K in editor)** | `review` | Select code → rewrite → Accept / Reject |
 | **Multi-file AI apply with diffs** | `todo` | Per-file diff cards, Apply all / Reject |
 | **Zen / Focus mode** | `todo` | Hide chrome, center the editor |
 | **Team hub** | `todo` | Members, roles, pending requests UI |

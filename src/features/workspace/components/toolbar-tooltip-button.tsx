@@ -9,6 +9,8 @@ import {
   TooltipContent,
   TooltipTrigger
 } from "@/components/ui/tooltip";
+import { modKeyLabel } from "@/lib/keyboard";
+import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
 
@@ -59,9 +61,10 @@ export function ToolbarTooltipButton({
 }
 
 export function ModKey() {
+  const isApple = useIsApplePlatform();
   return (
     <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
-      ⌘
+      {modKeyLabel(isApple)}
     </Kbd>
   );
 }

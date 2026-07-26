@@ -22,6 +22,7 @@ import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-mona
 import { resolveSafeMonacoLanguage } from "@/features/workspace/lib/language-support";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
+import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
   registerGoToDefinition,
   type DefinitionTarget,
@@ -266,6 +267,13 @@ export function CodeEditor({
           if (ai) disposablesRef.current.push(ai);
         } catch (error) {
           console.warn("[editor] AI completions unavailable", error);
+        }
+
+        try {
+          const inlineEdit = registerInlineAiEdit(monaco, ed, filePath);
+          if (inlineEdit) disposablesRef.current.push(inlineEdit);
+        } catch (error) {
+          console.warn("[editor] inline AI edit unavailable", error);
         }
       }
 

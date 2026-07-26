@@ -1,8 +1,14 @@
 import {
+  closeInlineAiEdit,
+  isMonacoEditorTarget,
+  requestInlineAiEdit,
+} from "@/features/workspace/lib/monaco-inline-ai-edit";
+import {
   useWorkspaceStore,
   type GitPanelTab,
   type LeftPanelView,
 } from "@/features/workspace/store/workspace-store";
+import { isApplePlatform } from "@/lib/keyboard";
 
 export type CommandId =
   | "toggleSidebar"
@@ -30,7 +36,8 @@ export type CommandId =
   | "showGitChanges"
   | "showGitHistory"
   | "findInFiles"
-  | "formatDocument";
+  | "formatDocument"
+  | "inlineAiEdit";
 
 export type Command = {
   id: CommandId;
@@ -133,6 +140,7 @@ export const workspaceCommands: Command[] = [
   {
     id: "openCommandPalette",
     shortcut: "mod+k",
+    aliases: ["mod+shift+p"],
     allowInInput: true,
     run: () => store().openCommandPalette(),
   },
@@ -232,6 +240,15 @@ export const workspaceCommands: Command[] = [
       );
     },
   },
+  {
+    id: "inlineAiEdit",
+    allowInInput: true,
+    run: () => {
+      if (!requestInlineAiEdit()) {
+        store().openCommandPalette();
+      }
+    },
+  },
 ];
 
 const commandsById = Object.fromEntries(
@@ -279,13 +296,34 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
     return false;
   }
 
-  // ⌘N opens New Project; leave ⌃N for AI "new chat".
-  if (command.id === "openNewProject" && !event.metaKey) {
-    return false;
+  // On Apple: ⌘N opens New Project, leave ⌃N for AI "new chat".
+  // On Windows/Linux: Ctrl+N is the mod key for New Project.
+  if (command.id === "openNewProject") {
+    if (isApplePlatform() && !event.metaKey) {
+      return false;
+    }
+  }
+
+  // ⌘K in the editor → inline AI edit; ⌘⇧P (or ⌘K outside editor) → palette.
+  if (command.id === "openCommandPalette") {
+    const chord = normalizeEventChord(event);
+    const forcePalette = chord === "mod+shift+p";
+    if (!forcePalette && isMonacoEditorTarget(event.target)) {
+      event.preventDefault();
+      if (!requestInlineAiEdit()) {
+        store().openCommandPalette();
+      }
+      return true;
+    }
   }
 
   if (command.id === "closeSettings") {
     const s = store();
+    const closedInline = closeInlineAiEdit();
+    if (closedInline) {
+      event.preventDefault();
+      return true;
+    }
     if (
       !s.commandPaletteOpen &&
       !s.settingsOpen &&

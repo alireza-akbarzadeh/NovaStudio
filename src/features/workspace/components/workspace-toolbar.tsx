@@ -29,6 +29,8 @@ import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { modKeyLabel } from "@/lib/keyboard";
+import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
 type WorkspaceToolbarProps = {
@@ -83,9 +85,10 @@ function ToolbarTooltipButton({
 }
 
 function ModKey() {
+  const isApple = useIsApplePlatform();
   return (
     <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
-      ⌘
+      {modKeyLabel(isApple)}
     </Kbd>
   );
 }
@@ -135,13 +138,14 @@ export function WorkspaceToolbar({
             type="button"
             onClick={() => runCommand("openCommandPalette")}
             className="mr-1 hidden h-8 items-center gap-2 rounded-full border border-ws-border-subtle bg-ws-stage px-3 text-[12px] text-ws-text-muted shadow-sm transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text sm:inline-flex"
-            title="Command palette"
+            title="Command palette (⌘⇧P)"
           >
             <SearchIcon className="size-3.5 opacity-70" />
             <span>Search</span>
             <KbdGroup className="gap-0.5 opacity-70">
               <ModKey />
-              <ShortcutKey>K</ShortcutKey>
+              <ShortcutKey>⇧</ShortcutKey>
+              <ShortcutKey>P</ShortcutKey>
             </KbdGroup>
           </button>
 

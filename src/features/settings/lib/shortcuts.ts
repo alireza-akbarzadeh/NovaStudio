@@ -25,7 +25,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },
       { id: "notifications", label: "Toggle notifications", keys: "⌘ ⇧ N" },
       { id: "goto", label: "Go to file", keys: "⌘ P" },
-      { id: "command-palette", label: "Command palette", keys: "⌘ K" },
+      { id: "command-palette", label: "Command palette", keys: "⌘ ⇧ P", description: "Also ⌘ K outside the editor" },
       { id: "clone", label: "Clone from GitHub", keys: "⌘ I" },
       { id: "explorer", label: "Toggle explorer", keys: "⌘ ⇧ E", description: "Also ⌘ 1" },
       { id: "search", label: "Find in files", keys: "⌘ ⇧ F" },
@@ -75,6 +75,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         label: "Go to definition",
         keys: "F12",
         description: "Also ⌘-click a component or import",
+      },
+      {
+        id: "inline-ai-edit",
+        label: "Inline AI edit",
+        keys: "⌘ K",
+        description: "Selection → rewrite → Accept / Reject",
       },
       {
         id: "ai-accept",

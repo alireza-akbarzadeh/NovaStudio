@@ -1,10 +1,9 @@
 import type { editor, IDisposable, IRange } from "monaco-editor";
-import { Range } from "monaco-editor";
 
-import { supportsAiSuggestion } from "@/features/workspace/lib/editor-languages";
 import { getActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
-import { fetchQuickEdit } from "@/lib/quick-edit-fetcher";
+import { supportsAiSuggestion } from "@/features/workspace/lib/editor-languages";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { fetchQuickEdit } from "@/lib/quick-edit-fetcher";
 
 export const INLINE_AI_EDIT_ACTION_ID = "polaris.inlineAiEdit";
 
@@ -32,14 +31,15 @@ function fileNameFromPath(filePath: string) {
 }
 
 function selectionOrLine(
+  monaco: typeof import("monaco-editor"),
   ed: editor.IStandaloneCodeEditor,
   model: editor.ITextModel,
-): { range: Range; text: string } | null {
+): { range: IRange; text: string } | null {
   const sel = ed.getSelection();
   if (!sel) return null;
 
   if (!sel.isEmpty()) {
-    const range = Range.lift(sel);
+    const range = monaco.Range.lift(sel);
     return { range, text: model.getValueInRange(range) };
   }
 
@@ -48,7 +48,7 @@ function selectionOrLine(
   if (maxCol <= 1 && model.getLineContent(line).length === 0) {
     return null;
   }
-  const range = new Range(line, 1, line, maxCol);
+  const range = new monaco.Range(line, 1, line, maxCol);
   return { range, text: model.getValueInRange(range) };
 }
 
@@ -56,7 +56,6 @@ function createWidgetDom(): {
   root: HTMLDivElement;
   input: HTMLInputElement;
   status: HTMLSpanElement;
-  actions: HTMLDivElement;
   generateBtn: HTMLButtonElement;
   acceptBtn: HTMLButtonElement;
   rejectBtn: HTMLButtonElement;
@@ -121,7 +120,6 @@ function createWidgetDom(): {
     root,
     input,
     status,
-    actions,
     generateBtn,
     acceptBtn,
     rejectBtn,
@@ -147,6 +145,7 @@ export function registerInlineAiEdit(
   let abort: AbortController | null = null;
   let decorationIds: string[] = [];
   let widgetVisible = false;
+  let requestId = 0;
 
   const getPosition = (): editor.IContentWidgetPosition | null => {
     if (!session) return null;
@@ -187,8 +186,7 @@ export function registerInlineAiEdit(
   };
 
   const setPhase = (phase: Phase, message?: string) => {
-    if (!session) return;
-    session.phase = phase;
+    if (session) session.phase = phase;
 
     const prompting = phase === "prompt";
     const loading = phase === "loading";
@@ -234,18 +232,16 @@ export function registerInlineAiEdit(
 
   const restoreOriginal = () => {
     if (!session) return;
-    const model = editorInstance.getModel();
-    if (!model) return;
-
     const target = session.previewRange ?? session.originalRange;
     editorInstance.executeEdits("polaris-inline-ai-reject", [
       { range: target, text: session.originalText },
     ]);
   };
 
-  const close = () => {
+  const clearSession = () => {
     abort?.abort();
     abort = null;
+    requestId += 1;
     setDecorations(null);
     hideWidget();
     session = null;
@@ -253,15 +249,21 @@ export function registerInlineAiEdit(
     setPhase("prompt");
   };
 
+  const discard = () => {
+    if (session?.phase === "review") {
+      restoreOriginal();
+    }
+    clearSession();
+  };
+
   const open = (): boolean => {
     if (editorInstance.getRawOptions().readOnly) return false;
     const model = editorInstance.getModel();
     if (!model) return false;
 
-    // Re-open prompt if already reviewing — reject first.
     if (session?.phase === "review") {
       restoreOriginal();
-      close();
+      clearSession();
     } else if (session?.phase === "loading") {
       return true;
     } else if (session?.phase === "prompt") {
@@ -271,7 +273,7 @@ export function registerInlineAiEdit(
       return true;
     }
 
-    const picked = selectionOrLine(editorInstance, model);
+    const picked = selectionOrLine(monaco, editorInstance, model);
     if (!picked || !picked.text.trim()) {
       return false;
     }
@@ -310,7 +312,7 @@ export function registerInlineAiEdit(
       column: start.startColumn,
     });
     const endPos = model.getPositionAt(startOffset + edited.length);
-    const previewRange = new Range(
+    const previewRange = new monaco.Range(
       start.startLineNumber,
       start.startColumn,
       endPos.lineNumber,
@@ -338,11 +340,13 @@ export function registerInlineAiEdit(
 
     abort?.abort();
     abort = new AbortController();
+    const thisRequest = ++requestId;
+    const originalText = session.originalText;
     setPhase("loading");
 
     const edited = await fetchQuickEdit(
       {
-        selectedCode: session.originalText,
+        selectedCode: originalText,
         fullCode: model.getValue(),
         instruction,
         fileName,
@@ -350,14 +354,14 @@ export function registerInlineAiEdit(
       abort.signal,
     );
 
-    if (!session || session.phase !== "loading") return;
+    if (!session || thisRequest !== requestId) return;
 
     if (edited == null) {
       setPhase("prompt", "Cancelled or failed — try again");
       return;
     }
 
-    if (edited === session.originalText) {
+    if (edited === originalText) {
       setPhase("prompt", "No changes suggested — refine your instruction");
       return;
     }
@@ -367,17 +371,13 @@ export function registerInlineAiEdit(
 
   const accept = () => {
     if (!session || session.phase !== "review") return;
-    // Preview already applied via executeEdits; just clear chrome.
-    close();
+    clearSession();
     editorInstance.focus();
   };
 
   const reject = () => {
     if (!session) return;
-    if (session.phase === "review") {
-      restoreOriginal();
-    }
-    close();
+    discard();
     editorInstance.focus();
   };
 
@@ -390,6 +390,7 @@ export function registerInlineAiEdit(
     if (session?.phase === "loading") {
       abort?.abort();
       abort = null;
+      requestId += 1;
       setPhase("prompt", "Cancelled");
       return;
     }
@@ -410,20 +411,17 @@ export function registerInlineAiEdit(
     }
   });
 
-  // Stop Monaco / workspace shortcuts from stealing keys while typing.
+  // Keep workspace shortcuts from stealing keys while the widget is focused.
   dom.root.addEventListener("keydown", (event) => {
     event.stopPropagation();
   });
 
+  // No Monaco keybinding — workspace ⌘K routes here when the editor is focused.
   const action = editorInstance.addAction({
     id: INLINE_AI_EDIT_ACTION_ID,
     label: "Inline AI Edit",
-    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK],
     run: () => {
-      if (!open()) {
-        // Empty buffer / blank line — fall back is handled by global shortcut.
-        return;
-      }
+      open();
     },
   });
 
@@ -438,19 +436,18 @@ export function registerInlineAiEdit(
 
   const controller: Controller = {
     open,
-    close,
+    close: discard,
     isOpen: () => session != null,
   };
   controllers.set(editorInstance, controller);
 
-  // Initial button visibility for prompt phase.
   setPhase("prompt");
   dom.acceptBtn.hidden = true;
   dom.rejectBtn.hidden = true;
 
   return {
     dispose: () => {
-      close();
+      discard();
       action.dispose();
       keydownDisposable.dispose();
       controllers.delete(editorInstance);
@@ -465,6 +462,17 @@ export function requestInlineAiEdit(): boolean {
   const ed = getActiveMonacoEditor(path);
   if (!ed) return false;
   return controllers.get(ed)?.open() ?? false;
+}
+
+export function closeInlineAiEdit(): boolean {
+  const path = useWorkspaceStore.getState().currentFilePath;
+  if (!path) return false;
+  const ed = getActiveMonacoEditor(path);
+  if (!ed) return false;
+  const controller = controllers.get(ed);
+  if (!controller?.isOpen()) return false;
+  controller.close();
+  return true;
 }
 
 export function isInlineAiEditOpen(): boolean {

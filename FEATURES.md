@@ -30,7 +30,7 @@ These are the biggest daily-friction gaps you called out.
 | 2 | **Go to Definition / Click component → source** | `done` | ⌘/Ctrl-click JSX/imports jump to the defining file. |
 | 3 | **Git UX polish** | `done` | Per-file +/− hunk counts, open file vs open diff, better empty/sync states, discard from diff. |
 | 4 | **Problems / Diagnostics panel** | `done` | Errors & warnings list → click jumps to line. |
-| 5 | **Command palette (⌘K)** | `done` | Files + commands + recent in one fuzzy palette. |
+| 5 | **Command palette (⌘⇧P)** | `done` | Files + commands + recent. ⌘K outside editor also works. |
 
 ### Sprint B — Editor polish (current focus)
 
@@ -54,7 +54,7 @@ These are the biggest daily-friction gaps you called out.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 14 | Inline AI edit (⌘K in editor) | `doing` | Selection → rewrite → Accept / Reject. |
+| 14 | Inline AI edit (⌘K in editor) | `review` | Selection → rewrite → Accept / Reject. |
 | 15 | Multi-file AI apply with diffs | `todo` | Per-file diff cards, Apply all / Reject. |
 | 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
@@ -129,10 +129,11 @@ These are the biggest daily-friction gaps you called out.
 
 ### 5. Command palette — `done`
 
-- **⌘K** opens a fuzzy palette
+- **⌘⇧P** opens a fuzzy palette (also **⌘K** when focus is outside the editor)
 - Groups: Recent · Open editors · Commands · Files
 - Run workspace actions or jump to any project file
 - Esc closes; ⌘P remains Go to File only
+- In the editor, **⌘K** opens Inline AI Edit instead (#14)
 
 ### 6. Outline / symbols sidebar — `done`
 
@@ -212,3 +213,11 @@ These are the biggest daily-friction gaps you called out.
 - **Apply** writes the suggested full-file patch and keeps the file staged; **Dismiss** hides the finding
 - No redirect to GitHub — suggestions stay inside the cloud editor
 - Shortcut: **⌘⇧R** (opens Files → Quality)
+
+### 14. Inline AI edit — ready for review
+
+- **⌘K** in the editor opens a floating prompt over the selection (empty selection → current line)
+- Type an instruction → **Generate** → preview rewrite in place
+- **Accept** keeps the change · **Reject** / **Esc** restores the original
+- Uses `QUICK_EDIT_PROMPT` + `/api/quick-edit` (Gemini)
+- Command palette: **⌘⇧P** (or **⌘K** outside the editor)
