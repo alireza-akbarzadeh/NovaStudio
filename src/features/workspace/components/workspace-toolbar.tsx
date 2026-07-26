@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FocusIcon,
   PanelBottomIcon,
   PanelLeftIcon,
   PanelRightIcon,
@@ -94,6 +95,15 @@ function ModKey() {
   );
 }
 
+function AltKey() {
+  const isApple = useIsApplePlatform();
+  return (
+    <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
+      {isApple ? "⌥" : "Alt"}
+    </Kbd>
+  );
+}
+
 function ShortcutKey({ children }: { children: ReactNode }) {
   return (
     <Kbd className="h-4 min-w-4 border-ws-border-strong bg-ws-panel px-1 text-[10px] text-ws-text">
@@ -109,6 +119,7 @@ export function WorkspaceToolbar({
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const zenMode = useWorkspaceStore((s) => s.zenMode);
   const { isLoaded, isPro } = useBilling();
   const { openPricing } = usePricingDialog();
   const { openTab } = useEditorTabs(projectId);
@@ -191,6 +202,21 @@ export function WorkspaceToolbar({
             }
           >
             <PanelRightIcon className="size-3.5" strokeWidth={1.75} />
+          </ToolbarTooltipButton>
+
+          <ToolbarTooltipButton
+            label="Zen mode"
+            pressed={zenMode}
+            onClick={() => runCommand("toggleZenMode")}
+            shortcut={
+              <>
+                <AltKey />
+                <ModKey />
+                <ShortcutKey>Z</ShortcutKey>
+              </>
+            }
+          >
+            <FocusIcon className="size-3.5" strokeWidth={1.75} />
           </ToolbarTooltipButton>
 
           <Separator

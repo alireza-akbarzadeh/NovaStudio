@@ -27,6 +27,8 @@ export function useWorkspacePrefsSync() {
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const panelSizes = useWorkspaceStore((s) => s.panelSizes);
+  const zenMode = useWorkspaceStore((s) => s.zenMode);
+  const getPersistablePrefs = useWorkspaceStore((s) => s.getPersistablePrefs);
 
   const hasHydratedFromServer = useRef(false);
   const skipNextSave = useRef(true);
@@ -58,6 +60,7 @@ export function useWorkspacePrefsSync() {
 
   useEffect(() => {
     if (!hydrated) return;
+    if (zenMode) return;
     if (skipNextSave.current) {
       skipNextSave.current = false;
       return;
@@ -65,16 +68,20 @@ export function useWorkspacePrefsSync() {
 
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      void upsert({
-        sidebarOpen,
-        terminalOpen,
-        aiPanelOpen,
-        panelSizes,
-      });
+      void upsert(getPersistablePrefs());
     }, SAVE_DEBOUNCE_MS);
 
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [hydrated, sidebarOpen, terminalOpen, aiPanelOpen, panelSizes, upsert]);
+  }, [
+    hydrated,
+    zenMode,
+    sidebarOpen,
+    terminalOpen,
+    aiPanelOpen,
+    panelSizes,
+    getPersistablePrefs,
+    upsert,
+  ]);
 }

@@ -33,6 +33,16 @@ export type WorkspacePrefs = {
   panelSizes: PanelSizes;
 };
 
+/** Layout snapshot restored when leaving Zen / Focus mode. */
+export type ZenSnapshot = {
+  sidebarOpen: boolean;
+  terminalOpen: boolean;
+  aiPanelOpen: boolean;
+  chatPanelOpen: boolean;
+  commentsPanelOpen: boolean;
+  notificationsPanelOpen: boolean;
+};
+
 export type TreeClipboard = {
   mode: "cut" | "copy";
   projectId: string;
@@ -109,6 +119,9 @@ type WorkspaceState = WorkspacePrefs & {
   pendingEditorReveal: EditorRevealTarget | null;
   searchFolderScope: string | null;
   searchPanelMode: SearchPanelMode;
+  /** Distraction-free layout — hides chrome and centers the editor. */
+  zenMode: boolean;
+  zenSnapshot: ZenSnapshot | null;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
@@ -190,6 +203,9 @@ type WorkspaceState = WorkspacePrefs & {
     folderScope?: string | null;
     mode?: SearchPanelMode;
   }) => void;
+  enterZenMode: () => void;
+  exitZenMode: () => void;
+  toggleZenMode: () => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
   getPersistablePrefs: () => WorkspacePrefs;
 };
@@ -324,6 +340,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   pendingEditorReveal: null,
   searchFolderScope: null,
   searchPanelMode: "text",
+  zenMode: false,
+  zenSnapshot: null,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () =>
@@ -639,18 +657,82 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       searchFolderScope: options?.folderScope ?? null,
       searchPanelMode: options?.mode ?? "text",
     }),
+  enterZenMode: () =>
+    set((s) => {
+      if (s.zenMode) return s;
+      return {
+        zenMode: true,
+        zenSnapshot: {
+          sidebarOpen: s.sidebarOpen,
+          terminalOpen: s.terminalOpen,
+          aiPanelOpen: s.aiPanelOpen,
+          chatPanelOpen: s.chatPanelOpen,
+          commentsPanelOpen: s.commentsPanelOpen,
+          notificationsPanelOpen: s.notificationsPanelOpen,
+        },
+        sidebarOpen: false,
+        terminalOpen: false,
+        aiPanelOpen: false,
+        chatPanelOpen: false,
+        commentsPanelOpen: false,
+        notificationsPanelOpen: false,
+        activeCommentThreadId: null,
+        commentDraftLine: null,
+      };
+    }),
+  exitZenMode: () =>
+    set((s) => {
+      if (!s.zenMode) return s;
+      const snap = s.zenSnapshot;
+      return {
+        zenMode: false,
+        zenSnapshot: null,
+        sidebarOpen: snap?.sidebarOpen ?? s.sidebarOpen,
+        terminalOpen: snap?.terminalOpen ?? s.terminalOpen,
+        aiPanelOpen: snap?.aiPanelOpen ?? s.aiPanelOpen,
+        chatPanelOpen: snap?.chatPanelOpen ?? false,
+        commentsPanelOpen: snap?.commentsPanelOpen ?? false,
+        notificationsPanelOpen: snap?.notificationsPanelOpen ?? false,
+      };
+    }),
+  toggleZenMode: () => {
+    const s = get();
+    if (s.zenMode) s.exitZenMode();
+    else s.enterZenMode();
+  },
   hydrate: (prefs) =>
-    set((s) => ({
-      sidebarOpen: prefs.sidebarOpen ?? s.sidebarOpen,
-      terminalOpen: prefs.terminalOpen ?? s.terminalOpen,
-      aiPanelOpen: prefs.aiPanelOpen ?? s.aiPanelOpen,
-      panelSizes: prefs.panelSizes
-        ? { ...s.panelSizes, ...prefs.panelSizes }
-        : s.panelSizes,
-      hydrated: true,
-    })),
+    set((s) => {
+      // Don't clobber an in-session zen layout with server prefs.
+      if (s.zenMode) {
+        return { hydrated: true };
+      }
+      return {
+        sidebarOpen: prefs.sidebarOpen ?? s.sidebarOpen,
+        terminalOpen: prefs.terminalOpen ?? s.terminalOpen,
+        aiPanelOpen: prefs.aiPanelOpen ?? s.aiPanelOpen,
+        panelSizes: prefs.panelSizes
+          ? { ...s.panelSizes, ...prefs.panelSizes }
+          : s.panelSizes,
+        hydrated: true,
+      };
+    }),
   getPersistablePrefs: () => {
-    const { sidebarOpen, terminalOpen, aiPanelOpen, panelSizes } = get();
+    const {
+      sidebarOpen,
+      terminalOpen,
+      aiPanelOpen,
+      panelSizes,
+      zenMode,
+      zenSnapshot,
+    } = get();
+    if (zenMode && zenSnapshot) {
+      return {
+        sidebarOpen: zenSnapshot.sidebarOpen,
+        terminalOpen: zenSnapshot.terminalOpen,
+        aiPanelOpen: zenSnapshot.aiPanelOpen,
+        panelSizes,
+      };
+    }
     return { sidebarOpen, terminalOpen, aiPanelOpen, panelSizes };
   },
 }));

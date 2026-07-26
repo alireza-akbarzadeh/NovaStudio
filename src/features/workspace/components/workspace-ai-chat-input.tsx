@@ -7,6 +7,7 @@ import {
   FileTextIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, MutableRefObject } from "react";
 import type { ChatStatus, SourceDocumentUIPart } from "ai";
 
 import {
@@ -91,7 +92,7 @@ function buildMessageWithReferences(
 function ReferencedSourcesBridge({
   referencedRef,
 }: {
-  referencedRef: React.MutableRefObject<
+  referencedRef: MutableRefObject<
     (SourceDocumentUIPart & { id: string })[]
   >;
 }) {
@@ -146,69 +147,62 @@ function PromptInputAttachmentsPreview() {
   );
 }
 
-function MentionPicker({
-  projectId,
-  open,
-  onClose,
-  fileContentsRef,
-  query = "",
-}: {
-  projectId: string;
-  open: boolean;
-  onClose: () => void;
-  fileContentsRef: React.MutableRefObject<Map<string, string>>;
-  query?: string;
-}) {
-  const files = useProjectFiles(projectId);
-  const controller = usePromptInputController();
-  const referenced = usePromptInputReferencedSources();
+type MentionFileOption = {
+  path: string;
+  name: string;
+  content: string;
+  value: string;
+};
 
-  const fileOptions = useMemo(() => {
-    const all = (files ?? [])
-      .filter((file) => file.kind === "file")
-      .map((file) => ({
-        path: file.path,
-        name: file.name,
-        content: file.content ?? "",
-      }));
-    const q = query.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter(
+function filterMentionFiles(
+  files: ReturnType<typeof useProjectFiles>,
+  query: string,
+): MentionFileOption[] {
+  const all = (files ?? [])
+    .filter((file) => file.kind === "file")
+    .map((file) => ({
+      path: file.path,
+      name: file.name,
+      content: file.content ?? "",
+      value: `${file.path} ${file.name}`,
+    }));
+  const q = query.trim().toLowerCase();
+  if (!q) return all.slice(0, 40);
+  return all
+    .filter(
       (file) =>
         file.path.toLowerCase().includes(q) ||
         file.name.toLowerCase().includes(q),
-    );
-  }, [files, query]);
+    )
+    .slice(0, 40);
+}
 
-  const insertMention = useCallback(
-    (path: string, name: string, content: string) => {
-      const current = controller.textInput.value;
-      const atIndex = current.lastIndexOf("@");
-      const prefix = atIndex >= 0 ? current.slice(0, atIndex) : current;
-      const suffix = atIndex >= 0 ? "" : current.endsWith(" ") ? "" : " ";
-      controller.textInput.setInput(`${prefix}@${name}${suffix}`);
-
-      fileContentsRef.current.set(path, content);
-      referenced.add({
-        type: "source-document",
-        sourceId: path,
-        title: name,
-        filename: name,
-        mediaType: "text/plain",
-      });
-
-      onClose();
-    },
-    [controller.textInput, fileContentsRef, onClose, referenced],
-  );
-
+function MentionPicker({
+  open,
+  query = "",
+  fileOptions,
+  selectedValue,
+  onSelectedValueChange,
+  onSelect,
+  isLoading,
+}: {
+  open: boolean;
+  query?: string;
+  fileOptions: MentionFileOption[];
+  selectedValue: string;
+  onSelectedValueChange: (value: string) => void;
+  onSelect: (file: MentionFileOption) => void;
+  isLoading: boolean;
+}) {
   if (!open) return null;
-
-  const isLoading = files === undefined;
 
   return (
     <div className="absolute right-2 bottom-full left-2 z-50 mb-1 max-h-56 overflow-hidden rounded-lg border border-ws-border bg-ws-panel shadow-lg">
-      <PromptInputCommand>
+      <PromptInputCommand
+        shouldFilter={false}
+        value={selectedValue}
+        onValueChange={onSelectedValueChange}
+      >
         <PromptInputCommandInput
           placeholder="Mention a file…"
           value={query}
@@ -222,8 +216,8 @@ function MentionPicker({
             {fileOptions.map((file) => (
               <PromptInputCommandItem
                 key={file.path}
-                value={`${file.path} ${file.name}`}
-                onSelect={() => insertMention(file.path, file.name, file.content)}
+                value={file.value}
+                onSelect={() => onSelect(file)}
               >
                 <FileTextIcon className="size-3.5 shrink-0 text-ws-accent-soft" />
                 <span className="truncate">{file.path}</span>
@@ -254,13 +248,14 @@ function PromptInputFields({
 }: Omit<WorkspaceAiChatInputProps, "onSubmit"> & {
   mentionOpen: boolean;
   setMentionOpen: (open: boolean) => void;
-  fileContentsRef: React.MutableRefObject<Map<string, string>>;
+  fileContentsRef: MutableRefObject<Map<string, string>>;
 }) {
   const controller = usePromptInputController();
   const attachments = usePromptInputAttachments();
   const referenced = usePromptInputReferencedSources();
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const files = useProjectFiles(projectId);
+  const [mentionIndex, setMentionIndex] = useState(0);
 
   const attachCurrentFile = useCallback(() => {
     if (!currentFilePath) return;
@@ -285,13 +280,95 @@ function PromptInputFields({
     controller.textInput.setInput(`${current}${block}`);
   }, [controller.textInput]);
 
+  const mentionQuery = useMemo(() => {
+    const match = controller.textInput.value.match(/@([\w./-]*)$/);
+    return match?.[1] ?? "";
+  }, [controller.textInput.value]);
+
+  const fileOptions = useMemo(
+    () => filterMentionFiles(files, mentionQuery),
+    [files, mentionQuery],
+  );
+
+  const safeMentionIndex =
+    fileOptions.length === 0
+      ? 0
+      : Math.min(mentionIndex, fileOptions.length - 1);
+  const selectedValue = fileOptions[safeMentionIndex]?.value ?? "";
+
+  const insertMention = useCallback(
+    (file: MentionFileOption) => {
+      const current = controller.textInput.value;
+      const atIndex = current.lastIndexOf("@");
+      const prefix = atIndex >= 0 ? current.slice(0, atIndex) : current;
+      const needsSpace =
+        prefix.length > 0 && !prefix.endsWith(" ") && !prefix.endsWith("\n");
+      controller.textInput.setInput(
+        `${prefix}${needsSpace && atIndex < 0 ? " " : ""}@${file.path} `,
+      );
+
+      fileContentsRef.current.set(file.path, file.content);
+      referenced.add({
+        type: "source-document",
+        sourceId: file.path,
+        title: file.name,
+        filename: file.name,
+        mediaType: "text/plain",
+      });
+
+      setMentionOpen(false);
+      setMentionIndex(0);
+    },
+    [controller.textInput, fileContentsRef, referenced, setMentionOpen],
+  );
+
   const handleTextChange = useCallback(
     (value: string) => {
       controller.textInput.setInput(value);
-      // Keep the picker open while typing an @query (letters, digits, / . - _)
-      setMentionOpen(/@[\w./-]*$/.test(value) || value.endsWith("@"));
+      const open = /@[\w./-]*$/.test(value) || value.endsWith("@");
+      setMentionOpen(open);
+      setMentionIndex(0);
     },
     [controller.textInput, setMentionOpen],
+  );
+
+  const handleMentionKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!mentionOpen) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMentionOpen(false);
+        return;
+      }
+
+      if (fileOptions.length === 0) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setMentionIndex((index) => (index + 1) % fileOptions.length);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setMentionIndex(
+          (index) => (index - 1 + fileOptions.length) % fileOptions.length,
+        );
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        const selected =
+          fileOptions[
+            fileOptions.length === 0
+              ? 0
+              : Math.min(mentionIndex, fileOptions.length - 1)
+          ] ?? fileOptions[0];
+        if (!selected) return;
+        event.preventDefault();
+        insertMention(selected);
+      }
+    },
+    [fileOptions, insertMention, mentionIndex, mentionOpen, setMentionOpen],
   );
 
   const isBusy = status === "submitted" || status === "streaming";
@@ -300,19 +377,19 @@ function PromptInputFields({
     attachments.files.length > 0 ||
     referenced.sources.length > 0;
 
-  const mentionQuery = useMemo(() => {
-    const match = controller.textInput.value.match(/@([\w./-]*)$/);
-    return match?.[1] ?? "";
-  }, [controller.textInput.value]);
-
   return (
     <>
       <MentionPicker
-        projectId={projectId}
         open={mentionOpen}
-        onClose={() => setMentionOpen(false)}
-        fileContentsRef={fileContentsRef}
         query={mentionQuery}
+        fileOptions={fileOptions}
+        selectedValue={selectedValue}
+        onSelectedValueChange={(value) => {
+          const index = fileOptions.findIndex((file) => file.value === value);
+          if (index >= 0) setMentionIndex(index);
+        }}
+        onSelect={insertMention}
+        isLoading={files === undefined}
       />
 
       <PromptInputHeader>
@@ -323,6 +400,7 @@ function PromptInputFields({
         <PromptInputTextarea
           value={controller.textInput.value}
           onChange={(event) => handleTextChange(event.target.value)}
+          onKeyDown={handleMentionKeyDown}
           placeholder={
             mode === "plan"
               ? `Plan changes for ${projectName ?? "this project"}…`
@@ -380,6 +458,7 @@ function PromptInputFields({
                 : `${controller.textInput.value}${controller.textInput.value && !controller.textInput.value.endsWith(" ") ? " " : ""}@`;
               controller.textInput.setInput(next);
               setMentionOpen(true);
+              setMentionIndex(0);
             }}
           >
             <AtSignIcon className="size-3.5" />
@@ -430,7 +509,7 @@ function PendingChatAttachBridge({
   fileContentsRef,
 }: {
   projectId: string;
-  fileContentsRef: React.MutableRefObject<Map<string, string>>;
+  fileContentsRef: MutableRefObject<Map<string, string>>;
 }) {
   const files = useProjectFiles(projectId);
   const referenced = usePromptInputReferencedSources();

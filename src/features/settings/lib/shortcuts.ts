@@ -23,6 +23,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "terminal", label: "Toggle terminal", keys: "⌘ J" },
       { id: "problems", label: "Toggle problems", keys: "⌘ ⇧ M" },
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },
+      { id: "zen", label: "Toggle zen mode", keys: "⌥ ⌘ Z", description: "Hide chrome for a full-size editor" },
       { id: "notifications", label: "Toggle notifications", keys: "⌘ ⇧ N" },
       { id: "goto", label: "Go to file", keys: "⌘ P" },
       { id: "command-palette", label: "Command palette", keys: "⌘ ⇧ P", description: "Also ⌘ K outside the editor" },

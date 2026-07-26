@@ -161,6 +161,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+b",
   },
   {
+    id: "toggleZenMode",
+    label: "Toggle Zen Mode",
+    keywords: "focus distraction free hide chrome full size editor fullscreen",
+    shortcut: "mod+alt+z",
+  },
+  {
     id: "openSettings",
     label: "Open Settings",
     keywords: "preferences config",

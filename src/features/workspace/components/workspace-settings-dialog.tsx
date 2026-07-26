@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FocusIcon,
   FileJsonIcon,
   FolderPlusIcon,
   FolderTreeIcon,
@@ -41,6 +42,7 @@ export function WorkspaceSettingsDialog() {
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const zenMode = useWorkspaceStore((s) => s.zenMode);
   const panelSizes = useWorkspaceStore((s) => s.panelSizes);
 
   const onOpenChange = (open: boolean) => {
@@ -180,6 +182,17 @@ export function WorkspaceSettingsDialog() {
             <PanelRightIcon />
             <span>{aiPanelOpen ? "Hide AI" : "Show AI"}</span>
             <CommandShortcut>⌘L</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="toggle zen focus mode distraction free"
+            onSelect={() => {
+              runCommand("toggleZenMode");
+              closeSettings();
+            }}
+          >
+            <FocusIcon />
+            <span>{zenMode ? "Exit Zen Mode" : "Enter Zen Mode"}</span>
+            <CommandShortcut>⌥⌘Z</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

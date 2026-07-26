@@ -50,9 +50,11 @@ import { WorkspaceAiPlanCard } from "@/features/workspace/components/workspace-a
 import { WorkspaceAiTaskCard } from "@/features/workspace/components/workspace-ai-task-card";
 import { WorkspaceAiPendingApplies } from "@/features/workspace/components/workspace-ai-pending-applies";
 import { useAiPendingAppliesStore } from "@/features/workspace/store/ai-pending-applies-store";
+import { FileMentionText } from "@/features/workspace/components/file-mention-text";
 import { WorkspaceMessageResponse } from "@/features/workspace/components/workspace-message-response";
 import { AiCodeActionsProvider } from "@/features/workspace/context/ai-code-actions-context";
 import { runCommand } from "@/features/workspace/commands/registry";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useProjectFile,
@@ -101,6 +103,12 @@ function buildWelcome(projectName?: string): UIMessage {
   };
 }
 
+function displayUserText(text: string) {
+  const marker = "\n\n---\nReferenced file:";
+  const index = text.indexOf(marker);
+  return index >= 0 ? text.slice(0, index).trimEnd() : text;
+}
+
 function WorkspaceAiChatSession({
   projectId,
   projectName,
@@ -116,6 +124,7 @@ function WorkspaceAiChatSession({
 }) {
   const editorTabs = useWorkspaceStore((s) => s.editorTabs);
   const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
+  const { openTab } = useEditorTabs(projectId);
   const [modelId, setModelId] = useState(POLARIS_CHAT_MODEL);
   const [autoModel, setAutoModel] = useState(false);
   const [mode, setMode] = useState<AiChatMode>(
@@ -135,6 +144,23 @@ function WorkspaceAiChatSession({
   const changedFiles = useChangedFiles(projectId);
   const access = useProjectAccess(projectId);
   const canEdit = access?.canEdit ?? false;
+
+  const projectFilePaths = useMemo(
+    () =>
+      new Set(
+        (projectFiles ?? [])
+          .filter((file) => file.kind === "file")
+          .map((file) => file.path),
+      ),
+    [projectFiles],
+  );
+
+  const openFile = useCallback(
+    (path: string) => {
+      openTab({ kind: "file", path });
+    },
+    [openTab],
+  );
 
   const workspaceContext = useMemo((): WorkspaceChatContext => {
     const fileTree =
@@ -676,7 +702,13 @@ function WorkspaceAiChatSession({
                               {part.text}
                             </WorkspaceMessageResponse>
                           ) : (
-                            <p key={`${message.id}-${index}`}>{part.text}</p>
+                            <FileMentionText
+                              key={`${message.id}-${index}`}
+                              body={displayUserText(part.text)}
+                              projectFilePaths={projectFilePaths}
+                              onOpenFile={openFile}
+                              className="whitespace-pre-wrap wrap-break-word text-[13px] leading-relaxed text-ws-text"
+                            />
                           );
                         }
 

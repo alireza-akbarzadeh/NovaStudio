@@ -14,6 +14,7 @@ import {
 import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
 import { useEditorSettingsSync } from "@/features/settings/hooks/use-editor-settings-sync";
 import { useExtensionsSync } from "@/features/extensions/hooks/use-extensions-sync";
+import { runCommand } from "@/features/workspace/commands/registry";
 import { InitializeGitRepositoryDialog } from "@/features/workspace/components/initialize-git-repository-dialog";
 import {
   WorkspaceLeftActivityBar,
@@ -73,6 +74,7 @@ function WorkspaceLayoutInner({
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const zenMode = useWorkspaceStore((s) => s.zenMode);
   const panelSizes = useWorkspaceStore((s) => s.panelSizes);
   const setPanelSizes = useWorkspaceStore((s) => s.setPanelSizes);
   const cloneFromGitHubOpen = useWorkspaceStore((s) => s.cloneFromGitHubOpen);
@@ -142,10 +144,17 @@ function WorkspaceLayoutInner({
 
   return (
     <div className="ws-chrome flex h-dvh w-full flex-col bg-ws-bg text-ws-text-secondary">
-      <WorkspaceToolbar projectId={projectId} projectName={projectName} />
+      {!zenMode ? (
+        <WorkspaceToolbar projectId={projectId} projectName={projectName} />
+      ) : null}
 
-      <div className="flex min-h-0 flex-1 gap-0.5 px-1 pb-1.5">
-        <WorkspaceLeftActivityBar />
+      <div
+        className={cn(
+          "relative flex min-h-0 flex-1 gap-0.5",
+          zenMode ? "px-0 pb-0" : "px-1 pb-1.5",
+        )}
+      >
+        {!zenMode ? <WorkspaceLeftActivityBar /> : null}
 
         <ResizablePanelGroup
           orientation="horizontal"
@@ -189,7 +198,12 @@ function WorkspaceLayoutInner({
               onLayoutChanged={onVerticalLayoutChanged}
             >
               <ResizablePanel id="main" minSize="20%" className="min-h-0">
-                <div className={stagePaneClass}>
+                <div
+                  className={cn(
+                    stagePaneClass,
+                    zenMode && "rounded-none border-0 shadow-none",
+                  )}
+                >
                   <WorkspaceEditorPanel projectId={projectId}>
                     {children}
                   </WorkspaceEditorPanel>
@@ -249,7 +263,18 @@ function WorkspaceLayoutInner({
         <WorkspaceChatPanel projectId={projectId} />
         <WorkspaceCommentsPanel projectId={projectId} />
         <WorkspaceNotificationsPanel />
-        <WorkspaceRightActivityBar />
+        {!zenMode ? <WorkspaceRightActivityBar /> : null}
+
+        {zenMode ? (
+          <button
+            type="button"
+            onClick={() => runCommand("toggleZenMode")}
+            className="absolute top-3 right-3 z-20 rounded-lg border border-ws-border-subtle bg-ws-panel/95 px-2.5 py-1.5 text-[11px] font-medium text-ws-text-muted shadow-sm backdrop-blur-sm transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text"
+            title="Exit zen mode"
+          >
+            Exit Zen
+          </button>
+        ) : null}
       </div>
 
       <WorkspaceSettingsDialog />
@@ -262,7 +287,7 @@ function WorkspaceLayoutInner({
           if (!open) closeCloneFromGitHub();
         }}
       />
-      <WorkspaceStatusBar projectId={projectId} />
+      {!zenMode ? <WorkspaceStatusBar projectId={projectId} /> : null}
     </div>
   );
 }

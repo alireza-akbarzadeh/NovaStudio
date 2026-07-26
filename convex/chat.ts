@@ -12,6 +12,35 @@ import { recordProjectActivity } from "./lib/recordActivity";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MENTIONS = 20;
+const MENTION_TOKEN = /@([^\s@]+)/g;
+
+function fileBasename(path: string) {
+  return path.split("/").pop() || path;
+}
+
+function extractMentionedPathsFromBody(
+  body: string,
+  projectFilePaths: Set<string>,
+): string[] {
+  const mentionedPaths: string[] = [];
+  const regex = new RegExp(MENTION_TOKEN.source, "g");
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(body)) !== null) {
+    const token = (match[1] ?? "").replace(/[.,;:!?)]+$/g, "");
+    if (!token) continue;
+    if (projectFilePaths.has(token)) {
+      mentionedPaths.push(token);
+      continue;
+    }
+    for (const path of projectFilePaths) {
+      if (fileBasename(path) === token) {
+        mentionedPaths.push(path);
+        break;
+      }
+    }
+  }
+  return [...new Set(mentionedPaths)];
+}
 
 export const listMessages = query({
   args: {
@@ -79,9 +108,22 @@ export const sendMessage = mutation({
       throw new Error(`Message must be under ${MAX_MESSAGE_LENGTH} characters`);
     }
 
+    const projectFiles = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    const projectFilePaths = new Set(
+      projectFiles
+        .filter((file) => file.kind === "file")
+        .map((file) => file.path),
+    );
+
     const mentionedPaths = [
       ...new Set(
-        (args.mentionedPaths ?? [])
+        [
+          ...(args.mentionedPaths ?? []),
+          ...extractMentionedPathsFromBody(body, projectFilePaths),
+        ]
           .map((path) => path.trim())
           .filter(Boolean),
       ),

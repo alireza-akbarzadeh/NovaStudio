@@ -56,7 +56,7 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 14 | Inline AI edit (⌘K in editor) | `review` | Selection → rewrite → Accept / Reject. |
 | 15 | Multi-file AI apply with diffs | `review` | Per-file diff cards, Apply all / Reject. |
-| 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
+| 16 | Zen / Focus mode | `done` | Hide chrome, full-size editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
 
 ### Later / hard infrastructure
@@ -230,3 +230,11 @@ These are the biggest daily-friction gaps you called out.
 - **Apply** / **Reject** per file · **Apply all** / **Reject all** for the batch
 - Code-block **Apply** also queues into the same review panel
 - Agent is told not to claim files are saved until the user applies
+
+### 16. Zen / Focus mode — `done`
+
+- Hides toolbar, activity bars, and status bar; closes side/bottom/AI docks
+- Editor fills the viewport (chrome-free full size)
+- Restores the previous panel layout on exit (prefs not overwritten while zen)
+- **⌥⌘Z** / **Ctrl+Alt+Z** toggle · **Esc** exits · toolbar Focus button · command palette
+- Floating **Exit Zen** control while chrome is hidden

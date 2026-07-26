@@ -13,7 +13,6 @@ import {
   useMemo,
   useState,
   type KeyboardEvent,
-  type ReactNode,
 } from "react";
 import { toast } from "sonner";
 
@@ -50,6 +49,10 @@ import { Button } from "@/components/ui/button";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  extractMentionedPaths,
+  FileMentionText,
+} from "@/features/workspace/components/file-mention-text";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -62,97 +65,6 @@ type WorkspaceChatPanelProps = {
 type ChatSubmitMessage = PromptInputMessage & {
   mentionedPaths?: string[];
 };
-
-const MENTION_TOKEN = /@([\w./-]+)/g;
-
-function fileBasename(path: string) {
-  return path.split("/").pop() || path;
-}
-
-function resolveMentionPath(
-  token: string,
-  mentionedPaths: string[],
-): string | null {
-  if (mentionedPaths.includes(token)) return token;
-  const byBasename = mentionedPaths.find(
-    (path) => fileBasename(path) === token,
-  );
-  if (byBasename) return byBasename;
-  if (token.includes("/") || token.includes(".")) return token;
-  return null;
-}
-
-function extractMentionedPaths(
-  text: string,
-  projectFilePaths: Set<string>,
-): string[] {
-  const mentionedPaths: string[] = [];
-  const regex = new RegExp(MENTION_TOKEN.source, "g");
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    const token = match[1] ?? "";
-    if (projectFilePaths.has(token)) {
-      mentionedPaths.push(token);
-      continue;
-    }
-    for (const path of projectFilePaths) {
-      if (fileBasename(path) === token) {
-        mentionedPaths.push(path);
-        break;
-      }
-    }
-  }
-  return [...new Set(mentionedPaths)];
-}
-
-function ChatMessageBody({
-  body,
-  mentionedPaths,
-  onOpenFile,
-}: {
-  body: string;
-  mentionedPaths: string[];
-  onOpenFile: (path: string) => void;
-}) {
-  const nodes: ReactNode[] = [];
-  let lastIndex = 0;
-  const regex = new RegExp(MENTION_TOKEN.source, "g");
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(body)) !== null) {
-    if (match.index > lastIndex) {
-      nodes.push(body.slice(lastIndex, match.index));
-    }
-    const token = match[1] ?? "";
-    const path = resolveMentionPath(token, mentionedPaths);
-    if (path) {
-      nodes.push(
-        <button
-          key={`${match.index}-${path}`}
-          type="button"
-          className="inline font-medium text-sky-400 underline decoration-sky-400/50 underline-offset-2 hover:text-sky-300 hover:decoration-sky-300"
-          onClick={() => onOpenFile(path)}
-          title={`Open ${path}`}
-        >
-          @{fileBasename(path)}
-        </button>,
-      );
-    } else {
-      nodes.push(match[0]);
-    }
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < body.length) {
-    nodes.push(body.slice(lastIndex));
-  }
-
-  return (
-    <p className="whitespace-pre-wrap break-words text-[12px] leading-relaxed">
-      {nodes}
-    </p>
-  );
-}
 
 type MentionFileOption = {
   path: string;
@@ -412,7 +324,18 @@ export function WorkspaceChatPanel({ projectId }: WorkspaceChatPanelProps) {
   const closeChatPanel = useWorkspaceStore((s) => s.closeChatPanel);
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const { openTab } = useEditorTabs(projectId);
+  const files = useProjectFiles(projectId);
   const [sending, setSending] = useState(false);
+
+  const projectFilePaths = useMemo(
+    () =>
+      new Set(
+        (files ?? [])
+          .filter((file) => file.kind === "file")
+          .map((file) => file.path),
+      ),
+    [files],
+  );
 
   const messages = useQuery(api.chat.listMessages, {
     projectId: projectId as Id<"projects">,
@@ -527,14 +450,16 @@ export function WorkspaceChatPanel({ projectId }: WorkspaceChatPanelProps) {
                   ) : null}
                   <MessageContent
                     className={cn(
+                      "text-ws-text",
                       isSelf
                         ? "group-[.is-user]:bg-ws-accent/20 group-[.is-user]:text-ws-text"
                         : "rounded-lg bg-ws-hover/70 px-3 py-2",
                     )}
                   >
-                    <ChatMessageBody
+                    <FileMentionText
                       body={item.body}
-                      mentionedPaths={item.mentionedPaths}
+                      mentionedPaths={item.mentionedPaths ?? []}
+                      projectFilePaths={projectFilePaths}
                       onOpenFile={openFile}
                     />
                     {item.filePath ? (

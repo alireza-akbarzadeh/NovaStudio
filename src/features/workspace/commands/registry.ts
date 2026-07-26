@@ -46,7 +46,8 @@ export type CommandId =
   | "saveFile"
   | "saveAllFiles"
   | "inlineAiEdit"
-  | "toggleLiveCollaboration";
+  | "toggleLiveCollaboration"
+  | "toggleZenMode";
 
 export type Command = {
   id: CommandId;
@@ -147,6 +148,7 @@ export const workspaceCommands: Command[] = [
       else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
       else if (s.chatPanelOpen) s.closeChatPanel();
       else if (s.commentsPanelOpen) s.closeCommentsPanel();
+      else if (s.zenMode) s.exitZenMode();
     },
   },
   {
@@ -319,6 +321,22 @@ export const workspaceCommands: Command[] = [
       });
     },
   },
+  {
+    id: "toggleZenMode",
+    shortcut: "mod+alt+z",
+    allowInInput: true,
+    run: () => {
+      const s = store();
+      const next = !s.zenMode;
+      s.toggleZenMode();
+      const chord = isApplePlatform() ? "⌥⌘Z" : "Ctrl+Alt+Z";
+      toast.message(next ? "Zen mode on" : "Zen mode off", {
+        description: next
+          ? `Chrome hidden — press Esc or ${chord} to exit.`
+          : "Workspace chrome restored.",
+      });
+    },
+  },
 ];
 
 const commandsById = Object.fromEntries(
@@ -401,7 +419,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.cloneFromGitHubOpen &&
       !s.notificationsPanelOpen &&
       !s.chatPanelOpen &&
-      !s.commentsPanelOpen
+      !s.commentsPanelOpen &&
+      !s.zenMode
     ) {
       return false;
     }
