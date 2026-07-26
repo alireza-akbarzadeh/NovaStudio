@@ -12,7 +12,7 @@ import {
   isAiChatMode,
 } from "@/lib/ai/chat-mode";
 import {
-  isAllowedPolarisChatModel,
+  isAllowedNovaStudioChatModel,
   POLARIS_CHAT_MODEL,
 } from "@/lib/ai/gemini-model";
 import {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const body = chatRequestSchema.parse(await request.json());
     const { messages, model } = body;
     const selectedModel =
-      model && isAllowedPolarisChatModel(model) ? model : POLARIS_CHAT_MODEL;
+      model && isAllowedNovaStudioChatModel(model) ? model : POLARIS_CHAT_MODEL;
     const mode = isAiChatMode(body.mode) ? body.mode : DEFAULT_AI_CHAT_MODE;
 
     const workspace: WorkspaceChatContext = {

@@ -280,15 +280,15 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
             if (exitCode === 0 && wc.shouldSyncTreeAfterCommand(binary, args)) {
               try {
-                term.writeln("\r\n[polaris] syncing new files into project…");
+                term.writeln("\r\n[novastudio] syncing new files into project…");
                 const synced = await wc.syncTree();
                 term.writeln(
-                  `[polaris] synced ${synced.length} file${synced.length === 1 ? "" : "s"}`,
+                  `[novastudio] synced ${synced.length} file${synced.length === 1 ? "" : "s"}`,
                 );
                 await wc.refreshInstallState();
               } catch (syncError) {
                 term.writeln(
-                  `\r\n[polaris] failed to sync files: ${
+                  `\r\n[novastudio] failed to sync files: ${
                     syncError instanceof Error
                       ? syncError.message
                       : "unknown error"
@@ -300,13 +300,13 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
                 const synced = await wc.syncManifests();
                 if (synced.length > 0) {
                   term.writeln(
-                    `\r\n[polaris] synced ${synced.join(", ")} to project`,
+                    `\r\n[novastudio] synced ${synced.join(", ")} to project`,
                   );
                 }
                 await wc.refreshInstallState();
               } catch (syncError) {
                 term.writeln(
-                  `\r\n[polaris] failed to sync lockfile: ${
+                  `\r\n[novastudio] failed to sync lockfile: ${
                     syncError instanceof Error
                       ? syncError.message
                       : "unknown error"
@@ -360,7 +360,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     editorRef.current = editor;
 
     const wc = webcontainerRef.current;
-    term.writeln("Polaris workspace terminal");
+    term.writeln("NovaStudio workspace terminal");
     term.writeln(
       "Type 'help' for commands. Tab completes · paste with Ctrl+V · → accepts suggestion · ↑↓ history",
     );

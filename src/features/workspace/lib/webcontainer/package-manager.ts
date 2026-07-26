@@ -154,7 +154,7 @@ export function isInstallLikeCommand(args: string[]): boolean {
 
 /**
  * True when the command may create/scaffold project files that should
- * be copied from WebContainer back into Polaris (npx / npm create / …).
+ * be copied from WebContainer back into NovaStudio (npx / npm create / …).
  */
 export function isScaffoldCommand(binary: string, args: string[]): boolean {
   if (binary === "npx") return args.length > 0;

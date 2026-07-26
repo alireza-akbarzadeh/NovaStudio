@@ -27,7 +27,7 @@ function stripAnsi(text: string) {
 
 /**
  * Starship-style prompt using ASCII-safe markers so cell widths stay even.
- * Example: `at polaris on main *`
+ * Example: `at novastudio on main *`
  */
 export function formatShellPrompt(options: PromptOptions): {
   text: string;

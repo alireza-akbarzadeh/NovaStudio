@@ -17,7 +17,7 @@ import { useEditorSettingsStore } from "@/features/settings/store/editor-setting
 import {
   POLARIS_THEME_DARK,
   POLARIS_THEME_LIGHT,
-  registerPolarisThemes,
+  registerNovaStudioThemes,
 } from "@/features/workspace/lib/monaco-theme";
 
 /**
@@ -144,7 +144,7 @@ export function EditorSettingsJsonPanel({
               setSettingsJsonDraft(next);
             }}
             beforeMount={(monaco) => {
-              registerPolarisThemes(monaco);
+              registerNovaStudioThemes(monaco);
             }}
             options={{
               minimap: { enabled: fillHeight },

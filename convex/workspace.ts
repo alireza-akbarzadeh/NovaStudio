@@ -276,6 +276,11 @@ export const listWorkspaceProjects = query({
         forks: undefined,
         views: undefined,
         downloads: undefined,
+        importStatus: project.importStatus,
+        importStartedAt: project.importStartedAt,
+        source: project.source,
+        githubRepoUrl: project.githubRepoUrl,
+        githubBranch: project.githubBranch,
       });
     }
 

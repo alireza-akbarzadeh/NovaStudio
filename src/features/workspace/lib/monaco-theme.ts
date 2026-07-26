@@ -1,6 +1,6 @@
 import type { editor } from "monaco-editor";
 
-/** Polaris dark — deep ink canvas, cooler violet accents. */
+/** NovaStudio dark — deep ink canvas, cooler violet accents. */
 export const POLARIS_DARK_THEME: editor.IStandaloneThemeData = {
   base: "vs-dark",
   inherit: true,
@@ -122,7 +122,7 @@ export const POLARIS_DARK_THEME: editor.IStandaloneThemeData = {
   },
 };
 
-/** Polaris light — white canvas, purple accents. */
+/** NovaStudio light — white canvas, purple accents. */
 export const POLARIS_LIGHT_THEME: editor.IStandaloneThemeData = {
   base: "vs",
   inherit: true,
@@ -231,7 +231,7 @@ export const POLARIS_LIGHT_THEME: editor.IStandaloneThemeData = {
 export const POLARIS_THEME_DARK = "polaris-dark";
 export const POLARIS_THEME_LIGHT = "polaris-light";
 
-export function registerPolarisThemes(monaco: typeof import("monaco-editor")) {
+export function registerNovaStudioThemes(monaco: typeof import("monaco-editor")) {
   monaco.editor.defineTheme(POLARIS_THEME_DARK, POLARIS_DARK_THEME);
   monaco.editor.defineTheme(POLARIS_THEME_LIGHT, POLARIS_LIGHT_THEME);
 }

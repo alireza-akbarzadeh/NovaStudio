@@ -1,4 +1,4 @@
-export const HELP_TEXT = `Polaris terminal — git + filesystem are simulated; npm runs in WebContainer.
+export const HELP_TEXT = `NovaStudio terminal — git + filesystem are simulated; npm runs in WebContainer.
 
 Shortcuts:
   Tab                        Autocomplete command / path / npm script

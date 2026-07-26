@@ -144,7 +144,7 @@ export function WorkspaceGitReviews({
               Review before you push
             </p>
             <p className="text-[11px] leading-relaxed text-ws-text-muted">
-              Polaris AI checks your local diffs for bugs and risks, then offers
+              NovaStudio AI checks your local diffs for bugs and risks, then offers
               patches you can apply without leaving the editor.
             </p>
           </div>

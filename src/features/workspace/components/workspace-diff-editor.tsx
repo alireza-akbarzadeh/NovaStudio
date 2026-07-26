@@ -22,7 +22,7 @@ import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
   POLARIS_THEME_DARK,
   POLARIS_THEME_LIGHT,
-  registerPolarisThemes,
+  registerNovaStudioThemes,
 } from "@/features/workspace/lib/monaco-theme";
 
 type WorkspaceDiffEditorProps = {
@@ -125,7 +125,7 @@ export function WorkspaceDiffEditor({
       theme={theme}
       options={options}
       beforeMount={(monaco) => {
-        registerPolarisThemes(monaco);
+        registerNovaStudioThemes(monaco);
         registerExtensionThemes(monaco);
         activateExtensions(monaco, enabledIds);
         configureMonacoLanguages(monaco);

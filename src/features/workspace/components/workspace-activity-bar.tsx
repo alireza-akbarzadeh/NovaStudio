@@ -2,7 +2,6 @@
 
 import {
   BellIcon,
-  BellOffIcon,
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -15,31 +14,17 @@ import {
   SparklesIcon,
   SquareTerminalIcon,
   SunIcon,
-  Volume2Icon,
-  VolumeXIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { toast } from "sonner";
+import { useSyncExternalStore } from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { usePushSubscription } from "@/features/notifications/hooks/use-push-subscription";
-import {
-  getSoundPrefs,
-  playSoundIfEnabled,
-  setSoundPrefs,
-} from "@/features/notifications/lib/play-sound";
+import { useWorkspaceNotifications } from "@/features/projects/hooks/use-workspace";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import {
@@ -211,128 +196,16 @@ export function WorkspaceLeftActivityBar() {
   );
 }
 
-function WorkspaceNotificationRailButton() {
-  const push = usePushSubscription();
-  const [soundsOn, setSoundsOn] = useState(true);
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    setSoundsOn(getSoundPrefs().enabled);
-  }, []);
-
-  const toggleSounds = () => {
-    const next = setSoundPrefs({ enabled: !soundsOn });
-    setSoundsOn(next.enabled);
-    if (next.enabled) void playSoundIfEnabled("aiDone");
-  };
-
-  const togglePush = async () => {
-    try {
-      if (push.subscribed) {
-        await push.disablePush();
-        toast.success("Push notifications disabled");
-      } else {
-        await push.enablePush();
-        toast.success("Push notifications enabled");
-        void playSoundIfEnabled("success");
-      }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not update push",
-      );
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label="Notifications"
-              aria-pressed={open}
-              className={cn(
-                "relative flex size-9 items-center justify-center rounded-lg text-ws-text-muted transition-colors",
-                "hover:bg-ws-hover hover:text-ws-text",
-                open &&
-                  "bg-ws-accent/15 text-ws-text shadow-[inset_0_0_0_1px] shadow-ws-accent/35",
-              )}
-            >
-              {push.subscribed ? (
-                <BellIcon className="size-4" strokeWidth={1.75} />
-              ) : (
-                <BellOffIcon className="size-4" strokeWidth={1.75} />
-              )}
-              {push.subscribed ? (
-                <span className="absolute top-1.5 right-1.5 size-1.5 rounded-full bg-ws-accent" />
-              ) : null}
-            </button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent
-          side="left"
-          sideOffset={8}
-          className="border border-ws-border-strong bg-ws-hover px-2 py-1 text-ws-text [&_svg]:hidden"
-        >
-          <span className="text-xs">Notifications</span>
-        </TooltipContent>
-      </Tooltip>
-
-      <PopoverContent
-        align="end"
-        side="left"
-        sideOffset={10}
-        className="w-56 border-ws-border bg-ws-panel p-2 text-ws-text shadow-lg"
-      >
-        <p className="mb-2 px-1 text-[11px] font-medium text-ws-text">
-          Notifications
-        </p>
-        <p className="mb-2 px-1 text-[11px] leading-relaxed text-ws-text-muted">
-          Alerts for AI runs and project updates. Inbox coming soon.
-        </p>
-        <div className="flex flex-col gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 justify-start gap-2 rounded-lg px-2 text-[12px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
-            onClick={toggleSounds}
-          >
-            {soundsOn ? (
-              <Volume2Icon className="size-3.5" strokeWidth={1.75} />
-            ) : (
-              <VolumeXIcon className="size-3.5" strokeWidth={1.75} />
-            )}
-            {soundsOn ? "Sounds on" : "Sounds muted"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={push.busy || !push.configured}
-            className="h-8 justify-start gap-2 rounded-lg px-2 text-[12px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
-            onClick={() => void togglePush()}
-          >
-            {push.subscribed ? (
-              <BellIcon className="size-3.5 text-ws-accent" strokeWidth={1.75} />
-            ) : (
-              <BellOffIcon className="size-3.5" strokeWidth={1.75} />
-            )}
-            {push.subscribed ? "Push enabled" : "Enable push"}
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 /** JetBrains-style right activity rail — AI, notifications, terminal, settings. */
 export function WorkspaceRightActivityBar() {
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
+  const notificationsPanelOpen = useWorkspaceStore(
+    (s) => s.notificationsPanelOpen,
+  );
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
+  const notifications = useWorkspaceNotifications(50);
   const { errorCount, warningCount } = useMonacoProblems();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -343,6 +216,8 @@ export function WorkspaceRightActivityBar() {
 
   const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
   const problemCount = errorCount + warningCount;
+  const unreadCount =
+    notifications?.filter((item) => !item.read).length ?? 0;
 
   return (
     <ActivityRailShell label="Tool windows" side="right">
@@ -357,7 +232,20 @@ export function WorkspaceRightActivityBar() {
           <SparklesIcon className="size-4" strokeWidth={1.75} />
         </RailButton>
 
-        <WorkspaceNotificationRailButton />
+        <RailButton
+          label="Notifications"
+          shortcut="⌘⇧N"
+          active={notificationsPanelOpen}
+          onClick={() => runCommand("toggleNotifications")}
+          side="right"
+        >
+          <span className="relative">
+            <BellIcon className="size-4" strokeWidth={1.75} />
+            {unreadCount > 0 ? (
+              <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-ws-accent" />
+            ) : null}
+          </span>
+        </RailButton>
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-0.5">

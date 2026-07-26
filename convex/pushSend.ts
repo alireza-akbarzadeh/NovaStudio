@@ -26,7 +26,7 @@ export const sendToUser = internalAction({
   handler: async (ctx, args) => {
     const publicKey = process.env.VAPID_PUBLIC_KEY;
     const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject = process.env.VAPID_SUBJECT ?? "mailto:support@polaris.app";
+    const subject = process.env.VAPID_SUBJECT ?? "mailto:support@novastudio.app";
 
     if (!publicKey || !privateKey) {
       console.warn("VAPID keys missing — skip push send");

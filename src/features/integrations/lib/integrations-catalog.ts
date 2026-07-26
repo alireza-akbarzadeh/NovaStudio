@@ -22,7 +22,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     id: "github",
     name: "GitHub",
     description:
-      "Clone repos, sync branches, commit and push from your Polaris workspace.",
+      "Clone repos, sync branches, commit and push from your NovaStudio workspace.",
     category: "Source",
     status: "available",
     accent: "from-zinc-700 to-zinc-900",
@@ -40,7 +40,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     id: "linear",
     name: "Linear",
     description:
-      "Link issues to projects and sync status when PRs merge from Polaris.",
+      "Link issues to projects and sync status when PRs merge from NovaStudio.",
     category: "Productivity",
     status: "coming-soon",
     accent: "from-indigo-600 to-violet-700",

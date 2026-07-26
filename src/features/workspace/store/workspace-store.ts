@@ -71,6 +71,7 @@ export type EditorTabOpenMode = "preview" | "permanent" | "preserve";
 
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
+  notificationsPanelOpen: boolean;
   goToFileOpen: boolean;
   commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
@@ -104,6 +105,9 @@ type WorkspaceState = WorkspacePrefs & {
   showProblemsPanel: () => void;
   setBottomPanelTab: (tab: BottomPanelTab) => void;
   toggleAiPanel: () => void;
+  toggleNotificationsPanel: () => void;
+  openNotificationsPanel: () => void;
+  closeNotificationsPanel: () => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -130,6 +134,15 @@ type WorkspaceState = WorkspacePrefs & {
   ) => void;
   activateEditorTab: (id: string) => void;
   closeEditorTab: (id: string) => EditorTab | null;
+  /** Close every editor tab; returns null (empty editor). */
+  closeAllEditorTabs: () => null;
+  /**
+   * Close tabs without a "kept open" signal: preview tabs and unpinned
+   * non-file tabs. Pinned + permanent file tabs stay.
+   */
+  closeUnmodifiedEditorTabs: () => EditorTab | null;
+  /** Pin every currently open tab. */
+  bookmarkOpenEditorTabs: () => void;
   reorderEditorTabs: (fromId: string, toId: string) => void;
   pinEditorTab: (id: string) => void;
   unpinEditorTab: (id: string) => void;
@@ -257,6 +270,7 @@ function movePinnedTab(tabs: EditorTab[], id: string, pinned: boolean): EditorTa
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...DEFAULT_WORKSPACE_PREFS,
   settingsOpen: false,
+  notificationsPanelOpen: false,
   goToFileOpen: false,
   commandPaletteOpen: false,
   gitInitDialogOpen: false,
@@ -306,6 +320,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setBottomPanelTab: (tab) =>
     set({ bottomPanelTab: tab, terminalOpen: true }),
   toggleAiPanel: () => set((s) => ({ aiPanelOpen: !s.aiPanelOpen })),
+  toggleNotificationsPanel: () =>
+    set((s) => ({ notificationsPanelOpen: !s.notificationsPanelOpen })),
+  openNotificationsPanel: () => set({ notificationsPanelOpen: true }),
+  closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
@@ -378,6 +396,54 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
     return nextActive;
   },
+  closeAllEditorTabs: () => {
+    set({
+      editorTabs: [],
+      activeEditorTabId: null,
+      editorSplitTabId: null,
+    });
+    return null;
+  },
+  closeUnmodifiedEditorTabs: () => {
+    const { editorTabs, activeEditorTabId, editorSplitTabId } = get();
+    const nextTabs = editorTabs.filter((tab) => {
+      if (tab.pinned) return true;
+      // Preview = transient / unmodified intent; permanent files stay.
+      if (tab.preview) return false;
+      if (tab.kind === "file") return true;
+      return false;
+    });
+
+    if (nextTabs.length === editorTabs.length) {
+      return editorTabs.find((t) => t.id === activeEditorTabId) ?? null;
+    }
+
+    const nextActive =
+      nextTabs.find((t) => t.id === activeEditorTabId) ??
+      nextTabs[nextTabs.length - 1] ??
+      null;
+
+    set({
+      editorTabs: nextTabs,
+      activeEditorTabId: nextActive?.id ?? null,
+      editorSplitTabId:
+        editorSplitTabId && nextTabs.some((t) => t.id === editorSplitTabId)
+          ? editorSplitTabId
+          : null,
+    });
+
+    return nextActive;
+  },
+  bookmarkOpenEditorTabs: () =>
+    set((s) => {
+      let tabs = s.editorTabs;
+      for (const tab of s.editorTabs) {
+        if (!tab.pinned) {
+          tabs = movePinnedTab(tabs, tab.id, true);
+        }
+      }
+      return { editorTabs: tabs };
+    }),
   reorderEditorTabs: (fromId, toId) =>
     set((s) => {
       if (fromId === toId) return s;

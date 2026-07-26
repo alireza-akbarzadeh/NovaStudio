@@ -1,5 +1,5 @@
 /**
- * Convert Polaris project files into a WebContainer FileSystemTree.
+ * Convert NovaStudio project files into a WebContainer FileSystemTree.
  */
 
 import type { FileSystemTree } from "@webcontainer/api";

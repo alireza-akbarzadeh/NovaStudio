@@ -9,6 +9,7 @@ export type CommandId =
   | "toggleTerminal"
   | "showProblems"
   | "toggleAiPanel"
+  | "toggleNotifications"
   | "openSettings"
   | "toggleSettings"
   | "closeSettings"
@@ -83,6 +84,12 @@ export const workspaceCommands: Command[] = [
     run: () => store().toggleAiPanel(),
   },
   {
+    id: "toggleNotifications",
+    shortcut: "mod+shift+n",
+    allowInInput: true,
+    run: () => store().toggleNotificationsPanel(),
+  },
+  {
     id: "openSettings",
     shortcut: "mod+,",
     allowInInput: true,
@@ -109,6 +116,7 @@ export const workspaceCommands: Command[] = [
       else if (s.settingsOpen) s.closeSettings();
       else if (s.goToFileOpen) s.closeGoToFile();
       else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
+      else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
     },
   },
   {
@@ -282,7 +290,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.commandPaletteOpen &&
       !s.settingsOpen &&
       !s.goToFileOpen &&
-      !s.cloneFromGitHubOpen
+      !s.cloneFromGitHubOpen &&
+      !s.notificationsPanelOpen
     ) {
       return false;
     }

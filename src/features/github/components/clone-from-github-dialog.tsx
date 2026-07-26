@@ -227,7 +227,7 @@ export function CloneFromGitHubDialog({
           </DialogTitle>
           <DialogDescription>
             Browse repositories and branches from your GitHub account via the
-            GitHub API, then import into a Polaris workspace.
+            GitHub API, then import into a NovaStudio workspace.
           </DialogDescription>
         </DialogHeader>
 

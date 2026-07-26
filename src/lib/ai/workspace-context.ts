@@ -1,4 +1,4 @@
-/** Shared workspace context sent with every Polaris chat request. */
+/** Shared workspace context sent with every NovaStudio chat request. */
 
 import {
   DEFAULT_AI_CHAT_MODE,
@@ -97,7 +97,7 @@ export function buildWorkspaceSystemPrompt(
   ].filter(Boolean);
 
   return [
-    "You are Polaris, an expert AI pair programmer embedded in a web IDE.",
+    "You are NovaStudio, an expert AI pair programmer embedded in a web IDE.",
     "Help users understand code, plan changes, debug issues, and edit the project.",
     buildModeInstructions(mode),
     "Use the workspace context below as ground truth. Prefer paths that already exist in the file tree.",

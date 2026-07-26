@@ -63,7 +63,7 @@ export function buildDevServerCommand(
   };
 }
 
-/** Inject Polaris console / error bridge into every WC-served HTML page. */
+/** Inject NovaStudio console / error bridge into every WC-served HTML page. */
 export async function injectPreviewBridge(wc: WebContainer): Promise<void> {
   await wc.setPreviewScript(PREVIEW_RUNTIME_BRIDGE_SCRIPT);
 }

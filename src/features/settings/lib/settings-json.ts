@@ -7,7 +7,7 @@ import {
 /** Max stored settings.json size (UTF-8 chars ≈ bytes for ASCII JSON). */
 export const SETTINGS_JSON_MAX_CHARS = 32_000;
 
-/** VS Code–style keys we map into Polaris editor prefs / Monaco. */
+/** VS Code–style keys we map into NovaStudio editor prefs / Monaco. */
 export const SETTINGS_JSON_KEYS = {
   fontSize: "editor.fontSize",
   tabSize: "editor.tabSize",

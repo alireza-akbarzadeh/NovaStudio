@@ -77,7 +77,7 @@ export function ProjectView() {
                       "text-[1.65rem] leading-none font-semibold tracking-tight",
                     )}
                   >
-                    Polaris
+                    NovaStudio
                   </h1>
                   <p className="mt-1 text-[12px] text-muted-foreground">
                     AI workspace for building software
@@ -123,7 +123,7 @@ export function ProjectView() {
                     />
                   }
                   title="Clone from GitHub"
-                  description="Pull a repository into Polaris"
+                  description="Pull a repository into NovaStudio"
                   shortcut="⌘I"
                   delay={0.16}
                   onClick={() => { }}

@@ -35,7 +35,7 @@ import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
   POLARIS_THEME_DARK,
   POLARIS_THEME_LIGHT,
-  registerPolarisThemes,
+  registerNovaStudioThemes,
 } from "@/features/workspace/lib/monaco-theme";
 import type { ProjectFileEntry } from "@/features/workspace/lib/resolve-import-path";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -204,7 +204,7 @@ export function CodeEditor({
     for (const d of disposablesRef.current) d.dispose();
     disposablesRef.current = [];
 
-    registerPolarisThemes(monaco);
+    registerNovaStudioThemes(monaco);
     registerExtensionThemes(monaco);
     activateExtensions(monaco, enabledIds);
     monaco.editor.setTheme(theme);
@@ -275,7 +275,7 @@ export function CodeEditor({
         }
         options={options}
         beforeMount={(monaco) => {
-          registerPolarisThemes(monaco);
+          registerNovaStudioThemes(monaco);
           registerExtensionThemes(monaco);
           activateExtensions(monaco, enabledIds);
           configureMonacoLanguages(monaco);

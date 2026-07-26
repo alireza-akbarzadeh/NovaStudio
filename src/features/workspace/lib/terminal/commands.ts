@@ -15,7 +15,7 @@ export const SHELL_COMMANDS = [
   "bun",
 ] as const;
 
-/** Git subcommands supported by the Polaris shell. */
+/** Git subcommands supported by the NovaStudio shell. */
 export const GIT_SUBCOMMANDS = [
   "status",
   "init",

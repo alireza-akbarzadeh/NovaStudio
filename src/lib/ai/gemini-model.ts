@@ -1,6 +1,6 @@
-/** Free-tier Gemini models for Polaris (Google AI Studio). */
+/** Free-tier Gemini models for NovaStudio (Google AI Studio). */
 
-export type PolarisChatModel = {
+export type NovaStudioChatModel = {
   id: string;
   name: string;
   tag: string;
@@ -14,7 +14,7 @@ export type PolarisChatModel = {
  * Prefer Gemini 3.x Free Tier models — verified against Google AI Studio.
  * @see https://ai.google.dev/gemini-api/docs/models
  */
-export const POLARIS_CHAT_MODELS: PolarisChatModel[] = [
+export const POLARIS_CHAT_MODELS: NovaStudioChatModel[] = [
   {
     id: "gemini-3.5-flash-lite",
     name: "Gemini 3.5 Flash Lite",
@@ -71,13 +71,13 @@ export const POLARIS_CHAT_MODEL_LABEL = POLARIS_CHAT_MODELS[0]!.name;
 /** Shared model id for non-chat generateText routes. */
 export const POLARIS_COMPLETION_MODEL = POLARIS_CHAT_MODEL;
 
-export function getPolarisChatModel(id: string): PolarisChatModel {
+export function getNovaStudioChatModel(id: string): NovaStudioChatModel {
   return (
     POLARIS_CHAT_MODELS.find((model) => model.id === id) ??
     POLARIS_CHAT_MODELS[0]!
   );
 }
 
-export function isAllowedPolarisChatModel(id: string): boolean {
+export function isAllowedNovaStudioChatModel(id: string): boolean {
   return POLARIS_CHAT_MODELS.some((model) => model.id === id);
 }

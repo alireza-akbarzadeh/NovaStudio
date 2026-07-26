@@ -59,7 +59,14 @@ const navGroups = [
 
 function isNavActive(pathname: string, href: string, label: string) {
   if (href === "/projects") {
-    if (label === "Projects" || label === "Overview") {
+    if (label === "Projects") {
+      return (
+        pathname === "/projects" ||
+        pathname === "/projects/new" ||
+        pathname.startsWith("/projects/new/")
+      );
+    }
+    if (label === "Overview") {
       return pathname === "/projects";
     }
     return false;
@@ -77,7 +84,7 @@ export function ProjectsNavSidebar() {
         <Image src="/logo.svg" alt="" width={32} height={32} className="size-8" />
         <div className="min-w-0">
           <p className={cn(display.className, "text-base font-semibold tracking-tight")}>
-            Polaris
+            NovaStudio
           </p>
           <p className="text-[11px] text-muted-foreground">Dev workspace</p>
         </div>

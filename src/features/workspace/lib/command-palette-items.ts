@@ -103,6 +103,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "⌘L",
   },
   {
+    id: "toggleNotifications",
+    label: "Toggle Notifications",
+    keywords: "inbox alerts bell events",
+    shortcut: "⌘⇧N",
+  },
+  {
     id: "toggleSidebar",
     label: "Toggle Sidebar",
     keywords: "explorer panel left",

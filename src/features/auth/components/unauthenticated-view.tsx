@@ -24,7 +24,7 @@ const FEATURES = [
   {
     id: "ai",
     label: "01 // AI",
-    title: "Ask Polaris in context",
+    title: "Ask NovaStudio in context",
     description:
       "Chat against open files, the project tree, and diffs. Explain, refactor, or create — without leaving the editor.",
   },
@@ -71,15 +71,15 @@ const SHOWCASES = [
     eyebrow: "Workspace",
     title: "Editor, terminal, and AI on one surface.",
     description:
-      "Open a file, ask Polaris to change it, run the command that fails, and fix it — without hopping tools.",
+      "Open a file, ask NovaStudio to change it, run the command that fails, and fix it — without hopping tools.",
     bullets: [
       "Monaco editor with multi-file tabs",
       "Integrated terminal for install, run, and debug",
-      "Ask Polaris with project-aware suggestions",
+      "Ask NovaStudio with project-aware suggestions",
     ],
     image: "/code.png",
     imageAlt:
-      "Polaris workspace showing the code editor, file tree, terminal, and Ask Polaris assistant",
+      "NovaStudio workspace showing the code editor, file tree, terminal, and Ask NovaStudio assistant",
   },
   {
     id: "hub",
@@ -94,7 +94,7 @@ const SHOWCASES = [
     ],
     image: "/project-panel.png",
     imageAlt:
-      "Polaris projects dashboard with project cards, filters, and workspace shortcuts",
+      "NovaStudio projects dashboard with project cards, filters, and workspace shortcuts",
   },
 ] as const;
 
@@ -105,7 +105,7 @@ const COMING_SOON = [
   },
   {
     label: "One-click deploy",
-    description: "Ship previews and production from the workspace without leaving Polaris.",
+    description: "Ship previews and production from the workspace without leaving NovaStudio.",
   },
   {
     label: "Branch & PR review",
@@ -113,7 +113,7 @@ const COMING_SOON = [
   },
   {
     label: "Custom agents",
-    description: "Specialized Polaris agents for tests, refactors, migrations, and docs.",
+    description: "Specialized NovaStudio agents for tests, refactors, migrations, and docs.",
   },
   {
     label: "Template marketplace",
@@ -129,7 +129,7 @@ const WORKFLOW_STEPS = [
   {
     n: "01",
     t: "Open a workspace",
-    d: "Create a project or clone from GitHub. Polaris boots the editor, file tree, and terminal together.",
+    d: "Create a project or clone from GitHub. NovaStudio boots the editor, file tree, and terminal together.",
   },
   {
     n: "02",
@@ -150,7 +150,7 @@ const WORKFLOW_STEPS = [
 
 const FAQS = [
   {
-    q: "Does Polaris send my code to the cloud?",
+    q: "Does NovaStudio send my code to the cloud?",
     a: "Your workspace runs in the browser against your project storage. AI features use the models configured for your plan — review Clerk Billing entitlements for what’s included.",
   },
   {
@@ -159,7 +159,7 @@ const FAQS = [
   },
   {
     q: "Can I clone from GitHub?",
-    a: "Yes. Connect GitHub and clone a repository into a Polaris workspace, then edit and publish from the same UI.",
+    a: "Yes. Connect GitHub and clone a repository into a NovaStudio workspace, then edit and publish from the same UI.",
   },
   {
     q: "How does pricing work?",
@@ -206,7 +206,7 @@ function Nav() {
               "text-[15px] font-semibold tracking-tight text-white",
             )}
           >
-            Polaris
+            NovaStudio
           </span>
         </Link>
         <div className="hidden items-center gap-8 text-[13px] font-medium text-[#9a9a9a] md:flex">
@@ -279,7 +279,7 @@ function Hero() {
               "mb-6 text-[clamp(2.75rem,9vw,5.75rem)] leading-[0.9] font-extrabold tracking-[-0.04em] text-white",
             )}
           >
-            Polaris
+            NovaStudio
           </p>
           <h1 className="mx-auto mb-6 max-w-5xl text-balance text-3xl font-bold tracking-tight text-white md:mb-8 md:text-6xl md:leading-[1.05]">
             Ship code{" "}
@@ -287,7 +287,7 @@ function Hero() {
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-balance text-base font-medium leading-relaxed text-[#8b8e96] md:mb-12 md:text-xl">
             The AI workspace for building software. Editor, terminal, Git, and
-            Ask Polaris — zero install, in the browser.
+            Ask NovaStudio — zero install, in the browser.
           </p>
           <div className="mb-12 flex flex-wrap items-center justify-center gap-3 md:mb-14">
             <Show when="signed-out">
@@ -339,7 +339,7 @@ function Hero() {
                 <div className="size-2.5 rounded-full bg-white/10 md:size-3" />
               </div>
               <div className="font-mono text-[10px] tracking-widest text-[#9a9a9a] uppercase opacity-60 md:text-[11px]">
-                workspace — Polaris
+                workspace — NovaStudio
               </div>
               <div className="flex w-20 justify-end md:w-24">
                 <div className="size-3.5 rounded-sm bg-white/10 md:size-4" />
@@ -347,7 +347,7 @@ function Hero() {
             </div>
             <Image
               src="/code.png"
-              alt="Polaris AI workspace with code editor, terminal, and Ask Polaris assistant"
+              alt="NovaStudio AI workspace with code editor, terminal, and Ask NovaStudio assistant"
               width={1919}
               height={1076}
               priority
@@ -505,7 +505,7 @@ function Roadmap() {
             More on the way.
           </h2>
           <p className="mt-5 text-balance text-base leading-relaxed text-[#8b8e96] md:text-lg">
-            We&apos;re building the next layer of Polaris — collaboration,
+            We&apos;re building the next layer of NovaStudio — collaboration,
             deploy, and agents that meet you where you already work.
           </p>
         </div>
@@ -684,7 +684,7 @@ function Footer() {
             className="size-5 opacity-50"
           />
           <span className="font-mono text-xs font-bold tracking-widest uppercase opacity-40">
-            Polaris {new Date().getFullYear()}
+            NovaStudio {new Date().getFullYear()}
           </span>
         </div>
         <div className="flex gap-10 font-mono text-[10px] font-bold tracking-widest text-[#9a9a9a] uppercase">

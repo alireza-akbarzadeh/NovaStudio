@@ -24,9 +24,9 @@ import {
 } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
-  getPolarisChatModel,
+  getNovaStudioChatModel,
   POLARIS_CHAT_MODELS,
-  type PolarisChatModel,
+  type NovaStudioChatModel,
 } from "@/lib/ai/gemini-model";
 import { cn } from "@/lib/utils";
 
@@ -46,9 +46,9 @@ export function WorkspaceAiModelPicker({
   className,
 }: WorkspaceAiModelPickerProps) {
   const [open, setOpen] = useState(false);
-  const selected = useMemo(() => getPolarisChatModel(value), [value]);
+  const selected = useMemo(() => getNovaStudioChatModel(value), [value]);
 
-  const handleSelect = (model: PolarisChatModel) => {
+  const handleSelect = (model: NovaStudioChatModel) => {
     onChange(model.id);
     if (auto) onAutoChange?.(false);
     setOpen(false);

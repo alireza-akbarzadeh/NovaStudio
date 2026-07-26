@@ -639,7 +639,7 @@ export async function assertGitHubRepoScope(octokit: Octokit) {
 
   if (!scopes.includes("repo")) {
     throw new Error(
-      "GitHub token is missing the repo scope. Disconnect and reconnect GitHub in Polaris, then approve repository access.",
+      "GitHub token is missing the repo scope. Disconnect and reconnect GitHub in NovaStudio, then approve repository access.",
     );
   }
 }
@@ -666,7 +666,7 @@ export function formatGitHubApiError(error: unknown): string | null {
 
   if (error.status === 409) {
     if (error.message.toLowerCase().includes("git repository is empty")) {
-      return "GitHub repository is empty or still initializing. Polaris will retry automatically — if this keeps failing, delete the empty repo on GitHub and try again with a new name.";
+      return "GitHub repository is empty or still initializing. NovaStudio will retry automatically — if this keeps failing, delete the empty repo on GitHub and try again with a new name.";
     }
     return "GitHub could not complete this action. Wait a few seconds and try again.";
   }

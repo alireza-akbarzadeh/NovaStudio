@@ -29,7 +29,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Polaris — The AI workspace for building software",
+  title: "NovaStudio — The AI workspace for building software",
   description:
     "Open a project, edit with context, talk to an assistant that knows your files, and ship through Git — all in one browser workspace.",
 };

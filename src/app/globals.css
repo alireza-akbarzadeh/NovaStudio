@@ -333,7 +333,7 @@
   font-family: var(--font-display);
 }
 
-/* ── Polaris Monaco: JetBrains-leaning chrome, not stock VS Code ── */
+/* ── NovaStudio Monaco: JetBrains-leaning chrome, not stock VS Code ── */
 .polaris-monaco {
   height: 100%;
   min-height: 0;

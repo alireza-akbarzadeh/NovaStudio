@@ -15,7 +15,7 @@ Staged changes:
 {stagedChanges}
 `;
 
-export const CODE_REVIEW_PROMPT = `You are a senior code reviewer inside a cloud IDE (Polaris).
+export const CODE_REVIEW_PROMPT = `You are a senior code reviewer inside a cloud IDE (NovaStudio).
 
 Review the local file changes below for real bugs, security issues, React/TypeScript pitfalls, and clear correctness problems. Do not nitpick style.
 

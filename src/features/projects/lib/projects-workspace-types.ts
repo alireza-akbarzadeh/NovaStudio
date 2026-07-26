@@ -29,6 +29,12 @@ export type WorkspaceProject = {
   owner: { name: string; initials: string; color: string };
   trending?: boolean;
   weeklyStars?: number;
+  /** GitHub clone lifecycle — present while importing / after failure. */
+  importStatus?: "importing" | "completed" | "failed";
+  importStartedAt?: number;
+  source?: "blank" | "github" | "template";
+  githubRepoUrl?: string;
+  githubBranch?: string;
 };
 
 export type WorkspaceStat = {
@@ -86,6 +92,7 @@ export type WorkspaceNotification = {
   time: string;
   tone: "violet" | "green" | "blue" | "orange";
   href?: string;
+  read?: boolean;
   soundKind?:
     | "notify"
     | "success"

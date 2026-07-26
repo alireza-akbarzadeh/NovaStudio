@@ -11,6 +11,7 @@ import {
 } from "@/features/workspace/lib/editor-tabs";
 import {
   useWorkspaceStore,
+  type EditorTab,
   type EditorTabOpenMode,
 } from "@/features/workspace/store/workspace-store";
 
@@ -54,6 +55,13 @@ export function useEditorTabs(projectId: string) {
   const editorSplitTabId = useWorkspaceStore((s) => s.editorSplitTabId);
   const activateEditorTab = useWorkspaceStore((s) => s.activateEditorTab);
   const closeEditorTab = useWorkspaceStore((s) => s.closeEditorTab);
+  const closeAllEditorTabs = useWorkspaceStore((s) => s.closeAllEditorTabs);
+  const closeUnmodifiedEditorTabs = useWorkspaceStore(
+    (s) => s.closeUnmodifiedEditorTabs,
+  );
+  const bookmarkOpenEditorTabs = useWorkspaceStore(
+    (s) => s.bookmarkOpenEditorTabs,
+  );
   const reorderEditorTabs = useWorkspaceStore((s) => s.reorderEditorTabs);
   const pinEditorTab = useWorkspaceStore((s) => s.pinEditorTab);
   const unpinEditorTab = useWorkspaceStore((s) => s.unpinEditorTab);
@@ -102,6 +110,28 @@ export function useEditorTabs(projectId: string) {
     [activeEditorTabId, closeEditorTab, projectId, router],
   );
 
+  const navigateAfterBulkClose = useCallback(
+    (nextActive: EditorTab | null) => {
+      if (nextActive) {
+        router.push(editorTabHref(projectId, nextActive));
+      }
+    },
+    [projectId, router],
+  );
+
+  const closeAllTabs = useCallback(() => {
+    closeAllEditorTabs();
+  }, [closeAllEditorTabs]);
+
+  const closeUnmodifiedTabs = useCallback(() => {
+    const nextActive = closeUnmodifiedEditorTabs();
+    navigateAfterBulkClose(nextActive);
+  }, [closeUnmodifiedEditorTabs, navigateAfterBulkClose]);
+
+  const bookmarkOpenTabs = useCallback(() => {
+    bookmarkOpenEditorTabs();
+  }, [bookmarkOpenEditorTabs]);
+
   const reorderTab = useCallback(
     (fromId: string, toId: string) => {
       reorderEditorTabs(fromId, toId);
@@ -144,6 +174,9 @@ export function useEditorTabs(projectId: string) {
     openTab,
     selectTab,
     closeTab,
+    closeAllTabs,
+    closeUnmodifiedTabs,
+    bookmarkOpenTabs,
     reorderTab,
     splitTab,
     pinTab,

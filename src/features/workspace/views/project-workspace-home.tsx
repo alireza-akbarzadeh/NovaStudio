@@ -53,7 +53,7 @@ const FEATURES: Feature[] = [
   },
   {
     icon: SparklesIcon,
-    title: "Polaris AI",
+    title: "NovaStudio AI",
     description:
       "Ask for refactors, explanations, and plans beside your code. Toggle the panel anytime with ⌘ L.",
     accent: "text-ws-purple bg-ws-purple/10",
@@ -124,7 +124,7 @@ export function ProjectWorkspaceHome({ projectId }: ProjectWorkspaceHomeProps) {
       id: "ai",
       label: "AI panel",
       keys: "⌘ L",
-      hint: "Chat with Polaris AI",
+      hint: "Chat with NovaStudio AI",
       onRun: () => runCommand("toggleAiPanel"),
     },
     {
@@ -175,7 +175,7 @@ export function ProjectWorkspaceHome({ projectId }: ProjectWorkspaceHomeProps) {
                 "text-sm font-semibold tracking-tight text-ws-text",
               )}
             >
-              Why Polaris
+              Why NovaStudio
             </h2>
             <button
               type="button"

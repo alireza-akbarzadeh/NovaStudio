@@ -29,7 +29,7 @@ export const SAMPLE_FILE_CONTENT: Record<string, string> = {
   "src/app/page.tsx": `export default function Page() {
   return (
     <main className="p-6">
-      <h1>Polaris</h1>
+      <h1>NovaStudio</h1>
       <p>Your project workspace home.</p>
     </main>
   );
@@ -45,18 +45,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   );
 }
 `,
-  "src/welcome.ts": `// Polaris — your code editor workspace
-import { Workspace } from "@polaris/core";
+  "src/welcome.ts": `// NovaStudio — your code editor workspace
+import { Workspace } from "@novastudio/core";
 
-const polaris = new Workspace({
+const novaStudio = new Workspace({
   name: "My Project",
   ai: true,
 });
 
-export default polaris;
+export default novaStudio;
 `,
   "package.json": `{
-  "name": "polaris",
+  "name": "novastudio",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -65,11 +65,11 @@ export default polaris;
   }
 }
 `,
-  "README.md": `# Polaris
+  "README.md": `# NovaStudio
 
 Open files from the project tree to edit code in your workspace.
 
-Use Polaris AI on the right for help with refactors, debugging, and planning.
+Use NovaStudio AI on the right for help with refactors, debugging, and planning.
 `,
 };
 

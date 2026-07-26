@@ -9,7 +9,7 @@ export const EXTENSION_CATALOG: ExtensionCatalogEntry[] = [
     description: "GitHub’s dark editor palette for Monaco.",
     category: "theme",
     version: "1.0.0",
-    author: "Polaris",
+    author: "NovaStudio",
     monacoThemeId: "ext-github-dark",
   },
   {
@@ -18,7 +18,7 @@ export const EXTENSION_CATALOG: ExtensionCatalogEntry[] = [
     description: "Popular purple-accent dark theme for the editor.",
     category: "theme",
     version: "1.0.0",
-    author: "Polaris",
+    author: "NovaStudio",
     monacoThemeId: "ext-dracula",
   },
   {
@@ -27,7 +27,7 @@ export const EXTENSION_CATALOG: ExtensionCatalogEntry[] = [
     description: "Arctic, north-bluish clean dark theme.",
     category: "theme",
     version: "1.0.0",
-    author: "Polaris",
+    author: "NovaStudio",
     monacoThemeId: "ext-nord",
   },
   {
@@ -36,7 +36,7 @@ export const EXTENSION_CATALOG: ExtensionCatalogEntry[] = [
     description: "Warm light Solarized palette for the editor.",
     category: "theme",
     version: "1.0.0",
-    author: "Polaris",
+    author: "NovaStudio",
     monacoThemeId: "ext-solarized-light",
   },
   {
@@ -46,7 +46,7 @@ export const EXTENSION_CATALOG: ExtensionCatalogEntry[] = [
       "Syntax highlighting for Vue Single File Components (.vue).",
     category: "language",
     version: "1.0.0",
-    author: "Polaris",
+    author: "NovaStudio",
   },
 ];
 

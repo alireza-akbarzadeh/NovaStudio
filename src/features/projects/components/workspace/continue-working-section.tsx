@@ -8,10 +8,20 @@ type ContinueWorkingSectionProps = {
   projects: WorkspaceProject[];
 };
 
+function importRank(project: WorkspaceProject) {
+  if (project.importStatus === "importing") return 0;
+  if (project.importStatus === "failed") return 1;
+  return 2;
+}
+
 export function ContinueWorkingSection({
   projects,
 }: ContinueWorkingSectionProps) {
-  const recent = projects.filter((project) => !project.pinned).slice(0, 4);
+  // Prefer live / failed clones so the optimistic card is always visible.
+  const recent = [...projects]
+    .filter((project) => !project.pinned)
+    .sort((a, b) => importRank(a) - importRank(b))
+    .slice(0, 4);
 
   return (
     <section>

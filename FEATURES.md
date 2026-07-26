@@ -1,6 +1,6 @@
-# Polaris Editor — Feature Roadmap
+# NovaStudio Editor — Feature Roadmap
 
-Goal: make Polaris the place people choose instead of StackBlitz / CodeSandbox — an **AI-native collaborative IDE**, not just a sandbox.
+Goal: make NovaStudio the place people choose instead of StackBlitz / CodeSandbox — an **AI-native collaborative IDE**, not just a sandbox.
 
 We implement **one feature at a time**, review UI + behavior together, then move on.
 
@@ -207,7 +207,7 @@ These are the biggest daily-friction gaps you called out.
 ### 16b. In-editor AI code review — ready for review
 
 - Explorer tabs: **Project** · **Changes** · **Quality**
-- **Quality** → **Review changes** runs Polaris AI on staged (or all local) diffs
+- **Quality** → **Review changes** runs NovaStudio AI on staged (or all local) diffs
 - Findings list with severity, explanation, jump-to-file
 - **Apply** writes the suggested full-file patch and keeps the file staged; **Dismiss** hides the finding
 - No redirect to GitHub — suggestions stay inside the cloud editor

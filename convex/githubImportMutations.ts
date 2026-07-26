@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 
-import { internalMutation, internalQuery } from "./_generated/server";
+import { verifyAuth } from "./auth";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+} from "./_generated/server";
 import { createNotification } from "./lib/createNotification";
 import { insertImportedFiles } from "./lib/importProjectFiles";
 import { ensureOwnerMembership } from "./lib/projectAccess";
@@ -78,7 +83,7 @@ export const completeImport = internalMutation({
     await createNotification(ctx, {
       userId: project.ownerId,
       title: `"${project.name}" imported from GitHub`,
-      body: "Your repository is ready to open in Polaris.",
+      body: "Your repository is ready to open in NovaStudio.",
       tone: "green",
       soundKind: "success",
       href: `/projects/${args.projectId}`,
@@ -114,6 +119,42 @@ export const failImport = internalMutation({
       href: `/projects`,
       projectId: args.projectId,
     });
+  },
+});
+
+/**
+ * Re-queue a failed GitHub import. Returns a fresh job token for the worker.
+ */
+export const retryFailedImport = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Only the project owner can retry this import");
+    }
+    if (project.importStatus !== "failed") {
+      throw new Error("Only failed imports can be retried");
+    }
+    if (!project.githubRepoUrl || !project.githubBranch) {
+      throw new Error("Project is missing GitHub repository details");
+    }
+
+    const now = Date.now();
+    const importJobToken = `${now}-${Math.random().toString(36).slice(2, 12)}`;
+    await ctx.db.patch(args.projectId, {
+      importStatus: "importing",
+      importStartedAt: now,
+      importJobToken,
+      updatedAt: now,
+    });
+
+    return { projectId: args.projectId, importJobToken };
   },
 });
 

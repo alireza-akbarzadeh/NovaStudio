@@ -58,7 +58,7 @@ async function walkFiles(
 }
 
 /**
- * Persist text files from the WebContainer FS into the Polaris project.
+ * Persist text files from the WebContainer FS into the NovaStudio project.
  * Returns the list of paths written.
  */
 export async function syncTreeToProject(

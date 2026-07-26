@@ -1,6 +1,6 @@
-# Contributing to Polaris
+# Contributing to NovaStudio
 
-Thanks for helping build **Polaris** — an AI-native collaborative IDE in the browser.
+Thanks for helping build **NovaStudio** — an AI-native collaborative IDE in the browser.
 
 This guide is the source of truth for how to set up the app, pick work, request features, and land a pull request. If something here conflicts with a GitHub issue comment, follow the issue (and please open a PR to update this file).
 
@@ -126,7 +126,7 @@ Maintainers will typically:
 
 Use the **Bug report** template and include:
 
-- Polaris version / commit SHA if known
+- NovaStudio version / commit SHA if known
 - Browser + OS
 - Steps to reproduce
 - Expected vs actual
@@ -181,12 +181,22 @@ NEXT_PUBLIC_SENTRY_DSN=
 
 Also set **Convex dashboard env** for server-side secrets used in `convex/` (for example `CLERK_SECRET_KEY`, `CLERK_JWT_ISSUER_DOMAIN`, VAPID keys for push).
 
+
+**Clerk ↔ Convex must use the same Clerk app.** If Convex trusts a different issuer than `.env.local`, you get `No auth provider found matching the given token`. Keep them aligned with:
+
+```bash
+npm run auth:check   # verify
+npm run auth:sync    # copy .env.local Clerk issuer + secret → Convex
+```
+
+`npm run backend` runs `auth:sync` automatically via `prebackend`.
+
 Never commit `.env.local` or real secrets.
 
 ### Run the app
 
 ```bash
-# Terminal 1 — Convex backend (watch + codegen)
+# Terminal 1 — Convex backend (watch + codegen; syncs Clerk issuer first)
 npm run backend
 
 # Terminal 2 — Next.js
@@ -321,4 +331,4 @@ Every feature PR should pass this bar (also mirrored in [`FEATURES.md`](./FEATUR
 - **Roadmap:** [`FEATURES.md`](./FEATURES.md).
 - **Product screenshots:** [`README.md` Showcase](./README.md#showcase).
 
-Welcome aboard — pick a `todo`, open a PR, and help make Polaris the browser IDE people choose.
+Welcome aboard — pick a `todo`, open a PR, and help make NovaStudio the browser IDE people choose.

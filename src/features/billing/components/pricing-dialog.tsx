@@ -212,7 +212,7 @@ function PricingDialog({
               "text-xl font-semibold tracking-tight sm:text-2xl",
             )}
           >
-            Choose your Polaris plan
+            Choose your NovaStudio plan
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             Subscribe or manage billing below. Plans and prices come from your

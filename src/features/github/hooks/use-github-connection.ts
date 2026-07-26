@@ -6,7 +6,7 @@ import type {
   ExternalAccountResource,
   ReauthorizeExternalAccountParams,
 } from "@clerk/shared/types";
-import { useAction, useConvexAuth, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -143,7 +143,7 @@ export function useGitHubConnection() {
           const verifyError = account?.verification?.error?.longMessage;
           toast.error(
             verifyError ||
-              "GitHub connected in Clerk, but Polaris could not read a repo token. Reconnect and approve the “repo” permission (enable GitHub with custom credentials + repo scope in the Clerk Dashboard).",
+              "GitHub connected in Clerk, but NovaStudio could not read a repo token. Reconnect and approve the “repo” permission (enable GitHub with custom credentials + repo scope in the Clerk Dashboard).",
           );
         }
       } catch (error) {
@@ -335,6 +335,34 @@ export function useCloneFromGitHub() {
   );
 
   return { clone, isCloning };
+}
+
+/** Restart a failed GitHub import and re-enqueue the clone worker. */
+export function useRetryGitHubClone() {
+  const retryFailedImport = useMutation(api.githubImportMutations.retryFailedImport);
+  const processCloneJob = useAction(api.githubImport.processCloneJob);
+  const [isRetrying, setIsRetrying] = useState(false);
+
+  const retry = useCallback(
+    async (projectId: string) => {
+      setIsRetrying(true);
+      try {
+        const { importJobToken } = await retryFailedImport({
+          projectId: projectId as Id<"projects">,
+        });
+        await enqueueCloneJob({
+          projectId,
+          jobToken: importJobToken,
+          processCloneJob,
+        });
+      } finally {
+        setIsRetrying(false);
+      }
+    },
+    [processCloneJob, retryFailedImport],
+  );
+
+  return { retry, isRetrying };
 }
 
 /**

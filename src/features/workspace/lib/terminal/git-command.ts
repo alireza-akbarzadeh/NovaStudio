@@ -153,7 +153,7 @@ const SUBCOMMANDS: Record<GitSubcommand, GitSubcommandSpec> = {
   },
 };
 
-/** Polaris combines commit + push, so both spellings share one flow. */
+/** NovaStudio combines commit + push, so both spellings share one flow. */
 function commitAndPush({
   name,
   args,
@@ -165,7 +165,7 @@ function commitAndPush({
     return {
       output:
         name === "push"
-          ? 'usage: git push -m "commit message"\n(Polaris combines commit + push)'
+          ? 'usage: git push -m "commit message"\n(NovaStudio combines commit + push)'
           : 'usage: git commit -m "commit message"',
       exitCode: 1,
     };

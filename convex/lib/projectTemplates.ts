@@ -73,13 +73,13 @@ const SIMPLE: ProjectTemplate = {
   ],
   content: {
     "src/index.ts": `export function main() {
-  console.log("Hello from Polaris");
+  console.log("Hello from NovaStudio");
 }
 
 main();
 `,
     "package.json": `{
-  "name": "polaris-simple",
+  "name": "novastudio-simple",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -90,7 +90,7 @@ main();
 `,
     "README.md": `# Simple project
 
-A minimal Polaris workspace. Open files from the tree to start editing.
+A minimal NovaStudio workspace. Open files from the tree to start editing.
 `,
   },
 };
@@ -180,7 +180,7 @@ button?.addEventListener("click", () => {
 `,
     "README.md": `# Static site
 
-Plain HTML / CSS / JS created in Polaris. Open the Preview pane to view it.
+Plain HTML / CSS / JS created in NovaStudio. Open the Preview pane to view it.
 `,
   },
 };
@@ -287,7 +287,7 @@ button:hover {
 }
 `,
     "package.json": `{
-  "name": "polaris-vite",
+  "name": "novastudio-vite",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -325,7 +325,7 @@ export default defineConfig({});
 `,
     "README.md": `# Vite
 
-Vanilla TypeScript starter created in Polaris.
+Vanilla TypeScript starter created in NovaStudio.
 
 \`\`\`bash
 npm install
@@ -358,7 +358,7 @@ const NODE: ProjectTemplate = {
 main();
 `,
     "package.json": `{
-  "name": "polaris-node",
+  "name": "novastudio-node",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -387,7 +387,7 @@ main();
 `,
     "README.md": `# Node
 
-TypeScript Node starter created in Polaris.
+TypeScript Node starter created in NovaStudio.
 
 \`\`\`bash
 npm install
@@ -439,7 +439,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Next.js App",
-  description: "Created with Polaris",
+  description: "Created with NovaStudio",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -470,7 +470,7 @@ body {
 }
 `,
     "package.json": `{
-  "name": "polaris-nextjs",
+  "name": "novastudio-nextjs",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -521,7 +521,7 @@ export default nextConfig;
 `,
     "README.md": `# Next.js
 
-App Router starter created in Polaris.
+App Router starter created in NovaStudio.
 
 \`\`\`bash
 npm install
@@ -618,7 +618,7 @@ code {
 }
 `,
     "package.json": `{
-  "name": "polaris-react",
+  "name": "novastudio-react",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -667,7 +667,7 @@ export default defineConfig({
 `,
     "README.md": `# React
 
-React + Vite starter created in Polaris.
+React + Vite starter created in NovaStudio.
 
 \`\`\`bash
 npm install
@@ -786,7 +786,7 @@ code {
 }
 `,
     "package.json": `{
-  "name": "polaris-tanstack",
+  "name": "novastudio-tanstack",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -835,7 +835,7 @@ export default defineConfig({
 `,
     "README.md": `# TanStack Start
 
-File-based routing starter created in Polaris.
+File-based routing starter created in NovaStudio.
 
 \`\`\`bash
 npm install

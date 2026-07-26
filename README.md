@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="./public/logo.svg" alt="Polaris" width="72" height="72" />
+  <img src="./public/logo.svg" alt="NovaStudio" width="72" height="72" />
 </p>
 
-<h1 align="center">Polaris</h1>
+<h1 align="center">NovaStudio</h1>
 
 <p align="center">
   <strong>An AI-native collaborative IDE in the browser.</strong><br />
@@ -31,9 +31,9 @@
 
 ---
 
-## What is Polaris?
+## What is NovaStudio?
 
-Polaris is a browser-based workspace for developers who want **editor + AI + git + terminal + live preview** in one place — closer to StackBlitz / CodeSandbox, but built as an **AI-first collaborative IDE**.
+NovaStudio is a browser-based workspace for developers who want **editor + AI + git + terminal + live preview** in one place — closer to StackBlitz / CodeSandbox, but built as an **AI-first collaborative IDE**.
 
 Create a project, clone from GitHub, invite teammates, and keep coding with:
 
@@ -52,13 +52,13 @@ Create a project, clone from GitHub, invite teammates, and keep coding with:
 
 Organize private workspaces, continue recent projects, import from GitHub, and see activity at a glance.
 
-![Polaris projects hub](./public/project-panel.png)
+![NovaStudio projects hub](./public/project-panel.png)
 
 ### In-browser IDE
 
 File tree, Monaco editor, AI sidebar, terminal, and preview — the full coding surface for a project like `job-search`.
 
-![Polaris code workspace](./public/code.png)
+![NovaStudio code workspace](./public/code.png)
 
 ---
 
@@ -171,7 +171,7 @@ Copy the variables below into `.env.local` (and configure the same secrets in th
 # Clerk
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
-CLERK_JWT_ISSUER_DOMAIN=          # also set in Convex env
+CLERK_JWT_ISSUER_DOMAIN=          # must match Convex; npm run auth:sync
 
 # Convex
 NEXT_PUBLIC_CONVEX_URL=

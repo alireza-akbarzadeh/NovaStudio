@@ -45,7 +45,7 @@ export function SettingsHubView() {
     <div className="mx-auto w-full max-w-3xl">
       <HubPageHeader
         title="Settings"
-        description="Editor preferences and keyboard shortcuts for your Polaris workspace."
+        description="Editor preferences and keyboard shortcuts for your NovaStudio workspace."
       />
       <div className="rounded-[22px] border border-border/60 bg-card/70 p-5 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.4)] backdrop-blur-xl md:p-6">
         <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>

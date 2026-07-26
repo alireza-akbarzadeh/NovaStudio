@@ -94,8 +94,8 @@ function buildWelcome(projectName?: string): UIMessage {
       {
         type: "text",
         text: projectName
-          ? `I'm Polaris — ready to help with **${projectName}**. Ask me to explain code, create files, or edit the project directly.`
-          : "I'm Polaris — your AI pair for this workspace. Ask about code, or tell me to create and edit files.",
+          ? `I'm NovaStudio — ready to help with **${projectName}**. Ask me to explain code, create files, or edit the project directly.`
+          : "I'm NovaStudio — your AI pair for this workspace. Ask about code, or tell me to create and edit files.",
       },
     ],
   };
@@ -551,7 +551,7 @@ function WorkspaceAiChatSession({
         <ConversationContent className="gap-4 p-3">
           {showWelcome ? (
             <ConversationEmptyState
-              title={mode === "plan" ? "Plan with Polaris" : "Ask Polaris"}
+              title={mode === "plan" ? "Plan with NovaStudio" : "Ask NovaStudio"}
               description={
                 mode === "plan"
                   ? "Outline steps and risks without editing files"
@@ -600,7 +600,7 @@ function WorkspaceAiChatSession({
                           className="size-3.5"
                         />
                         <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-ws-text-muted">
-                          Polaris
+                          NovaStudio
                         </span>
                         {isLastAssistant ? (
                           <MessageActions className="ml-auto">
@@ -841,7 +841,7 @@ export function WorkspaceAiSidebar({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-semibold text-ws-text">
-                Polaris Agents
+                NovaStudio Agents
               </p>
             </div>
             <Button
