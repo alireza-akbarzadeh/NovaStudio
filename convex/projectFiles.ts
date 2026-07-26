@@ -15,8 +15,79 @@ import {
   verifyProjectAccess,
   verifyProjectWriteAccess,
 } from "./lib/projectFiles";
+import {
+  identityDisplayName,
+} from "./lib/projectAccess";
+import { recordProjectActivity } from "./lib/recordActivity";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
+
+/** Avoid flooding the timeline while autosave fires every ~800ms. */
+const EDIT_ACTIVITY_COOLDOWN_MS = 2 * 60 * 1000;
+
+/** Keep timeline snapshots well under Convex's 1MB document limit. */
+const SNAPSHOT_CONTENT_CAP = 200_000;
+
+function fileBasename(path: string) {
+  const slash = path.lastIndexOf("/");
+  return slash >= 0 ? path.slice(slash + 1) : path;
+}
+
+function truncateSnapshotContent(value: string) {
+  if (value.length <= SNAPSHOT_CONTENT_CAP) return value;
+  return `${value.slice(0, SNAPSHOT_CONTENT_CAP)}\n\n/* …truncated for activity timeline */\n`;
+}
+
+async function maybeRecordFileEditActivity(
+  ctx: MutationCtx,
+  args: {
+    projectId: Id<"projects">;
+    path: string;
+    userId: string;
+    actorName?: string;
+    beforeContent: string;
+    afterContent: string;
+  },
+) {
+  if (args.beforeContent === args.afterContent) return;
+
+  const recent = await ctx.db
+    .query("projectActivity")
+    .withIndex("by_project_created", (q) =>
+      q.eq("projectId", args.projectId),
+    )
+    .order("desc")
+    .take(12);
+
+  const now = Date.now();
+  const duplicate = recent.some(
+    (row) =>
+      row.actorUserId === args.userId &&
+      row.type === "updated" &&
+      row.detail === args.path &&
+      now - row.createdAt < EDIT_ACTIVITY_COOLDOWN_MS,
+  );
+  if (duplicate) return;
+
+  const name = args.actorName?.trim() || "Someone";
+  const activityId = await recordProjectActivity(ctx, {
+    projectId: args.projectId,
+    actorUserId: args.userId,
+    actorName: args.actorName,
+    type: "updated",
+    title: `${name} edited ${fileBasename(args.path)}`,
+    detail: args.path,
+    hasSnapshot: true,
+  });
+
+  await ctx.db.insert("projectActivitySnapshots", {
+    activityId,
+    projectId: args.projectId,
+    path: args.path,
+    beforeContent: truncateSnapshotContent(args.beforeContent),
+    afterContent: truncateSnapshotContent(args.afterContent),
+  });
+}
 
 export const listByProject = query({
   args: {
@@ -440,7 +511,7 @@ export const updateContent = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyProjectWriteAccess(ctx, args.projectId);
+    const access = await verifyProjectWriteAccess(ctx, args.projectId);
 
     const file = await ctx.db
       .query("projectFiles")
@@ -458,6 +529,7 @@ export const updateContent = mutation({
 
     const now = Date.now();
     const nextContent = args.content;
+    const contentChanged = file.content !== nextContent;
     const stillChanged =
       file.syncedContent === undefined || nextContent !== file.syncedContent;
 
@@ -467,9 +539,28 @@ export const updateContent = mutation({
       staged: stillChanged ? file.staged === true : false,
     });
     await touchProject(ctx, args.projectId);
+
+    if (contentChanged) {
+      const identity = await ctx.auth.getUserIdentity();
+      const member = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project_user", (q) =>
+          q.eq("projectId", args.projectId).eq("userId", access.userId),
+        )
+        .unique();
+      await maybeRecordFileEditActivity(ctx, {
+        projectId: args.projectId,
+        path: args.path,
+        userId: access.userId,
+        actorName:
+          member?.name ??
+          (identity ? identityDisplayName(identity) : undefined),
+        beforeContent: file.content ?? "",
+        afterContent: nextContent,
+      });
+    }
   },
 });
-
 export const rename = mutation({
   args: {
     projectId: v.id("projects"),

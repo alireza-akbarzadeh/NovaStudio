@@ -7,9 +7,13 @@ export type EditorTabInput =
   | { kind: "user-json" }
   | { kind: "new-project" }
   | { kind: "file"; path: string }
-  | { kind: "diff"; path: string };
+  | { kind: "diff"; path: string }
+  | { kind: "activity-diff"; path: string; activityId: string };
 
-const SPECIAL_TITLES: Record<Exclude<EditorTabKind, "file" | "diff">, string> = {
+const SPECIAL_TITLES: Record<
+  Exclude<EditorTabKind, "file" | "diff" | "activity-diff">,
+  string
+> = {
   welcome: "Welcome",
   settings: "Settings",
   shortcuts: "Shortcuts",
@@ -25,6 +29,7 @@ function fileNameFromPath(path: string) {
 export function editorTabId(input: EditorTabInput): string {
   if (input.kind === "file") return `file:${input.path}`;
   if (input.kind === "diff") return `diff:${input.path}`;
+  if (input.kind === "activity-diff") return `activity-diff:${input.activityId}`;
   return input.kind;
 }
 
@@ -35,17 +40,34 @@ export function editorTabTitle(input: EditorTabInput): string {
   if (input.kind === "diff") {
     return `${fileNameFromPath(input.path)} (Diff)`;
   }
+  if (input.kind === "activity-diff") {
+    return `${fileNameFromPath(input.path)} (Timeline)`;
+  }
   return SPECIAL_TITLES[input.kind];
 }
 
 export function createEditorTab(input: EditorTabInput): EditorTab {
+  if (input.kind === "file" || input.kind === "diff") {
+    return {
+      id: editorTabId(input),
+      kind: input.kind,
+      title: editorTabTitle(input),
+      path: input.path,
+    };
+  }
+  if (input.kind === "activity-diff") {
+    return {
+      id: editorTabId(input),
+      kind: input.kind,
+      title: editorTabTitle(input),
+      path: input.path,
+      activityId: input.activityId,
+    };
+  }
   return {
     id: editorTabId(input),
     kind: input.kind,
     title: editorTabTitle(input),
-    ...(input.kind === "file" || input.kind === "diff"
-      ? { path: input.path }
-      : {}),
   };
 }
 
@@ -65,6 +87,8 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/files/${tab.path ?? ""}`;
     case "diff":
       return `/projects/${projectId}/diff/${tab.path ?? ""}`;
+    case "activity-diff":
+      return `/projects/${projectId}/timeline/${tab.activityId ?? ""}`;
   }
 }
 
@@ -105,6 +129,20 @@ export function editorTabFromPathname(
     return createEditorTab({ kind: "diff", path });
   }
   if (pathname === `${base}/diff`) {
+    return createEditorTab({ kind: "welcome" });
+  }
+  const timelinePrefix = `${base}/timeline/`;
+  if (pathname.startsWith(timelinePrefix)) {
+    const activityId = decodeURIComponent(pathname.slice(timelinePrefix.length));
+    if (!activityId) return createEditorTab({ kind: "welcome" });
+    // Path is filled in by the view once the snapshot loads; tab id is activity-based.
+    return createEditorTab({
+      kind: "activity-diff",
+      path: "…",
+      activityId,
+    });
+  }
+  if (pathname === `${base}/timeline`) {
     return createEditorTab({ kind: "welcome" });
   }
   return null;

@@ -16,6 +16,7 @@ export type CommandId =
   | "showProblems"
   | "toggleAiPanel"
   | "toggleNotifications"
+  | "toggleChatPanel"
   | "openSettings"
   | "toggleSettings"
   | "closeSettings"
@@ -33,6 +34,7 @@ export type CommandId =
   | "showOutline"
   | "showDependencies"
   | "showExtensions"
+  | "showActivity"
   | "showGitChanges"
   | "showGitHistory"
   | "findInFiles"
@@ -99,6 +101,12 @@ export const workspaceCommands: Command[] = [
     run: () => store().toggleNotificationsPanel(),
   },
   {
+    id: "toggleChatPanel",
+    shortcut: "mod+shift+c",
+    allowInInput: true,
+    run: () => store().toggleChatPanel(),
+  },
+  {
     id: "openSettings",
     shortcut: "mod+,",
     allowInInput: true,
@@ -126,6 +134,7 @@ export const workspaceCommands: Command[] = [
       else if (s.goToFileOpen) s.closeGoToFile();
       else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
       else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
+      else if (s.chatPanelOpen) s.closeChatPanel();
     },
   },
   {
@@ -214,6 +223,12 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+x",
     allowInInput: true,
     run: () => showPanel("extensions"),
+  },
+  {
+    id: "showActivity",
+    shortcut: "mod+shift+a",
+    allowInInput: true,
+    run: () => showPanel("activity"),
   },
   {
     id: "showGitChanges",
@@ -351,7 +366,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.settingsOpen &&
       !s.goToFileOpen &&
       !s.cloneFromGitHubOpen &&
-      !s.notificationsPanelOpen
+      !s.notificationsPanelOpen &&
+      !s.chatPanelOpen
     ) {
       return false;
     }

@@ -12,7 +12,8 @@ export type LeftPanelView =
   | "git"
   | "outline"
   | "dependencies"
-  | "extensions";
+  | "extensions"
+  | "activity";
 
 export type ExplorerTab = "project" | "changes" | "quality";
 
@@ -51,6 +52,7 @@ export type EditorTabKind =
   | "welcome"
   | "file"
   | "diff"
+  | "activity-diff"
   | "settings"
   | "shortcuts"
   | "user-json"
@@ -61,6 +63,8 @@ export type EditorTab = {
   kind: EditorTabKind;
   title: string;
   path?: string;
+  /** Activity timeline snapshot id (for `activity-diff` tabs). */
+  activityId?: string;
   /** Transient tab — italic; replaced by the next preview open. */
   preview?: boolean;
   /** Sticky tab — stays left; survives preview replacement. */
@@ -72,6 +76,7 @@ export type EditorTabOpenMode = "preview" | "permanent" | "preserve";
 type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   notificationsPanelOpen: boolean;
+  chatPanelOpen: boolean;
   goToFileOpen: boolean;
   commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
@@ -108,6 +113,9 @@ type WorkspaceState = WorkspacePrefs & {
   toggleNotificationsPanel: () => void;
   openNotificationsPanel: () => void;
   closeNotificationsPanel: () => void;
+  toggleChatPanel: () => void;
+  openChatPanel: () => void;
+  closeChatPanel: () => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -196,6 +204,7 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   outline: "Outline",
   dependencies: "Dependencies",
   extensions: "Extensions",
+  activity: "Activity",
 };
 
 function lastPinnedIndex(tabs: EditorTab[]): number {
@@ -271,6 +280,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ...DEFAULT_WORKSPACE_PREFS,
   settingsOpen: false,
   notificationsPanelOpen: false,
+  chatPanelOpen: false,
   goToFileOpen: false,
   commandPaletteOpen: false,
   gitInitDialogOpen: false,
@@ -319,11 +329,50 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }),
   setBottomPanelTab: (tab) =>
     set({ bottomPanelTab: tab, terminalOpen: true }),
-  toggleAiPanel: () => set((s) => ({ aiPanelOpen: !s.aiPanelOpen })),
+  toggleAiPanel: () =>
+    set((s) => {
+      const nextOpen = !s.aiPanelOpen;
+      return {
+        aiPanelOpen: nextOpen,
+        ...(nextOpen
+          ? { chatPanelOpen: false, notificationsPanelOpen: false }
+          : {}),
+      };
+    }),
   toggleNotificationsPanel: () =>
-    set((s) => ({ notificationsPanelOpen: !s.notificationsPanelOpen })),
-  openNotificationsPanel: () => set({ notificationsPanelOpen: true }),
+    set((s) => {
+      const nextOpen = !s.notificationsPanelOpen;
+      return {
+        notificationsPanelOpen: nextOpen,
+        ...(nextOpen
+          ? { chatPanelOpen: false, aiPanelOpen: false }
+          : {}),
+      };
+    }),
+  openNotificationsPanel: () =>
+    set({
+      notificationsPanelOpen: true,
+      chatPanelOpen: false,
+      aiPanelOpen: false,
+    }),
   closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
+  toggleChatPanel: () =>
+    set((s) => {
+      const nextOpen = !s.chatPanelOpen;
+      return {
+        chatPanelOpen: nextOpen,
+        ...(nextOpen
+          ? { notificationsPanelOpen: false, aiPanelOpen: false }
+          : {}),
+      };
+    }),
+  openChatPanel: () =>
+    set({
+      chatPanelOpen: true,
+      notificationsPanelOpen: false,
+      aiPanelOpen: false,
+    }),
+  closeChatPanel: () => set({ chatPanelOpen: false }),
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),

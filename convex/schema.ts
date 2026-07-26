@@ -281,6 +281,32 @@ export default defineSchema({
     title: v.string(),
     detail: v.optional(v.string()),
     createdAt: v.number(),
+    /** True when a before/after content snapshot exists for timeline diffs. */
+    hasSnapshot: v.optional(v.boolean()),
+  }).index("by_project_created", ["projectId", "createdAt"]),
+
+  /** Content snapshots for activity timeline diffs (VS Code local-history style). */
+  projectActivitySnapshots: defineTable({
+    activityId: v.id("projectActivity"),
+    projectId: v.id("projects"),
+    path: v.string(),
+    beforeContent: v.string(),
+    afterContent: v.string(),
+  }).index("by_activity", ["activityId"]),
+
+  /** Project-level team chat messages (live via Convex subscriptions). */
+  projectChatMessages: defineTable({
+    projectId: v.id("projects"),
+    authorUserId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    authorColor: v.optional(v.string()),
+    body: v.string(),
+    /** Optional file context when chatting about a specific file. */
+    filePath: v.optional(v.string()),
+    /** File paths mentioned with @ in the message body. */
+    mentionedPaths: v.optional(v.array(v.string())),
+    createdAt: v.number(),
   }).index("by_project_created", ["projectId", "createdAt"]),
 
   projectDeadlines: defineTable({

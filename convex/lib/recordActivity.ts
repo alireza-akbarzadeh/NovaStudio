@@ -20,6 +20,7 @@ type RecordActivityArgs = {
   type: ActivityType;
   title: string;
   detail?: string;
+  hasSnapshot?: boolean;
   notifyUserIds?: string[];
   notificationTone?: NotificationTone;
 };
@@ -27,8 +28,8 @@ type RecordActivityArgs = {
 export async function recordProjectActivity(
   ctx: MutationCtx,
   args: RecordActivityArgs,
-) {
-  await ctx.db.insert("projectActivity", {
+): Promise<Id<"projectActivity">> {
+  const activityId = await ctx.db.insert("projectActivity", {
     projectId: args.projectId,
     actorUserId: args.actorUserId,
     actorName: args.actorName,
@@ -37,6 +38,7 @@ export async function recordProjectActivity(
     title: args.title,
     detail: args.detail,
     createdAt: Date.now(),
+    hasSnapshot: args.hasSnapshot,
   });
 
   const recipients = (args.notifyUserIds ?? []).filter(
@@ -52,4 +54,6 @@ export async function recordProjectActivity(
       soundKind: "notify",
     });
   }
+
+  return activityId;
 }

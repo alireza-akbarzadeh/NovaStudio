@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  ActivityIcon,
   BellIcon,
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
   ListTreeIcon,
+  MessageSquareIcon,
   MoonIcon,
   PackageIcon,
   PuzzleIcon,
@@ -88,6 +90,12 @@ const LEFT_ITEMS: ActivityItem[] = [
     label: "Extensions",
     icon: <PuzzleIcon className="size-4" strokeWidth={1.75} />,
     shortcut: "mod+shift+x",
+  },
+  {
+    view: "activity",
+    label: "Activity",
+    icon: <ActivityIcon className="size-4" strokeWidth={1.75} />,
+    shortcut: "mod+shift+a",
   },
 ];
 
@@ -206,6 +214,7 @@ export function WorkspaceRightActivityBar() {
   const notificationsPanelOpen = useWorkspaceStore(
     (s) => s.notificationsPanelOpen,
   );
+  const chatPanelOpen = useWorkspaceStore((s) => s.chatPanelOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
@@ -234,6 +243,16 @@ export function WorkspaceRightActivityBar() {
           side="right"
         >
           <SparklesIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+
+        <RailButton
+          label="Team Chat"
+          shortcut={formatModShortcut("mod+shift+c", isApple)}
+          active={chatPanelOpen}
+          onClick={() => runCommand("toggleChatPanel")}
+          side="right"
+        >
+          <MessageSquareIcon className="size-4" strokeWidth={1.75} />
         </RailButton>
 
         <RailButton

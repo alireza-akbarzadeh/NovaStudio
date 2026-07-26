@@ -96,6 +96,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+x",
   },
   {
+    id: "showActivity",
+    label: "Show Activity Timeline",
+    keywords: "activity timeline collab presence edits history",
+    shortcut: "mod+shift+a",
+  },
+  {
     id: "showGitChanges",
     label: "Git: Changes",
     keywords: "stage commit diff",
@@ -130,6 +136,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Toggle Notifications",
     keywords: "inbox alerts bell events",
     shortcut: "mod+shift+n",
+  },
+  {
+    id: "toggleChatPanel",
+    label: "Toggle Team Chat",
+    keywords: "chat messages comments team collaborate",
+    shortcut: "mod+shift+c",
   },
   {
     id: "toggleSidebar",

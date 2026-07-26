@@ -50,6 +50,7 @@ import {
   useWorkspaceStore,
 } from "@/features/workspace/store/workspace-store";
 import { FileDiffView } from "@/features/workspace/views/file-diff-view";
+import { ActivityDiffView } from "@/features/workspace/views/activity-diff-view";
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
@@ -71,6 +72,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
     case "new-project":
       return <FolderPlusIcon className="size-3 shrink-0 opacity-70" />;
     case "diff":
+      return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
+    case "activity-diff":
       return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
     case "file":
       return <FileIcon className="size-3 shrink-0 opacity-70" />;
@@ -443,6 +446,14 @@ function SplitPaneContent({
           syncWorkspaceChrome={false}
         />
       );
+    case "activity-diff":
+      return tab.activityId ? (
+        <ActivityDiffView
+          projectId={projectId}
+          activityId={tab.activityId}
+          syncWorkspaceChrome={false}
+        />
+      ) : null;
     case "settings":
       return <WorkspaceSettingsView projectId={projectId} />;
     case "user-json":

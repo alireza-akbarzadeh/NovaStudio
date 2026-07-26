@@ -8,7 +8,10 @@ import {
   listOwnedProjectIds,
   techForProject,
 } from "./lib/accessibleProjects";
-import { colorForUserId } from "./lib/projectAccess";
+import {
+  colorForUserId,
+  verifyProjectAccess,
+} from "./lib/projectAccess";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_STORAGE_LIMIT = 5 * 1024 * 1024 * 1024; // 5 GB
@@ -111,6 +114,101 @@ export const listActivity = query({
       .sort((a, b) => b.createdAt - a.createdAt)
       .slice(0, limit)
       .map(({ createdAt: _createdAt, ...item }) => item);
+  },
+});
+
+/** Compact relative time for the in-editor activity timeline (now / 2m / 1h). */
+function formatTimelineTime(timestamp: number) {
+  const delta = Date.now() - timestamp;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (delta < minute) return "now";
+  if (delta < hour) return `${Math.floor(delta / minute)}m`;
+  if (delta < day) return `${Math.floor(delta / hour)}h`;
+  if (delta < 7 * day) return `${Math.floor(delta / day)}d`;
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function initialsFromName(name: string | undefined) {
+  const initials =
+    (name ?? "U")
+      .split(/\s+/)
+      .map((part) => part[0] ?? "")
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U";
+  return initials;
+}
+
+/** Project-scoped activity feed for the workspace activity timeline panel. */
+export const listProjectActivity = query({
+  args: {
+    projectId: v.id("projects"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+    const limit = Math.min(Math.max(args.limit ?? 40, 1), 100);
+    const rows = await ctx.db
+      .query("projectActivity")
+      .withIndex("by_project_created", (q) =>
+        q.eq("projectId", args.projectId),
+      )
+      .order("desc")
+      .take(limit);
+
+    return rows.map((row) => ({
+      id: row._id,
+      type: row.type,
+      title: row.title,
+      detail: row.detail,
+      time: formatTimelineTime(row.createdAt),
+      createdAt: row.createdAt,
+      actorUserId: row.actorUserId,
+      hasDiff: row.hasSnapshot === true && row.type === "updated",
+      avatar: {
+        initials: initialsFromName(row.actorName),
+        color: row.actorColor ?? colorForUserId(row.actorUserId),
+        name: row.actorName ?? "Someone",
+      },
+    }));
+  },
+});
+
+/** Load a timeline snapshot for the activity diff view. */
+export const getActivityDiff = query({
+  args: {
+    activityId: v.id("projectActivity"),
+  },
+  handler: async (ctx, args) => {
+    const activity = await ctx.db.get("projectActivity", args.activityId);
+    if (!activity) return null;
+
+    await verifyProjectAccess(ctx, activity.projectId);
+
+    const snapshot = await ctx.db
+      .query("projectActivitySnapshots")
+      .withIndex("by_activity", (q) => q.eq("activityId", args.activityId))
+      .unique();
+
+    if (!snapshot) return null;
+
+    return {
+      id: activity._id,
+      projectId: activity.projectId,
+      path: snapshot.path,
+      beforeContent: snapshot.beforeContent,
+      afterContent: snapshot.afterContent,
+      title: activity.title,
+      actorName: activity.actorName ?? "Someone",
+      actorColor: activity.actorColor ?? colorForUserId(activity.actorUserId),
+      time: formatTimelineTime(activity.createdAt),
+      createdAt: activity.createdAt,
+    };
   },
 });
 
