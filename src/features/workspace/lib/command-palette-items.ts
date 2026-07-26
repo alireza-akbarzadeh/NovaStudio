@@ -131,6 +131,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+m",
   },
   {
+    id: "showDebug",
+    label: "Toggle Debug",
+    keywords: "debugger breakpoints run node inspect",
+    shortcut: "mod+shift+y",
+  },
+  {
     id: "toggleAiPanel",
     label: "Toggle AI Panel",
     keywords: "chat assistant",

@@ -84,6 +84,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
   const clearTerminalCwdRequest = useWorkspaceStore(
     (s) => s.clearTerminalCwdRequest,
   );
+  const setTerminalCwd = useWorkspaceStore((s) => s.setTerminalCwd);
   const terminalCommandRequest = useWorkspaceStore(
     (s) => s.terminalCommandRequest,
   );
@@ -107,6 +108,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
     if (!terminalCwdRequest) return;
 
     cwdRef.current = terminalCwdRequest;
+    setTerminalCwd(terminalCwdRequest);
     const term = terminalRef.current;
     if (term) {
       term.writeln(`\r\nChanged directory to ${terminalCwdRequest}`);
@@ -333,6 +335,7 @@ export function WorkspaceTerminal({ projectId }: WorkspaceTerminalProps) {
 
       if (result.cwd) {
         cwdRef.current = result.cwd;
+        setTerminalCwd(result.cwd);
       }
 
       if (result.output === CLEAR_SCREEN) {

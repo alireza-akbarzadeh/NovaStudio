@@ -1,10 +1,17 @@
 "use client";
 
-import { CircleAlertIcon, CircleXIcon, SquareTerminalIcon } from "lucide-react";
+import {
+  BugIcon,
+  CircleAlertIcon,
+  CircleXIcon,
+  SquareTerminalIcon,
+} from "lucide-react";
 
+import { WorkspaceDebugPanel } from "@/features/workspace/components/workspace-debug-panel";
 import { WorkspaceProblemsPanel } from "@/features/workspace/components/workspace-problems-panel";
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
+import { useDebugStore } from "@/features/workspace/store/debug-store";
 import {
   useWorkspaceStore,
   type BottomPanelTab,
@@ -17,6 +24,7 @@ type WorkspaceBottomPanelProps = {
 
 const TABS: { id: BottomPanelTab; label: string }[] = [
   { id: "problems", label: "Problems" },
+  { id: "debug", label: "Debug" },
   { id: "terminal", label: "Terminal" },
 ];
 
@@ -25,6 +33,9 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
   const setBottomPanelTab = useWorkspaceStore((s) => s.setBottomPanelTab);
   const { errorCount, warningCount } = useMonacoProblems();
   const problemBadge = errorCount + warningCount;
+  const bpCount = useDebugStore((s) =>
+    Object.values(s.breakpointsByPath).reduce((n, lines) => n + lines.length, 0),
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-ws-panel">
@@ -45,6 +56,8 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
             >
               {tab.id === "terminal" ? (
                 <SquareTerminalIcon className="size-3 opacity-70" />
+              ) : tab.id === "debug" ? (
+                <BugIcon className="size-3 opacity-70" />
               ) : errorCount > 0 ? (
                 <CircleXIcon className="size-3 text-ws-danger-soft" />
               ) : warningCount > 0 ? (
@@ -59,6 +72,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
                   )}
                 >
                   {problemBadge}
+                </span>
+              ) : null}
+              {tab.id === "debug" && bpCount > 0 ? (
+                <span className="rounded-full bg-ws-danger-bg px-1.5 text-[9px] text-white">
+                  {bpCount}
                 </span>
               ) : null}
             </button>
@@ -80,6 +98,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
         {activeTab === "problems" ? (
           <div className="absolute inset-0">
             <WorkspaceProblemsPanel projectId={projectId} />
+          </div>
+        ) : null}
+        {activeTab === "debug" ? (
+          <div className="absolute inset-0">
+            <WorkspaceDebugPanel projectId={projectId} />
           </div>
         ) : null}
       </div>

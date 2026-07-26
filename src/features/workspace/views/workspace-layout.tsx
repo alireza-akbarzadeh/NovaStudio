@@ -38,6 +38,7 @@ import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsi
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
+import { useWorkspaceFocusSync } from "@/features/workspace/hooks/use-workspace-focus-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
   useWorkspaceStore,
@@ -64,6 +65,7 @@ function WorkspaceLayoutInner({
 }: WorkspaceLayoutProps) {
   useWorkspaceShortcuts();
   useWorkspacePrefsSync();
+  useWorkspaceFocusSync(projectId);
   useEditorSettingsSync();
   useExtensionsSync();
   useEditorTabsSync(projectId);

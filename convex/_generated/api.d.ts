@@ -54,6 +54,7 @@ import type * as userPreferences from "../userPreferences.js";
 import type * as waitlist from "../waitlist.js";
 import type * as workspace from "../workspace.js";
 import type * as workspaceActions from "../workspaceActions.js";
+import type * as workspaceFocus from "../workspaceFocus.js";
 
 import type {
   ApiFromModules,
@@ -108,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   waitlist: typeof waitlist;
   workspace: typeof workspace;
   workspaceActions: typeof workspaceActions;
+  workspaceFocus: typeof workspaceFocus;
 }>;
 
 /**

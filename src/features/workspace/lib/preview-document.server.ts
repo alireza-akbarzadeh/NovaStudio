@@ -3,6 +3,7 @@ import "server-only";
 import * as esbuild from "esbuild";
 
 import { PREVIEW_RUNTIME_BRIDGE_SCRIPT } from "@/features/workspace/lib/preview-runtime-bridge";
+import { projectNeedsWebContainerHost } from "@/features/workspace/lib/preview-host";
 import {
   findProjectEntryPath,
   normalizeProjectPath,
@@ -366,35 +367,6 @@ async function buildFromJsEntry(
   );
 }
 
-async function buildNextAppPreview(
-  files: Map<string, string>,
-  pagePath: string,
-  aliases: Record<string, string>,
-) {
-  const cssCandidates = [
-    pagePath.replace(/page\.tsx?$/, "globals.css"),
-    pagePath.replace(/page\.jsx?$/, "globals.css"),
-    "src/app/globals.css",
-    "app/globals.css",
-  ];
-  const cssPath = cssCandidates.find((path) => files.has(normalizeProjectPath(path)));
-
-  const synthetic = `
-    import React from "react";
-    import { createRoot } from "react-dom/client";
-    import Page from "./${pagePath}";
-    ${cssPath ? `import "./${cssPath}";` : ""}
-
-    const mount = document.getElementById("root");
-    if (mount) {
-      createRoot(mount).render(React.createElement(Page));
-    }
-  `;
-
-  files.set("__polaris_preview_entry__.tsx", synthetic);
-  return buildFromJsEntry(files, "__polaris_preview_entry__.tsx", aliases);
-}
-
 async function buildSingleComponentPreview(
   code: string,
   filePath: string,
@@ -449,6 +421,14 @@ export async function buildPreviewDocument(
 
   // Prefer full-project entry when available.
   const entry = findProjectEntryPath(files.keys());
+  const packageJson = files.get("package.json") ?? null;
+
+  // Next / Vite / TanStack need WebContainer — do not fake them with esbuild.
+  if (projectNeedsWebContainerHost(packageJson, files.keys())) {
+    return previewBuildError(
+      "This project needs the WebContainer preview (npm run dev). Open Preview after install completes — esbuild cannot host Vite or Next.js.",
+    );
+  }
 
   try {
     if (entry === "index.html") {
@@ -456,10 +436,9 @@ export async function buildPreviewDocument(
     }
 
     if (entry && isNextPagePath(entry)) {
-      return {
-        ok: true,
-        html: await buildNextAppPreview(files, entry, aliases),
-      };
+      return previewBuildError(
+        "Next.js App Router needs WebContainer (npm run dev). Esbuild cannot host the App Router.",
+      );
     }
 
     if (entry && /\.(tsx?|jsx?)$/i.test(entry)) {
@@ -495,7 +474,7 @@ export async function buildPreviewDocument(
     return {
       ok: true,
       html: htmlShell(
-        `<main style="padding:2rem;color:#666">No previewable project entry found. Add an <code>index.html</code>, <code>src/main.tsx</code>, or <code>src/app/page.tsx</code>.</main>`,
+        `<main style="padding:2rem;color:#666">No previewable project entry found. Add an <code>index.html</code> or <code>src/main.tsx</code>.</main>`,
       ),
     };
   } catch (error) {

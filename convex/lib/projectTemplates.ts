@@ -304,7 +304,11 @@ button:hover {
 `,
     "vite.config.ts": `import { defineConfig } from "vite";
 
-export default defineConfig({});
+export default defineConfig({
+  server: {
+    host: true,
+  },
+});
 `,
     "tsconfig.json": `{
   "compilerOptions": {
@@ -389,6 +393,8 @@ main();
 
 TypeScript Node starter created in NovaStudio.
 
+Use the Terminal to run scripts — this template has no browser preview.
+
 \`\`\`bash
 npm install
 npm start
@@ -425,9 +431,9 @@ const NEXTJS: ProjectTemplate = {
   content: {
     "src/app/page.tsx": `export default function Page() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Next.js</h1>
-      <p className="text-neutral-600">
+    <main className="page">
+      <h1>Next.js</h1>
+      <p>
         Edit <code>src/app/page.tsx</code> to get started.
       </p>
     </main>
@@ -467,6 +473,22 @@ body {
     Helvetica,
     Arial,
     sans-serif;
+  line-height: 1.5;
+  color: #0a0a0a;
+  background: #fafafa;
+}
+
+.page {
+  display: grid;
+  min-height: 100vh;
+  place-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 `,
     "package.json": `{
@@ -474,9 +496,9 @@ body {
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
     "build": "next build",
-    "start": "next start"
+    "start": "next start --hostname 0.0.0.0 --port 3000"
   },
   "dependencies": {
     "next": "^15.0.0",
@@ -645,6 +667,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    host: true,
+  },
 });
 `,
     "tsconfig.json": `{
@@ -829,7 +854,10 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 
 export default defineConfig({
-  server: { port: 3000 },
+  server: {
+    host: true,
+    port: 3000,
+  },
   plugins: [tsConfigPaths(), tanstackStart(), viteReact()],
 });
 `,

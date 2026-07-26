@@ -247,6 +247,23 @@ export default defineSchema({
     .index("by_project_path", ["projectId", "path"])
     .index("by_session", ["sessionId"]),
 
+  /** Workspace Live Share focus — open file / preview path / terminal cwd. */
+  workspaceFocus: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    openFile: v.union(v.string(), v.null()),
+    view: v.union(
+      v.literal("code"),
+      v.literal("preview"),
+      v.literal("other"),
+    ),
+    previewPath: v.union(v.string(), v.null()),
+    terminalCwd: v.union(v.string(), v.null()),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
   projectPins: defineTable({
     userId: v.string(),
     projectId: v.id("projects"),

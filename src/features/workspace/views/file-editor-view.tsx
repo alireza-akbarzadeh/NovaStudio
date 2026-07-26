@@ -32,6 +32,7 @@ import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useFileLineComments } from "@/features/workspace/hooks/use-file-line-comments";
+import { useMonacoBreakpoints } from "@/features/workspace/hooks/use-monaco-breakpoints";
 import {
   useProjectFile,
   useProjectFiles,
@@ -40,8 +41,8 @@ import { canFormatPath } from "@/features/workspace/lib/format-code";
 import { formatActiveDocument } from "@/features/workspace/lib/format-active-document";
 import {
   isPreviewableFile,
-  isProjectPreviewable,
 } from "@/features/workspace/lib/preview-utils";
+import { detectPreviewHost } from "@/features/workspace/lib/preview-host";
 import {
   loadFileContentDraft,
   resolveSeedContent,
@@ -53,6 +54,8 @@ import { useLockedFilesStore } from "@/features/workspace/store/locked-files-sto
 import { cn } from "@/lib/utils";
 
 type EditorPanelTab = "code" | "preview";
+
+// EditorPanelTab kept for local typing; store uses EditorPanelView.
 
 type FileEditorViewProps = {
   projectId: string;
@@ -334,6 +337,7 @@ type FileEditorContentProps = {
   initialContent: string;
   serverUpdatedAt?: number;
   readOnly: boolean;
+  syncWorkspaceChrome?: boolean;
 };
 
 function FileEditorContent({
@@ -342,8 +346,26 @@ function FileEditorContent({
   initialContent,
   serverUpdatedAt,
   readOnly,
+  syncWorkspaceChrome = true,
 }: FileEditorContentProps) {
   const [activeTab, setActiveTab] = useState<EditorPanelTab>("code");
+  const editorPanelView = useWorkspaceStore((s) => s.editorPanelView);
+  const setEditorPanelView = useWorkspaceStore((s) => s.setEditorPanelView);
+  const setFollowingUserId = useWorkspaceStore((s) => s.setFollowingUserId);
+
+  // Keep local tab in sync with store (Follow mode + toolbar).
+  useEffect(() => {
+    if (!syncWorkspaceChrome) return;
+    setActiveTab(editorPanelView);
+  }, [editorPanelView, syncWorkspaceChrome]);
+
+  const onChangeTab = (tab: EditorPanelTab) => {
+    setActiveTab(tab);
+    if (syncWorkspaceChrome) {
+      setEditorPanelView(tab);
+      setFollowingUserId(null);
+    }
+  };
   const draft = loadFileContentDraft(projectId, filePath);
   const seedContent = resolveSeedContent(
     initialContent,
@@ -367,8 +389,25 @@ function FileEditorContent({
     [projectFiles],
   );
   const projectPaths = definitionFiles.map((file) => file.path);
+  const packageJsonContent = useMemo(() => {
+    const file = (projectFiles ?? []).find(
+      (f) => f.kind === "file" && f.path === "package.json",
+    );
+    if (!file) return null;
+    const draft = loadFileContentDraft(projectId, "package.json");
+    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+      return draft.content;
+    }
+    return file.content ?? null;
+  }, [projectFiles, projectId]);
+  const hostMode = detectPreviewHost({
+    packageJson: packageJsonContent,
+    paths: projectPaths,
+  });
   const previewAvailable =
-    isProjectPreviewable(projectPaths) || isPreviewableFile(filePath);
+    hostMode === "webcontainer" ||
+    hostMode === "esbuild" ||
+    isPreviewableFile(filePath);
 
   // Keep local preview/chrome in sync with Convex/AI writes and drafts.
   useEffect(() => {
@@ -399,7 +438,7 @@ function FileEditorContent({
     <div className="flex h-full min-h-0 flex-col">
       <EditorViewTabs
         activeTab={activeTab}
-        onChange={setActiveTab}
+        onChange={onChangeTab}
         previewAvailable={previewAvailable}
         filePath={filePath}
         content={content}
@@ -477,6 +516,11 @@ export function FileEditorView({
     enabled: Boolean(filePath) && syncWorkspaceChrome,
   });
 
+  useMonacoBreakpoints({
+    filePath,
+    enabled: Boolean(filePath) && syncWorkspaceChrome,
+  });
+
   useEffect(() => {
     if (!syncWorkspaceChrome || !filePath) return;
     setBreadcrumb(filePathToBreadcrumb(projectId, filePath));
@@ -523,6 +567,7 @@ export function FileEditorView({
       initialContent={file.content ?? ""}
       serverUpdatedAt={file.updatedAt}
       readOnly={readOnly}
+      syncWorkspaceChrome={syncWorkspaceChrome}
     />
   );
 }

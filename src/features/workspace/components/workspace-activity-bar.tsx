@@ -3,6 +3,7 @@
 import {
   ActivityIcon,
   BellIcon,
+  BugIcon,
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
@@ -297,6 +298,16 @@ export function WorkspaceRightActivityBar() {
               <span className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-ws-danger-bg" />
             ) : null}
           </span>
+        </RailButton>
+
+        <RailButton
+          label="Debug"
+          shortcut={formatModShortcut("mod+shift+y", isApple)}
+          active={terminalOpen && bottomPanelTab === "debug"}
+          onClick={() => runCommand("showDebug")}
+          side="right"
+        >
+          <BugIcon className="size-4" strokeWidth={1.75} />
         </RailButton>
 
         <RailButton

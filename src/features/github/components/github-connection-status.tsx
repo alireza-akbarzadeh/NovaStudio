@@ -11,12 +11,20 @@ import {
 import { GITHUB_REPO_SCOPE_MESSAGE } from "@/features/github/lib/github-scopes";
 import { cn } from "@/lib/utils";
 
-export function GitHubConnectionStatus({ className }: { className?: string }) {
+export function GitHubConnectionStatus({
+  className,
+  hideWhenHealthy = false,
+}: {
+  className?: string;
+  /** When true, render nothing if connected with repo scope. */
+  hideWhenHealthy?: boolean;
+}) {
   const { connection, isConnected, hasRepoScope, isLoading, syncError } =
     useGitHubConnection();
   const { connect, isConnecting, isReady } = useConnectGitHub();
 
   if (isLoading && !isConnecting) {
+    if (hideWhenHealthy) return null;
     return (
       <span
         className={cn(
@@ -31,18 +39,21 @@ export function GitHubConnectionStatus({ className }: { className?: string }) {
   }
 
   if (isConnected && connection) {
+    if (hideWhenHealthy && hasRepoScope) return null;
     return (
       <div className={cn("space-y-1", className)}>
-        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-          <Image
-            src="/images/github.png"
-            alt=""
-            width={12}
-            height={12}
-            className="size-3.5 opacity-70 dark:invert"
-          />
-          @{connection.username}
-        </span>
+        {!hideWhenHealthy ? (
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <Image
+              src="/images/github.png"
+              alt=""
+              width={12}
+              height={12}
+              className="size-3.5 opacity-70 dark:invert"
+            />
+            @{connection.username}
+          </span>
+        ) : null}
         {!hasRepoScope ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[10px] text-[#c9a227]">

@@ -53,6 +53,8 @@ export type UsePreviewServerResult = {
 };
 
 const MAX_LOGS = 200;
+/** Give Vite/Next time to install-compile before failing the preview. */
+const SERVER_READY_TIMEOUT_MS = 90_000;
 
 function logId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -79,6 +81,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
   const commandRef = useRef<DevServerCommand | null>(null);
   const outputBufferRef = useRef("");
   const startedForRef = useRef<string | null>(null);
+  const becameReadyRef = useRef(false);
 
   const ready = webcontainer?.ready ?? false;
   const needsInstall = webcontainer?.needsInstall ?? false;
@@ -227,7 +230,11 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
         return;
       }
 
-      const command = buildDevServerCommand(packageManager, scriptName);
+      const command = buildDevServerCommand(
+        packageManager,
+        scriptName,
+        packageJson,
+      );
       commandRef.current = command;
       setCommandLine(command.commandLine);
       setStatus("starting");
@@ -236,6 +243,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
       setPort(null);
       outputBufferRef.current = "";
       startedForRef.current = projectId;
+      becameReadyRef.current = false;
 
       await stopProcess();
       if (cancelled) return;
@@ -249,6 +257,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
 
       const onServerReady = (readyPort: number, readyUrl: string) => {
         if (cancelled) return;
+        becameReadyRef.current = true;
         setPort(readyPort);
         setUrl(readyUrl);
         setStatus("ready");
@@ -269,6 +278,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
         if (type === "close" && processRef.current) {
           setUrl((current) => {
             if (current && current.includes(`:${changedPort}`)) {
+              becameReadyRef.current = false;
               setStatus("starting");
               setPort(null);
               return null;
@@ -276,6 +286,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
             return current;
           });
         } else if (type === "open" && !cancelled) {
+          becameReadyRef.current = true;
           setPort(changedPort);
           setUrl(portUrl);
           setStatus("ready");
@@ -290,6 +301,20 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
       unsubs.push(wc.on("server-ready", onServerReady));
       unsubs.push(wc.on("port", onPort));
       unsubs.push(wc.on("preview-message", onPreviewMessage));
+
+      const readyTimeout = window.setTimeout(() => {
+        if (cancelled || becameReadyRef.current) return;
+        setStatus("error");
+        setError(
+          "Preview server did not become ready in time. Check the console, run install in the terminal, or restart.",
+        );
+        appendLog(
+          "error",
+          "Preview server timed out waiting for server-ready",
+          "server",
+        );
+      }, SERVER_READY_TIMEOUT_MS);
+      unsubs.push(() => window.clearTimeout(readyTimeout));
 
       try {
         appendLog("info", `Starting \`${command.commandLine}\`…`, "server");
@@ -357,6 +382,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     filesReady,
     flushOutputLines,
     needsInstall,
+    packageJson,
     packageManager,
     projectId,
     pushPreviewMessage,

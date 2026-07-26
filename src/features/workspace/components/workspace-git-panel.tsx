@@ -7,6 +7,7 @@ import {
   GitBranchIcon,
   GitCommitIcon,
   Loader2Icon,
+  RefreshCwIcon,
   SparklesIcon,
   UploadIcon,
 } from "lucide-react";
@@ -121,111 +122,95 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
 
       {activeTab === "changes" ? (
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="space-y-2 border-b border-ws-border-subtle p-3">
-            <GitHubConnectionStatus className="text-[11px]" />
-            {isGitHub ? (
-              <>
-                <div className="flex gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isPulling}
-                    onClick={() => void pull()}
-                    className="h-7 flex-1 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
-                  >
-                    {isPulling ? (
-                      <>
-                        <Loader2Icon className="size-3.5 animate-spin" />
-                        Pulling…
-                      </>
-                    ) : (
-                      <>
-                        <DownloadIcon className="size-3.5" />
-                        Pull
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-medium text-ws-text-muted">
-                    Commit message
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={!canGenerate || isPushing}
-                    onClick={() => void onGenerateCommitMessage()}
-                    className="h-6 gap-1 px-1.5 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text disabled:opacity-50"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2Icon className="size-3 animate-spin" />
-                        Generating…
-                      </>
-                    ) : (
-                      <>
-                        <SparklesIcon className="size-3" />
-                        Generate
-                      </>
-                    )}
-                  </Button>
-                </div>
-                <Textarea
-                  value={commitMessage}
-                  onChange={(e) => setCommitMessage(e.target.value)}
-                  placeholder="Commit message"
-                  rows={3}
-                  disabled={isGenerating}
-                  className="min-h-[72px] resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent disabled:opacity-60"
+          {/* JetBrains-style: toolbar + changes list fill the panel */}
+          {isGitHub ? (
+            <div className="flex shrink-0 items-center gap-0.5 border-b border-ws-border-subtle px-1.5 py-1">
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                disabled={isPulling || isPushing}
+                onClick={() => void pull()}
+                title="Pull from GitHub"
+                aria-label="Pull from GitHub"
+                className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              >
+                {isPulling ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <DownloadIcon className="size-3.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                disabled={!canPush || isGenerating}
+                onClick={() => void onCommitAndPush()}
+                title={
+                  canPush
+                    ? "Commit and Push"
+                    : stagedCount === 0
+                      ? "Stage files and enter a commit message to push"
+                      : commitMessage.trim().length === 0
+                        ? "Enter a commit message to push"
+                        : "Commit and Push"
+                }
+                aria-label="Commit and Push"
+                className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text disabled:opacity-40"
+              >
+                {isPushing ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <UploadIcon className="size-3.5" />
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="icon-sm"
+                variant="ghost"
+                disabled={isPulling || isPushing}
+                onClick={() => void pull()}
+                title="Refresh"
+                aria-label="Refresh"
+                className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              >
+                <RefreshCwIcon
+                  className={cn("size-3.5", isPulling && "animate-spin")}
                 />
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!canPush || isGenerating}
-                  onClick={() => void onCommitAndPush()}
-                  className="h-7 w-full bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover disabled:opacity-50"
-                >
-                  {isPushing ? (
-                    <>
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                      Pushing…
-                    </>
-                  ) : (
-                    <>
-                      <UploadIcon className="size-3.5" />
-                      Commit &amp; Push
-                      {stagedCount > 0 ? ` (${stagedCount})` : ""}
-                    </>
-                  )}
-                </Button>
-                {changeCount > 0 && stagedCount === 0 ? (
-                  <p className="text-[10px] text-ws-text-muted">
-                    Stage files below before committing.
-                  </p>
-                ) : null}
-              </>
-            ) : (
+              </Button>
+              <div className="mx-1 h-3.5 w-px shrink-0 bg-ws-border-subtle" />
+              <span className="truncate px-1 text-[10px] text-ws-text-muted">
+                {project.githubBranch ?? "main"}
+                {changeCount > 0
+                  ? ` · ${changeCount} change${changeCount === 1 ? "" : "s"}`
+                  : ""}
+              </span>
+            </div>
+          ) : (
+            <div className="shrink-0 border-b border-ws-border-subtle px-3 py-2">
               <InitializeRepositoryPrompt />
-            )}
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {changeCount > 0 && isGitHub ? (
-              <div className="flex items-center gap-2 border-b border-ws-border-subtle px-3 py-1.5 text-[10px] text-ws-text-muted">
-                <span>
-                  {changeCount} file{changeCount === 1 ? "" : "s"} changed
-                </span>
-                <span className="text-ws-border">·</span>
-                <span>
-                  {stagedCount} staged
-                  {unstagedCount > 0 ? ` · ${unstagedCount} unstaged` : ""}
-                </span>
-                <span className="ml-auto text-[10px] text-ws-text-muted">
-                  Click file → diff
-                </span>
-              </div>
+            </div>
+          )}
+
+          {isGitHub ? (
+            <GitHubConnectionStatus
+              hideWhenHealthy
+              className="border-b border-ws-border-subtle px-2.5 py-1.5 text-[11px]"
+            />
+          ) : null}
+
+          <div className="flex h-6 shrink-0 items-center gap-2 border-b border-ws-border-subtle bg-ws-panel/80 px-2.5 text-[11px] font-medium text-ws-text-muted">
+            <span>Changes</span>
+            {changeCount > 0 ? (
+              <span className="font-normal tabular-nums">
+                {stagedCount} staged
+                {unstagedCount > 0 ? ` · ${unstagedCount} unstaged` : ""}
+              </span>
             ) : null}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-auto">
             <WorkspaceChangeList
               projectId={projectId}
               emptyMessage={
@@ -235,6 +220,79 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
               }
             />
           </div>
+
+          {/* Commit dock — message + actions at the bottom (JetBrains Commit tool window) */}
+          {isGitHub ? (
+            <div className="shrink-0 space-y-2 border-t border-ws-border-subtle bg-ws-panel p-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-medium text-ws-text-muted">
+                  Commit Message
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={!canGenerate || isPushing}
+                  onClick={() => void onGenerateCommitMessage()}
+                  className="h-6 gap-1 px-1.5 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2Icon className="size-3 animate-spin" />
+                      Generating…
+                    </>
+                  ) : (
+                    <>
+                      <SparklesIcon className="size-3" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+              <Textarea
+                value={commitMessage}
+                onChange={(e) => setCommitMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                    e.preventDefault();
+                    void onCommitAndPush();
+                  }
+                }}
+                placeholder="Commit Message"
+                rows={4}
+                disabled={isGenerating}
+                className="min-h-22 resize-none rounded-sm border-ws-border bg-ws-bg font-mono text-[12px] text-ws-text placeholder:text-ws-text-muted focus-visible:ring-ws-accent disabled:opacity-60"
+              />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!canPush || isGenerating}
+                  onClick={() => void onCommitAndPush()}
+                  title="Commit and Push (Ctrl+Enter)"
+                  className="h-7 gap-1.5 bg-ws-accent px-2.5 text-[11px] text-white hover:bg-ws-accent-hover disabled:opacity-50"
+                >
+                  {isPushing ? (
+                    <>
+                      <Loader2Icon className="size-3.5 animate-spin" />
+                      Pushing…
+                    </>
+                  ) : (
+                    <>
+                      <UploadIcon className="size-3.5" />
+                      Commit and Push
+                      {stagedCount > 0 ? ` (${stagedCount})` : ""}
+                    </>
+                  )}
+                </Button>
+                {changeCount > 0 && stagedCount === 0 ? (
+                  <p className="min-w-0 flex-1 text-[10px] text-ws-text-muted">
+                    Stage files above before committing
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : activeTab === "history" ? (
         <WorkspaceGitHistory

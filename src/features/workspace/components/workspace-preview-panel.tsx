@@ -33,8 +33,10 @@ import {
 } from "@/features/workspace/lib/preview-runtime-bridge";
 import {
   isPreviewableFile,
-  isProjectPreviewable,
 } from "@/features/workspace/lib/preview-utils";
+import { detectPreviewHost } from "@/features/workspace/lib/preview-host";
+import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
 type WorkspacePreviewPanelProps = {
@@ -86,6 +88,24 @@ export function WorkspacePreviewPanel({
   const [rotated, setRotated] = useState(false);
   const [urlPath, setUrlPath] = useState("/");
   const [urlDraft, setUrlDraft] = useState("/");
+  const previewUrlPath = useWorkspaceStore((s) => s.previewUrlPath);
+  const setPreviewUrlPath = useWorkspaceStore((s) => s.setPreviewUrlPath);
+  const setFollowingUserId = useWorkspaceStore((s) => s.setFollowingUserId);
+
+  useEffect(() => {
+    if (previewUrlPath !== urlPath) {
+      setUrlPath(previewUrlPath);
+      setUrlDraft(previewUrlPath);
+    }
+  }, [previewUrlPath, urlPath]);
+
+  const commitPreviewPath = (next: string) => {
+    const normalized = normalizePreviewPath(next);
+    setUrlPath(normalized);
+    setUrlDraft(normalized);
+    setPreviewUrlPath(normalized);
+    setFollowingUserId(null);
+  };
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
@@ -106,9 +126,31 @@ export function WorkspacePreviewPanel({
   const filePaths = (projectFiles ?? [])
     .filter((file) => file.kind === "file")
     .map((file) => file.path);
-  const canPreviewProject = isProjectPreviewable(filePaths);
+
+  const packageJson = useMemo(() => {
+    if (!projectFiles) return null;
+    const file = projectFiles.find(
+      (f) => f.kind === "file" && f.path === "package.json",
+    );
+    if (!file) return null;
+    const draft = loadFileContentDraft(projectId, "package.json");
+    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+      return draft.content;
+    }
+    return file.content ?? null;
+  }, [projectFiles, projectId]);
+
+  const hostMode = useMemo(
+    () => detectPreviewHost({ packageJson, paths: filePaths }),
+    [filePaths, packageJson],
+  );
+  const requiresWebContainer = hostMode === "webcontainer";
+
   const canPreviewFile = filePath ? isPreviewableFile(filePath) : false;
-  const canPreview = canPreviewProject || canPreviewFile;
+  const canPreview =
+    hostMode === "webcontainer" ||
+    hostMode === "esbuild" ||
+    (hostMode === "none" && canPreviewFile);
 
   const device = getPreviewDevice(deviceId);
   const frameWidth =
@@ -196,7 +238,7 @@ export function WorkspacePreviewPanel({
     }
   }, [serverError, serverStatus]);
 
-  // Esbuild fallback when WC hot reload is unavailable.
+  // Esbuild fallback — only for static / simple projects, never for Vite/Next.
   useEffect(() => {
     if (useHotReload) {
       setPreviewHtml(null);
@@ -205,6 +247,20 @@ export function WorkspacePreviewPanel({
     }
 
     if (!active) return;
+
+    if (requiresWebContainer) {
+      setPreviewHtml(null);
+      if (
+        serverStatus === "starting" ||
+        serverStatus === "idle" ||
+        webcontainer?.needsInstall
+      ) {
+        setLoading(true);
+      } else {
+        setLoading(false);
+      }
+      return;
+    }
 
     if (serverStatus === "starting") {
       setLoading(true);
@@ -292,8 +348,10 @@ export function WorkspacePreviewPanel({
     filePath,
     projectFiles,
     refreshKey,
+    requiresWebContainer,
     serverStatus,
     useHotReload,
+    webcontainer?.needsInstall,
   ]);
 
   useEffect(() => {
@@ -338,9 +396,7 @@ export function WorkspacePreviewPanel({
 
   const onSubmitUrl = (event: React.FormEvent) => {
     event.preventDefault();
-    const next = normalizePreviewPath(urlDraft);
-    setUrlPath(next);
-    setUrlDraft(next);
+    commitPreviewPath(urlDraft);
     if (!useHotReload) {
       setRefreshKey((value) => value + 1);
     }
@@ -361,11 +417,25 @@ export function WorkspacePreviewPanel({
   };
 
   const showErrorOverlay = previewError != null && !errorDismissed;
-  const isStarting = !useHotReload && serverStatus === "starting";
+  const isStarting =
+    !useHotReload &&
+    (serverStatus === "starting" ||
+      (requiresWebContainer &&
+        (serverStatus === "idle" || Boolean(webcontainer?.needsInstall))));
   const showLoading =
     (useHotReload && !iframeSrc) ||
     isStarting ||
-    (!useHotReload && loading && !previewHtml);
+    (!useHotReload && !requiresWebContainer && loading && !previewHtml);
+
+  const wcWaitingMessage = webcontainer?.needsInstall
+    ? "Installing dependencies…"
+    : previewServer?.commandLine
+      ? `Starting \`${previewServer.commandLine}\`…`
+      : serverStatus === "unavailable" && requiresWebContainer
+        ? webcontainer?.error
+          ? `WebContainer unavailable — ${webcontainer.error}`
+          : "WebContainer preview unavailable. Open Terminal and run install, then refresh."
+        : "Starting preview server…";
 
   const frameStyle = useMemo(() => {
     if (frameWidth == null || frameHeight == null) {
@@ -389,10 +459,18 @@ export function WorkspacePreviewPanel({
 
   if (!canPreview && !useHotReload && serverStatus !== "starting") {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
-        Add an <code className="mx-1">index.html</code>,{" "}
-        <code className="mx-1">src/main.tsx</code>, or{" "}
-        <code className="mx-1">src/app/page.tsx</code> to preview this project.
+      <div className="flex h-full items-center justify-center p-6 text-center text-[13px] text-ws-text-muted">
+        {hostMode === "none" ? (
+          <span>
+            This project has no HTTP preview. Use the Terminal for Node scripts,
+            or add a Vite / Next.js app to preview in the browser.
+          </span>
+        ) : (
+          <span>
+            Add an <code className="mx-1">index.html</code> or a Vite / Next.js
+            app to preview this project.
+          </span>
+        )}
       </div>
     );
   }
@@ -405,7 +483,7 @@ export function WorkspacePreviewPanel({
           <Input
             value={urlDraft}
             onChange={(e) => setUrlDraft(e.target.value)}
-            onBlur={() => setUrlDraft(normalizePreviewPath(urlDraft))}
+            onBlur={() => commitPreviewPath(urlDraft)}
             spellCheck={false}
             aria-label="Preview URL"
             className="h-6 border-ws-border-subtle bg-ws-bg px-2 font-mono text-[11px] text-ws-text-secondary shadow-none focus-visible:ring-ws-accent"
@@ -564,12 +642,26 @@ export function WorkspacePreviewPanel({
                 className="h-full w-full border-0 bg-white"
               />
             ) : showLoading ? (
-              <div className="flex h-full min-h-40 items-center justify-center text-[13px] text-ws-text-muted">
-                {serverStatus === "starting"
-                  ? previewServer?.commandLine
-                    ? `Starting \`${previewServer.commandLine}\`…`
-                    : "Starting preview server…"
+              <div className="flex h-full min-h-40 items-center justify-center px-6 text-center text-[13px] text-ws-text-muted">
+                {requiresWebContainer || serverStatus === "starting"
+                  ? wcWaitingMessage
                   : "Building preview…"}
+              </div>
+            ) : requiresWebContainer && !useHotReload ? (
+              <div className="flex h-full min-h-40 flex-col items-center justify-center gap-2 px-6 text-center text-[13px] text-ws-text-muted">
+                <p>
+                  {serverError ??
+                    "Waiting for WebContainer preview (Vite / Next.js)."}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-1 h-7 text-[11px]"
+                  onClick={() => previewServer?.restart()}
+                >
+                  Restart preview
+                </Button>
               </div>
             ) : (
               <div className="flex h-full min-h-40 items-center justify-center p-6 text-[13px] text-ws-text-muted">

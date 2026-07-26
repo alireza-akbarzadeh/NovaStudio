@@ -63,9 +63,9 @@ These are the biggest daily-friction gaps you called out.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 17 | Full Next/Vite host (beyond esbuild) | `later` | |
-| 18 | Debugger | `later` | |
-| 19 | Workspace-wide Live Share (terminal + preview) | `later` | Beyond per-file Yjs |
+| 17 | Full Next/Vite host (beyond esbuild) | `review` | WC-only for Vite/Next; esbuild for static. |
+| 18 | Debugger | `review` | Bottom Debug tab: BPs + Run Node via WC. |
+| 19 | Workspace-wide Live Share (terminal + preview) | `review` | Follow presence: file / preview / cwd. |
 | 20 | Extensions marketplace | `review` | Curated themes + Vue language; installs persisted per user |
 
 ---
@@ -238,3 +238,27 @@ These are the biggest daily-friction gaps you called out.
 - Restores the previous panel layout on exit (prefs not overwritten while zen)
 - **⌥⌘Z** / **Ctrl+Alt+Z** toggle · **Esc** exits · toolbar Focus button · command palette
 - Floating **Exit Zen** control while chrome is hidden
+
+### 17. Full Next/Vite host — ready for review
+
+- Vite / Next / TanStack projects preview **only** via WebContainer (`npm run dev`) — never the fake esbuild App Router mount
+- Esbuild `/api/preview` remains for static HTML and simple client bundles
+- Host detection skips non-HTTP Node scripts so CLI templates do not hang on “Starting…”
+- Dev spawn binds `0.0.0.0` (Vite `--host` / Next `--hostname`) + 90s server-ready timeout
+- Templates: Vite/React/TanStack `server.host`, Next hostname flags, plain CSS (no fake Tailwind)
+
+### 18. Debugger — ready for review
+
+- Bottom panel **Debug** tab (Problems · Debug · Terminal) · **⌘⇧Y** · activity bar
+- Click **line numbers** in `.js` / `.ts` files to toggle breakpoints (glyph margin stays for comments)
+- **Run** instruments `debugger;` at BPs and executes via WebContainer Node (open DevTools / F12 to pause)
+- Breakpoint list → jump to line · session console with Start / Stop / Clear
+- Vite / React client code: use Preview + browser DevTools (not Monaco stepping)
+
+### 19. Workspace Live Share (Follow) — ready for review
+
+- Publishes each user’s focus: open file · Code/Preview · preview URL path · terminal cwd
+- Toolbar avatars show location; **click a teammate to Follow** (click again to unfollow)
+- Follow opens their file, switches Code/Preview, sets preview path, and syncs terminal cwd
+- Sticky follow while they navigate; local navigation clears follow
+- Not full terminal multiplexing / shared WC preview URLs (per-browser runtime)

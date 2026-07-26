@@ -458,6 +458,23 @@
   background: color-mix(in oklab, var(--ws-accent) 8%, transparent);
 }
 
+/* Debugger breakpoints (line-number gutter click) */
+.polaris-monaco .polaris-breakpoint-glyph {
+  background: #e5484d;
+  border-radius: 50%;
+  margin-left: 3px;
+  width: 8px !important;
+  height: 8px !important;
+  min-width: 8px !important;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.polaris-monaco .polaris-breakpoint-line {
+  background: color-mix(in oklab, #e5484d 10%, transparent);
+}
+
 /* y-monaco remote cursors / selections
    Per-user --user-color + name content injected by CollaborativeCursorStyles */
 .yRemoteSelection {

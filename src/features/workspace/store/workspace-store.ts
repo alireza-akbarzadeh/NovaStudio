@@ -19,7 +19,9 @@ export type ExplorerTab = "project" | "changes" | "quality";
 
 export type GitPanelTab = "changes" | "history" | "info";
 
-export type BottomPanelTab = "terminal" | "problems";
+export type BottomPanelTab = "terminal" | "problems" | "debug";
+
+export type EditorPanelView = "code" | "preview";
 
 export type BreadcrumbSegment = {
   label: string;
@@ -122,10 +124,19 @@ type WorkspaceState = WorkspacePrefs & {
   /** Distraction-free layout — hides chrome and centers the editor. */
   zenMode: boolean;
   zenSnapshot: ZenSnapshot | null;
+  /** Code vs Preview tab for the active file (Live Share focus). */
+  editorPanelView: EditorPanelView;
+  /** Preview iframe path (e.g. `/about`) for Live Share follow. */
+  previewUrlPath: string;
+  /** Last known terminal cwd for Live Share follow. */
+  terminalCwd: string | null;
+  /** User id currently being followed (null = not following). */
+  followingUserId: string | null;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
   showProblemsPanel: () => void;
+  showDebugPanel: () => void;
   setBottomPanelTab: (tab: BottomPanelTab) => void;
   toggleAiPanel: () => void;
   toggleNotificationsPanel: () => void;
@@ -206,6 +217,10 @@ type WorkspaceState = WorkspacePrefs & {
   enterZenMode: () => void;
   exitZenMode: () => void;
   toggleZenMode: () => void;
+  setEditorPanelView: (view: EditorPanelView) => void;
+  setPreviewUrlPath: (path: string) => void;
+  setTerminalCwd: (cwd: string | null) => void;
+  setFollowingUserId: (userId: string | null) => void;
   hydrate: (prefs: Partial<WorkspacePrefs>) => void;
   getPersistablePrefs: () => WorkspacePrefs;
 };
@@ -342,6 +357,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   searchPanelMode: "text",
   zenMode: false,
   zenSnapshot: null,
+  editorPanelView: "code",
+  previewUrlPath: "/",
+  terminalCwd: null,
+  followingUserId: null,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () =>
@@ -357,6 +376,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return { terminalOpen: false };
       }
       return { terminalOpen: true, bottomPanelTab: "problems" };
+    }),
+  showDebugPanel: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "debug") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "debug" };
     }),
   setBottomPanelTab: (tab) =>
     set({ bottomPanelTab: tab, terminalOpen: true }),
@@ -700,6 +726,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (s.zenMode) s.exitZenMode();
     else s.enterZenMode();
   },
+  setEditorPanelView: (view) => set({ editorPanelView: view }),
+  setPreviewUrlPath: (path) => set({ previewUrlPath: path }),
+  setTerminalCwd: (cwd) => set({ terminalCwd: cwd }),
+  setFollowingUserId: (userId) => set({ followingUserId: userId }),
   hydrate: (prefs) =>
     set((s) => {
       // Don't clobber an in-session zen layout with server prefs.
