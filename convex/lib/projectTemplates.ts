@@ -188,9 +188,10 @@ Plain HTML / CSS / JS created in NovaStudio. Open the Preview pane to view it.
 const VITE: ProjectTemplate = {
   id: "vite",
   name: "Vite",
-  description: "Vanilla TypeScript app with Vite HMR",
+  description:
+    "Scaffolds with create-vite in your workspace terminal",
   category: "frontend",
-  tags: ["Vite", "TypeScript"],
+  tags: ["Vite", "TypeScript", "CLI"],
   tree: [
     {
       name: "src",
@@ -406,159 +407,21 @@ npm start
 const NEXTJS: ProjectTemplate = {
   id: "nextjs",
   name: "Next.js",
-  description: "App Router starter with layout, page, and package.json",
+  description:
+    "Scaffolds a real Next.js app with create-next-app in your workspace terminal",
   category: "fullstack",
-  tags: ["Next.js", "React", "TypeScript"],
-  tree: [
-    {
-      name: "src",
-      children: [
-        {
-          name: "app",
-          children: [
-            { name: "page.tsx", path: "src/app/page.tsx" },
-            { name: "layout.tsx", path: "src/app/layout.tsx" },
-            { name: "globals.css", path: "src/app/globals.css" },
-          ],
-        },
-      ],
-    },
-    { name: "package.json", path: "package.json" },
-    { name: "tsconfig.json", path: "tsconfig.json" },
-    { name: "next.config.ts", path: "next.config.ts" },
-    { name: "README.md", path: "README.md" },
-  ],
-  content: {
-    "src/app/page.tsx": `export default function Page() {
-  return (
-    <main className="page">
-      <h1>Next.js</h1>
-      <p>
-        Edit <code>src/app/page.tsx</code> to get started.
-      </p>
-    </main>
-  );
-}
-`,
-    "src/app/layout.tsx": `import type { ReactNode } from "react";
-import "./globals.css";
-
-export const metadata = {
-  title: "Next.js App",
-  description: "Created with NovaStudio",
-};
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
-`,
-    "src/app/globals.css": `* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
-  line-height: 1.5;
-  color: #0a0a0a;
-  background: #fafafa;
-}
-
-.page {
-  display: grid;
-  min-height: 100vh;
-  place-content: center;
-  gap: 0.75rem;
-  padding: 2rem;
-  text-align: center;
-}
-
-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-`,
-    "package.json": `{
-  "name": "novastudio-nextjs",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev --hostname 0.0.0.0 --port 3000",
-    "build": "next build",
-    "start": "next start --hostname 0.0.0.0 --port 3000"
-  },
-  "dependencies": {
-    "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "^5.0.0"
-  }
-}
-`,
-    "tsconfig.json": `{
-  "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./src/*"] }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
-`,
-    "next.config.ts": `import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {};
-
-export default nextConfig;
-`,
-    "README.md": `# Next.js
-
-App Router starter created in NovaStudio.
-
-\`\`\`bash
-npm install
-npm run dev
-\`\`\`
-`,
-  },
+  tags: ["Next.js", "React", "TypeScript", "CLI"],
+  tree: [],
+  content: {},
 };
 
 const REACT: ProjectTemplate = {
   id: "react",
   name: "React",
-  description: "React + Vite with TypeScript and HMR",
+  description:
+    "Scaffolds React with create-vite in your workspace terminal",
   category: "frontend",
-  tags: ["React", "Vite", "TypeScript"],
+  tags: ["React", "Vite", "TypeScript", "CLI"],
   tree: [
     {
       name: "src",
@@ -705,9 +568,10 @@ npm run dev
 const TANSTACK: ProjectTemplate = {
   id: "tanstack",
   name: "TanStack Start",
-  description: "File-based TanStack Router app with a root route",
+  description:
+    "Scaffolds TanStack Start with create in your workspace terminal",
   category: "fullstack",
-  tags: ["TanStack", "React", "Vite"],
+  tags: ["TanStack", "React", "CLI"],
   tree: [
     {
       name: "src",

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { CommunityProjectCard } from "@/features/projects/components/workspace/community-project-card";
 import { SectionHeader } from "@/features/projects/components/workspace/section-header";
 import { usePublicProjects } from "@/features/projects/hooks/use-workspace";
@@ -7,23 +9,29 @@ import type { WorkspaceProject } from "@/features/projects/lib/projects-workspac
 
 type CommunityProjectsSectionProps = {
   onRequestAccess: (project: WorkspaceProject) => void;
+  /** Hide the section chrome when embedded in the dedicated community page. */
+  embedded?: boolean;
 };
 
 export function CommunityProjectsSection({
   onRequestAccess,
+  embedded = false,
 }: CommunityProjectsSectionProps) {
   const publicProjects = usePublicProjects();
   const community = (publicProjects ?? []) as WorkspaceProject[];
+  const router = useRouter();
 
   return (
     <section>
-      <SectionHeader
-        eyebrow="Discover"
-        title="Community Projects"
-        description="Explore public workspaces from developers around the world."
-        actionLabel="Browse all"
-        onAction={() => {}}
-      />
+      {embedded ? null : (
+        <SectionHeader
+          eyebrow="Discover"
+          title="Community Projects"
+          description="Explore public workspaces from developers around the world."
+          actionLabel="Browse all"
+          onAction={() => router.push("/projects/community")}
+        />
+      )}
       {publicProjects === undefined ? (
         <p className="text-sm text-muted-foreground">Loading community…</p>
       ) : community.length === 0 ? (

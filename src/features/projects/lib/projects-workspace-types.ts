@@ -56,6 +56,8 @@ export type WorkspaceCollection = {
 
 export type WorkspaceActivity = {
   id: string;
+  projectId?: string;
+  projectName?: string;
   type:
     | "updated"
     | "contributor"
@@ -71,10 +73,33 @@ export type WorkspaceActivity = {
 
 export type WorkspaceDeadline = {
   id: string;
+  projectId: string;
   title: string;
   project: string;
+  dueAt: number;
   due: string;
   tone: "orange" | "blue" | "violet" | "green";
+};
+
+export type WorkspaceTeamMember = {
+  userId: string;
+  name: string;
+  email?: string;
+  initials: string;
+  color: string;
+  imageUrl?: string;
+  roles: ("owner" | "editor" | "viewer")[];
+  projects: { id: string; name: string; role: "owner" | "editor" | "viewer" }[];
+};
+
+export type CollectionProject = {
+  id: string;
+  name: string;
+  description: string;
+  status: ProjectStatus;
+  visibility: "private" | "public";
+  updatedAt: number;
+  lastUpdated: string;
 };
 
 export type WorkspaceRequest = {

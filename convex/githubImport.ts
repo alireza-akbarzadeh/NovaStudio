@@ -8,6 +8,9 @@ import { action } from "./_generated/server";
 import { getClerkGitHubToken, parseRepoUrl } from "./lib/github";
 import { fetchRepoFiles } from "./lib/githubFetch";
 
+/** Match client `IMPORT_TIMEOUT_MS` — fail hung clones instead of running for hours. */
+const IMPORT_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
  * Starts a GitHub clone: creates the project immediately and returns.
  * The heavy import runs in the background via Inngest (`processCloneJob`).
@@ -52,6 +55,24 @@ export const cloneFromGitHub = action({
   },
 });
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(message));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /**
  * Background import worker. Called from Inngest with the per-project job token.
  */
@@ -78,6 +99,17 @@ export const processCloneJob = action({
       return { ok: true, fileCount: 0 };
     }
 
+    const startedAt = project.importStartedAt ?? Date.now();
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= IMPORT_TIMEOUT_MS) {
+      await ctx.runMutation(internal.githubImportMutations.failImport, {
+        projectId: args.projectId,
+        reason:
+          "The GitHub clone timed out after 5 minutes. Retry the import from the project card.",
+      });
+      throw new Error("GitHub clone timed out");
+    }
+
     if (!project.githubRepoUrl || !project.githubBranch) {
       await ctx.runMutation(internal.githubImportMutations.failImport, {
         projectId: args.projectId,
@@ -87,6 +119,7 @@ export const processCloneJob = action({
 
     const { owner, repo } = parseRepoUrl(project.githubRepoUrl);
     const branch = project.githubBranch;
+    const budgetMs = Math.max(30_000, IMPORT_TIMEOUT_MS - elapsed);
 
     try {
       const token = await getClerkGitHubToken(project.ownerId);
@@ -96,11 +129,10 @@ export const processCloneJob = action({
         );
       }
 
-      const { files, commitSha } = await fetchRepoFiles(
-        token,
-        owner,
-        repo,
-        branch,
+      const { files, commitSha } = await withTimeout(
+        fetchRepoFiles(token, owner, repo, branch),
+        budgetMs,
+        "The GitHub clone timed out while fetching repository files. Retry from the project card.",
       );
 
       if (files.length === 0) {

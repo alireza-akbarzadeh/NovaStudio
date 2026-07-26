@@ -43,6 +43,7 @@ export function ProjectsOverviewView() {
       <div className="flex min-w-0 flex-1 gap-6">
         <ProjectsWorkspaceMain
           projects={projects}
+          allProjects={catalog}
           search={search}
           onSearchChange={setSearch}
           filter={filter}

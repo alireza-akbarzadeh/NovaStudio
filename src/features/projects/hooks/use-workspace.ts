@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useEffect } from "react";
 
@@ -23,6 +24,44 @@ export function useWorkspaceDeadlines(limit = 8) {
     api.workspace.listDeadlines,
     isAuthenticated ? { limit } : "skip",
   );
+}
+
+export function useTeamDirectory() {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.workspace.listTeamDirectory,
+    isAuthenticated ? {} : "skip",
+  );
+}
+
+export function useCollectionProjects(collectionId: string | null) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.workspaceActions.listCollectionProjects,
+    isAuthenticated && collectionId
+      ? { collectionId: collectionId as Id<"collections"> }
+      : "skip",
+  );
+}
+
+export function useCreateCollection() {
+  return useMutation(api.workspaceActions.createCollection);
+}
+
+export function useAddProjectToCollection() {
+  return useMutation(api.workspaceActions.addProjectToCollection);
+}
+
+export function useRemoveProjectFromCollection() {
+  return useMutation(api.workspaceActions.removeProjectFromCollection);
+}
+
+export function useCreateDeadline() {
+  return useMutation(api.workspaceActions.createDeadline);
+}
+
+export function useDeleteDeadline() {
+  return useMutation(api.workspaceActions.deleteDeadline);
 }
 
 export function useWorkspaceNotifications(limit = 10) {

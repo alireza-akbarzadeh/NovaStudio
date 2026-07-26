@@ -128,6 +128,81 @@ export const addProjectToCollection = mutation({
   },
 });
 
+export const removeProjectFromCollection = mutation({
+  args: {
+    collectionId: v.id("collections"),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const collection = await ctx.db.get("collections", args.collectionId);
+    if (!collection || collection.userId !== identity.subject) {
+      throw new Error("Collection not found");
+    }
+
+    const existing = await ctx.db
+      .query("collectionProjects")
+      .withIndex("by_collection_project", (q) =>
+        q.eq("collectionId", args.collectionId).eq("projectId", args.projectId),
+      )
+      .unique();
+    if (!existing) return null;
+    await ctx.db.delete(existing._id);
+    return existing._id;
+  },
+});
+
+export const listCollectionProjects = query({
+  args: { collectionId: v.id("collections") },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const collection = await ctx.db.get("collections", args.collectionId);
+    if (!collection || collection.userId !== identity.subject) {
+      throw new Error("Collection not found");
+    }
+
+    const links = await ctx.db
+      .query("collectionProjects")
+      .withIndex("by_collection", (q) => q.eq("collectionId", args.collectionId))
+      .collect();
+
+    const result = [];
+    for (const link of links) {
+      const project = await ctx.db.get("projects", link.projectId);
+      if (!project) continue;
+      try {
+        await verifyProjectAccess(ctx, project._id);
+      } catch {
+        continue;
+      }
+      result.push({
+        id: project._id,
+        name: project.name,
+        description:
+          project.description ?? `Workspace for ${project.name}`,
+        status: project.status ?? "in-progress",
+        visibility: project.visibility,
+        updatedAt: project.updatedAt,
+        lastUpdated: `Updated ${formatRelativeFromMs(project.updatedAt)}`,
+      });
+    }
+
+    return result.sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+function formatRelativeFromMs(timestamp: number) {
+  const delta = Date.now() - timestamp;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (delta < minute) return "just now";
+  if (delta < hour) return `${Math.floor(delta / minute)}m ago`;
+  if (delta < day) return `${Math.floor(delta / hour)}h ago`;
+  if (delta < 7 * day) return `${Math.floor(delta / day)}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
 export const togglePin = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
@@ -186,6 +261,17 @@ export const createDeadline = mutation({
       createdBy: userId,
       createdAt: Date.now(),
     });
+  },
+});
+
+export const deleteDeadline = mutation({
+  args: { deadlineId: v.id("projectDeadlines") },
+  handler: async (ctx, args) => {
+    const deadline = await ctx.db.get("projectDeadlines", args.deadlineId);
+    if (!deadline) throw new Error("Deadline not found");
+    await verifyProjectWriteAccess(ctx, deadline.projectId);
+    await ctx.db.delete(args.deadlineId);
+    return args.deadlineId;
   },
 });
 

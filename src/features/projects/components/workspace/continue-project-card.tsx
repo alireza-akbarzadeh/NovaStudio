@@ -17,12 +17,15 @@ import { Button } from "@/components/ui/button";
 import { useRetryGitHubClone } from "@/features/github/hooks/use-github-connection";
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
+import { useTogglePin } from "@/features/projects/hooks/use-workspace";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import {
   formatImportDuration,
   IMPORT_ETA_MS,
+  IMPORT_TIMEOUT_MS,
 } from "@/features/projects/lib/import-status";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
+import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
 const statusStyles = {
@@ -61,12 +64,20 @@ function useImportProgress(project: WorkspaceProject) {
 
   const startedAt = project.importStartedAt ?? now;
   const elapsed = Math.max(0, now - startedAt);
-  const remaining = Math.max(0, IMPORT_ETA_MS - elapsed);
-  const progress = Math.min(95, Math.round((elapsed / IMPORT_ETA_MS) * 100));
-  const label =
-    remaining > 0
-      ? `Cloning from GitHub… ~${formatImportDuration(remaining)} left`
-      : `Cloning from GitHub… ${formatImportDuration(elapsed)} elapsed`;
+  const remainingEta = Math.max(0, IMPORT_ETA_MS - elapsed);
+  const remainingTimeout = Math.max(0, IMPORT_TIMEOUT_MS - elapsed);
+  const progress = Math.min(
+    95,
+    Math.round((elapsed / IMPORT_TIMEOUT_MS) * 100),
+  );
+  let label: string;
+  if (remainingTimeout <= 0) {
+    label = "Import timed out — use Retry";
+  } else if (remainingEta > 0) {
+    label = `Cloning from GitHub… ~${formatImportDuration(remainingEta)} left`;
+  } else {
+    label = `Cloning from GitHub… ${formatImportDuration(elapsed)} elapsed · fails in ~${formatImportDuration(remainingTimeout)}`;
+  }
 
   return { isImporting: true, progress, label };
 }
@@ -77,6 +88,7 @@ export function ContinueProjectCard({
 }: ContinueProjectCardProps) {
   const { openProject, isPending } = useOpenWorkspaceProject();
   const { retry, isRetrying } = useRetryGitHubClone();
+  const togglePin = useTogglePin();
   const { isImporting, progress, label } = useImportProgress(project);
   const isFailed = project.importStatus === "failed";
 
@@ -86,6 +98,17 @@ export function ContinueProjectCard({
       toast.success("Retrying GitHub import — watch this card for progress");
     } catch (error) {
       toast.error(parseConvexErrorMessage(error, "Could not retry import"));
+    }
+  };
+
+  const handlePin = async () => {
+    try {
+      const result = await togglePin({
+        projectId: project.id as Id<"projects">,
+      });
+      toast.success(result.pinned ? "Pinned to overview" : "Unpinned");
+    } catch (error) {
+      toast.error(parseConvexErrorMessage(error, "Could not update pin"));
     }
   };
 
@@ -179,57 +202,82 @@ export function ContinueProjectCard({
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
-          {[
-            { icon: PinIcon, label: "Pin" },
-            { icon: CopyIcon, label: "Duplicate" },
-            { icon: ArchiveIcon, label: "Archive" },
-            { icon: Share2Icon, label: "Share" },
-          ].map(({ icon: Icon, label: actionLabel }) => (
-            <button
-              key={actionLabel}
-              type="button"
-              title={actionLabel}
-              disabled={isImporting || isFailed}
-              className="inline-flex size-8 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-primary/8 hover:text-primary disabled:opacity-40"
-            >
-              <Icon className="size-3.5" />
-            </button>
-          ))}
-        </div>
+          {isImporting || isFailed ? null : (
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
+                <button
+                  type="button"
+                  title={project.pinned ? "Unpin" : "Pin"}
+                  aria-label={project.pinned ? "Unpin project" : "Pin project"}
+                  onClick={() => void handlePin()}
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded-xl transition hover:bg-primary/8 hover:text-primary",
+                    project.pinned
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <PinIcon
+                    className={cn(
+                      "size-3.5",
+                      project.pinned && "fill-current",
+                    )}
+                  />
+                </button>
+                {[
+                  { icon: CopyIcon, label: "Duplicate" },
+                  { icon: ArchiveIcon, label: "Archive" },
+                  { icon: Share2Icon, label: "Share" },
+                ].map(({ icon: Icon, label: actionLabel }) => (
+                  <button
+                    key={actionLabel}
+                    type="button"
+                    title={actionLabel}
+                    className="inline-flex size-8 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-primary/8 hover:text-primary"
+                  >
+                    <Icon className="size-3.5" />
+                  </button>
+                ))}
+              </div>
 
-        {isImporting ? (
-          <Button size="sm" className="rounded-xl" disabled>
-            <Loader2Icon className="size-3.5 animate-spin" />
-            Cloning…
-          </Button>
-        ) : isFailed ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="rounded-xl"
-            disabled={isRetrying}
-            onClick={() => void handleRetry()}
-          >
-            {isRetrying ? (
-              <Loader2Icon className="size-3.5 animate-spin" />
-            ) : (
-              <RotateCcwIcon className="size-3.5" />
-            )}
-            {isRetrying ? "Retrying…" : "Retry"}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            className="rounded-xl"
-            disabled={isPending}
-            onClick={() => openProject(project.id)}
-          >
-            {isPending ? "Opening…" : "Open Project"}
-          </Button>
-        )}
-      </div>
+              <Button
+                size="sm"
+                className="rounded-xl"
+                disabled={isPending}
+                onClick={() => openProject(project.id)}
+              >
+                {isPending ? "Opening…" : "Open Project"}
+              </Button>
+            </div>
+          )}
+
+          {isImporting ? (
+            <div className="mt-4 flex justify-end">
+              <Button size="sm" className="rounded-xl" disabled>
+                <Loader2Icon className="size-3.5 animate-spin" />
+                Cloning…
+              </Button>
+            </div>
+          ) : null}
+
+          {isFailed ? (
+            <div className="mt-4 flex justify-end">
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl"
+                disabled={isRetrying}
+                onClick={() => void handleRetry()}
+              >
+                {isRetrying ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : (
+                  <RotateCcwIcon className="size-3.5" />
+                )}
+                {isRetrying ? "Retrying…" : "Retry"}
+              </Button>
+            </div>
+          ) : null}
     </motion.article>
   );
 }

@@ -48,6 +48,11 @@ export function useProjectsDialog() {
   return context;
 }
 
+/** Safe when the projects dialog provider is not mounted (e.g. hub page). */
+export function useOptionalProjectsDialog() {
+  return useContext(ProjectsDialogContext);
+}
+
 export function ProjectsDialogProvider({ children }: { children: ReactNode }) {
   // Clerk signed-in ≠ Convex authenticated. Only open after Convex has a valid JWT.
   const { isAuthenticated } = useConvexAuth();

@@ -56,6 +56,10 @@ export const importFiles = internalMutation({
     ),
   },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project || project.importStatus !== "importing") {
+      return;
+    }
     await insertImportedFiles(ctx, args.projectId, args.files);
   },
 });
@@ -68,6 +72,10 @@ export const completeImport = internalMutation({
   handler: async (ctx, args) => {
     const project = await ctx.db.get("projects", args.projectId);
     if (!project) {
+      return;
+    }
+    // Ignore late completions after timeout / fail / retry token rotate.
+    if (project.importStatus !== "importing") {
       return;
     }
 
@@ -123,6 +131,49 @@ export const failImport = internalMutation({
 });
 
 /**
+ * Worker / Inngest failure path — authenticates via the import job token.
+ */
+export const failImportWithToken = mutation({
+  args: {
+    projectId: v.id("projects"),
+    jobToken: v.string(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      return { ok: false as const };
+    }
+    if (
+      project.importStatus !== "importing" ||
+      !project.importJobToken ||
+      project.importJobToken !== args.jobToken
+    ) {
+      return { ok: false as const };
+    }
+
+    await ctx.db.patch(args.projectId, {
+      importStatus: "failed",
+      updatedAt: Date.now(),
+      importStartedAt: undefined,
+      importJobToken: undefined,
+    });
+
+    await createNotification(ctx, {
+      userId: project.ownerId,
+      title: `Failed to import "${project.name}"`,
+      body: args.reason ?? "The GitHub clone job could not finish.",
+      tone: "orange",
+      soundKind: "error",
+      href: `/projects`,
+      projectId: args.projectId,
+    });
+
+    return { ok: true as const };
+  },
+});
+
+/**
  * Re-queue a failed GitHub import. Returns a fresh job token for the worker.
  */
 export const retryFailedImport = mutation({
@@ -172,8 +223,57 @@ export const getImportJob = internalQuery({
       ownerId: project.ownerId,
       importStatus: project.importStatus,
       importJobToken: project.importJobToken,
+      importStartedAt: project.importStartedAt,
       githubRepoUrl: project.githubRepoUrl,
       githubBranch: project.githubBranch,
     };
+  },
+});
+
+/**
+ * Mark a stuck GitHub import as failed so the owner can retry.
+ * Safe to call repeatedly — no-ops unless still importing past the timeout.
+ */
+export const failStaleImport = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Only the project owner can expire this import");
+    }
+    if (project.importStatus !== "importing") {
+      return { expired: false as const };
+    }
+
+    const startedAt = project.importStartedAt ?? project._creationTime;
+    const IMPORT_TIMEOUT_MS = 5 * 60 * 1000;
+    if (Date.now() - startedAt < IMPORT_TIMEOUT_MS) {
+      return { expired: false as const };
+    }
+
+    await ctx.db.patch(args.projectId, {
+      importStatus: "failed",
+      updatedAt: Date.now(),
+      importStartedAt: undefined,
+      importJobToken: undefined,
+    });
+
+    await createNotification(ctx, {
+      userId: project.ownerId,
+      title: `Import timed out for "${project.name}"`,
+      body: "The GitHub clone took too long and was stopped. You can retry from the project card.",
+      tone: "orange",
+      soundKind: "error",
+      href: `/projects`,
+      projectId: args.projectId,
+    });
+
+    return { expired: true as const };
   },
 });

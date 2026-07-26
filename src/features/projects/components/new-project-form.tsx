@@ -25,10 +25,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { useOptionalProjectsDialog } from "@/features/projects/components/projects-dialog";
+import { ScaffoldOptionsDialog } from "@/features/projects/components/scaffold-options-dialog";
 import {
   useCreateProject,
   useProjectTemplates,
 } from "@/features/projects/hooks/use-projects";
+import {
+  buildScaffoldCommand,
+  isScaffoldTemplate,
+  type ScaffoldOptions,
+  type ScaffoldTemplateId,
+} from "@/features/projects/lib/scaffold-commands";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -93,12 +101,16 @@ type NewProjectFormProps = {
 /** Shared create-project form used by the standalone page and workspace editor tab. */
 export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
   const router = useRouter();
+  const projectsDialog = useOptionalProjectsDialog();
   const templates = useProjectTemplates() as TemplateMeta[] | undefined;
   const createProject = useCreateProject();
   const [name, setName] = useState(randomProjectName);
   const [templateId, setTemplateId] = useState<TemplateId>("react");
   const [filter, setFilter] = useState<GalleryFilter>("all");
   const [creating, setCreating] = useState(false);
+  const [scaffoldOpen, setScaffoldOpen] = useState(false);
+  const [scaffoldTemplateId, setScaffoldTemplateId] =
+    useState<ScaffoldTemplateId | null>(null);
 
   const visibleTemplates = useMemo(() => {
     if (!templates) return [];
@@ -106,25 +118,74 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
     return templates.filter((template) => template.category === filter);
   }, [templates, filter]);
 
-  async function handleCreate() {
+  const selectedIsScaffold = isScaffoldTemplate(templateId);
+
+  function requireName(): string | null {
     const trimmed = name.trim();
     if (!trimmed) {
       toast.error("Project name is required");
-      return;
+      return null;
     }
+    return trimmed;
+  }
+
+  function openScaffoldDialog(id: ScaffoldTemplateId) {
+    if (!requireName()) return;
+    setScaffoldTemplateId(id);
+    setScaffoldOpen(true);
+  }
+
+  function handleSelectTemplate(id: TemplateId) {
+    setTemplateId(id);
+    if (isScaffoldTemplate(id)) {
+      openScaffoldDialog(id);
+    }
+  }
+
+  async function createWithOptions(args: {
+    templateId: TemplateId;
+    pendingScaffoldCommand?: string;
+    label?: string;
+  }) {
+    const trimmed = requireName();
+    if (!trimmed) return;
 
     setCreating(true);
     try {
       const projectId = await createProject({
         name: trimmed,
-        templateId,
+        templateId: args.templateId,
+        pendingScaffoldCommand: args.pendingScaffoldCommand,
       });
-      toast.success("Project created");
+      setScaffoldOpen(false);
+      projectsDialog?.closeProjects();
+      toast.success(
+        args.pendingScaffoldCommand
+          ? `Project created — scaffolding ${args.label ?? args.templateId} in the terminal`
+          : "Project created",
+      );
       router.push(`/projects/${projectId}`);
     } catch (error) {
       toast.error(parseConvexErrorMessage(error, "Failed to create project"));
       setCreating(false);
     }
+  }
+
+  async function handleCreatePlain() {
+    if (selectedIsScaffold) {
+      openScaffoldDialog(templateId);
+      return;
+    }
+    await createWithOptions({ templateId });
+  }
+
+  async function handleScaffoldConfirm(options: ScaffoldOptions) {
+    if (!scaffoldTemplateId) return;
+    await createWithOptions({
+      templateId: scaffoldTemplateId,
+      pendingScaffoldCommand: buildScaffoldCommand(scaffoldTemplateId, options),
+      label: scaffoldTemplateId,
+    });
   }
 
   return (
@@ -139,8 +200,9 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
           Template gallery
         </h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Pick a starter — React, Vite, Next, Node, or static — then name your
-          project and open it in the editor.
+          Pick a starter. Next.js, React, Vite, and TanStack open a scaffold
+          dialog so you can choose package manager and version, then we run the
+          real CLI in the workspace terminal.
         </p>
       </div>
 
@@ -156,7 +218,7 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
             disabled={creating}
             onKeyDown={(event) => {
               if (event.key === "Enter" && !creating) {
-                void handleCreate();
+                void handleCreatePlain();
               }
             }}
           />
@@ -224,6 +286,7 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
             const id = template.id;
             const Icon = TEMPLATE_ICONS[id] ?? FolderIcon;
             const selected = templateId === id;
+            const scaffoldable = isScaffoldTemplate(id);
 
             return (
               <motion.button
@@ -237,7 +300,7 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
                   ease: [0.22, 1, 0.36, 1],
                 }}
                 disabled={creating}
-                onClick={() => setTemplateId(id)}
+                onClick={() => handleSelectTemplate(id)}
                 className={cn(
                   "group flex flex-col items-start gap-3 rounded-md border p-4 text-left transition-colors",
                   "outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
@@ -257,11 +320,18 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
                   >
                     <Icon className="size-4" />
                   </span>
-                  {selected ? (
-                    <span className="rounded-full bg-ring/15 px-2 py-0.5 text-[10px] font-medium tracking-wide text-ring uppercase">
-                      Selected
-                    </span>
-                  ) : null}
+                  <span className="flex flex-col items-end gap-1">
+                    {scaffoldable ? (
+                      <span className="rounded-full border border-border/50 bg-background/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+                        CLI scaffold
+                      </span>
+                    ) : null}
+                    {selected ? (
+                      <span className="rounded-full bg-ring/15 px-2 py-0.5 text-[10px] font-medium tracking-wide text-ring uppercase">
+                        Selected
+                      </span>
+                    ) : null}
+                  </span>
                 </div>
                 <span className="min-w-0">
                   <span className="block text-[13px] font-medium tracking-tight">
@@ -311,13 +381,30 @@ export function NewProjectForm({ onCancel, className }: NewProjectFormProps) {
         ) : null}
         <Button
           type="button"
-          loading={creating}
+          loading={creating && !scaffoldOpen}
           disabled={!name.trim() || templates === undefined}
-          onClick={() => void handleCreate()}
+          onClick={() => void handleCreatePlain()}
         >
-          {creating ? "Creating…" : "Create project"}
+          {creating && !scaffoldOpen
+            ? "Creating…"
+            : selectedIsScaffold
+              ? "Configure & scaffold"
+              : "Create project"}
         </Button>
       </div>
+
+      <ScaffoldOptionsDialog
+        open={scaffoldOpen}
+        templateId={scaffoldTemplateId}
+        projectName={name.trim() || "untitled"}
+        creating={creating}
+        onOpenChange={(open) => {
+          if (creating) return;
+          setScaffoldOpen(open);
+          if (!open) setScaffoldTemplateId(null);
+        }}
+        onConfirm={(options) => void handleScaffoldConfirm(options)}
+      />
     </div>
   );
 }

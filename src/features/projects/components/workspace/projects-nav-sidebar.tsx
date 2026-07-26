@@ -3,8 +3,6 @@
 import {
   ActivityIcon,
   CalendarIcon,
-  CompassIcon,
-  FolderKanbanIcon,
   LayoutDashboardIcon,
   MenuIcon,
   PlugIcon,
@@ -21,6 +19,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useWorkspaceStorage } from "@/features/projects/hooks/use-workspace";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -33,18 +32,16 @@ const navGroups = [
     label: "Workspace",
     items: [
       { icon: LayoutDashboardIcon, label: "Overview", href: "/projects" },
-      { icon: FolderKanbanIcon, label: "Projects", href: "/projects" },
-      { icon: SparklesIcon, label: "Collections", href: "/projects" },
-      { icon: ActivityIcon, label: "Activity", href: "/projects" },
-      { icon: CalendarIcon, label: "Calendar", href: "/projects" },
+      { icon: SparklesIcon, label: "Collections", href: "/projects/collections" },
+      { icon: ActivityIcon, label: "Activity", href: "/projects/activity" },
+      { icon: CalendarIcon, label: "Calendar", href: "/projects/calendar" },
     ],
   },
   {
     label: "Discover",
     items: [
-      { icon: UsersIcon, label: "Community", href: "/projects" },
-      { icon: TrendingUpIcon, label: "Trending", href: "/projects" },
-      { icon: CompassIcon, label: "Explore", href: "/projects" },
+      { icon: UsersIcon, label: "Community", href: "/projects/community" },
+      { icon: TrendingUpIcon, label: "Trending", href: "/projects/trending" },
     ],
   },
   {
@@ -57,19 +54,9 @@ const navGroups = [
   },
 ] as const;
 
-function isNavActive(pathname: string, href: string, label: string) {
+function isNavActive(pathname: string, href: string) {
   if (href === "/projects") {
-    if (label === "Projects") {
-      return (
-        pathname === "/projects" ||
-        pathname === "/projects/new" ||
-        pathname.startsWith("/projects/new/")
-      );
-    }
-    if (label === "Overview") {
-      return pathname === "/projects";
-    }
-    return false;
+    return pathname === "/projects";
   }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -77,6 +64,8 @@ function isNavActive(pathname: string, href: string, label: string) {
 export function ProjectsNavSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const storage = useWorkspaceStorage();
+  const storagePercent = storage?.percent ?? 0;
 
   const content = (
     <div className="flex h-full flex-col">
@@ -99,7 +88,7 @@ export function ProjectsNavSidebar() {
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                const active = isNavActive(pathname, item.href, item.label);
+                const active = isNavActive(pathname, item.href);
                 return (
                   <li key={`${group.label}-${item.label}`}>
                     <Link
@@ -141,10 +130,13 @@ export function ProjectsNavSidebar() {
         <div className="px-1">
           <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Storage</span>
-            <span>73%</span>
+            <span>{storage ? `${storagePercent}%` : "—"}</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full w-[73%] rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
+              style={{ width: `${storagePercent}%` }}
+            />
           </div>
         </div>
       </div>

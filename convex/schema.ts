@@ -62,6 +62,8 @@ export default defineSchema({
     ),
     importStartedAt: v.optional(v.number()),
     importJobToken: v.optional(v.string()),
+    /** Non-interactive CLI to run once WebContainer boots (e.g. create-next-app). */
+    pendingScaffoldCommand: v.optional(v.string()),
     exportStatus: v.optional(
       v.union(
         v.literal("exporting"),

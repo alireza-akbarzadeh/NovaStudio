@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { CollectionChip } from "@/features/projects/components/workspace/collection-chip";
 import { SectionHeader } from "@/features/projects/components/workspace/section-header";
 import { useWorkspaceCollections } from "@/features/projects/hooks/use-workspace";
@@ -7,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CollectionsSection() {
   const collections = useWorkspaceCollections();
+  const router = useRouter();
 
   return (
     <section>
@@ -14,6 +17,8 @@ export function CollectionsSection() {
         eyebrow="Organize"
         title="Collections"
         description="Group projects by focus, client, or archive status."
+        actionLabel="Manage"
+        onAction={() => router.push("/projects/collections")}
       />
       <div className="flex flex-wrap gap-3">
         {collections === undefined ? (
@@ -30,6 +35,9 @@ export function CollectionsSection() {
               key={collection.id}
               collection={collection}
               index={index}
+              onSelect={(id) =>
+                router.push(`/projects/collections?c=${encodeURIComponent(id)}`)
+              }
             />
           ))
         )}

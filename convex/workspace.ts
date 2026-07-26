@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { query } from "./_generated/server";
 import { verifyAuth } from "./auth";
 import {
   coverToneForProject,
@@ -8,6 +8,7 @@ import {
   listOwnedProjectIds,
   techForProject,
 } from "./lib/accessibleProjects";
+import type { Id } from "./_generated/dataModel";
 import {
   colorForUserId,
   verifyProjectAccess,
@@ -92,6 +93,8 @@ export const listActivity = query({
       for (const row of rows) {
         items.push({
           id: row._id,
+          projectId: project._id,
+          projectName: project.name,
           type: row.type,
           title: row.title,
           detail: row.detail ?? project.name,
@@ -245,6 +248,7 @@ export const listDeadlines = query({
       for (const deadline of deadlines) {
         items.push({
           id: deadline._id,
+          projectId: project._id,
           title: deadline.title,
           project: project.name,
           dueAt: deadline.dueAt,
@@ -254,10 +258,89 @@ export const listDeadlines = query({
       }
     }
 
-    return items
-      .sort((a, b) => a.dueAt - b.dueAt)
-      .slice(0, limit)
-      .map(({ dueAt: _dueAt, ...item }) => item);
+    return items.sort((a, b) => a.dueAt - b.dueAt).slice(0, limit);
+  },
+});
+
+/** Collaborators across every project you can access. */
+export const listTeamDirectory = query({
+  args: {},
+  handler: async (ctx) => {
+    await verifyAuth(ctx);
+    const projects = await listAccessibleProjects(ctx);
+    const byUserId = new Map<
+      string,
+      {
+        userId: string;
+        name: string;
+        email?: string;
+        initials: string;
+        color: string;
+        imageUrl?: string;
+        roles: ("owner" | "editor" | "viewer")[];
+        projects: { id: string; name: string; role: "owner" | "editor" | "viewer" }[];
+      }
+    >();
+
+    for (const project of projects) {
+      const members = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project", (q) => q.eq("projectId", project._id))
+        .collect();
+
+      const hasOwner = members.some((member) => member.role === "owner");
+      if (!hasOwner) {
+        members.push({
+          _id: "legacy-owner" as Id<"projectMembers">,
+          _creationTime: project._creationTime,
+          projectId: project._id,
+          userId: project.ownerId,
+          role: "owner",
+          color: colorForUserId(project.ownerId),
+          createdAt: project._creationTime,
+        });
+      }
+
+      for (const member of members) {
+        const existing = byUserId.get(member.userId);
+        const name = member.name ?? member.email ?? "Member";
+        const projectEntry = {
+          id: project._id as string,
+          name: project.name,
+          role: member.role,
+        };
+        if (existing) {
+          existing.projects.push(projectEntry);
+          if (!existing.roles.includes(member.role)) {
+            existing.roles.push(member.role);
+          }
+          if (!existing.email && member.email) existing.email = member.email;
+          if (!existing.imageUrl && member.imageUrl) {
+            existing.imageUrl = member.imageUrl;
+          }
+          if (existing.name === "Member" && member.name) {
+            existing.name = member.name;
+            existing.initials = initialsFrom(member.name);
+          }
+        } else {
+          byUserId.set(member.userId, {
+            userId: member.userId,
+            name,
+            email: member.email,
+            initials: initialsFrom(name),
+            color: member.color || colorForUserId(member.userId),
+            imageUrl: member.imageUrl,
+            roles: [member.role],
+            projects: [projectEntry],
+          });
+        }
+      }
+    }
+
+    return [...byUserId.values()].sort(
+      (a, b) =>
+        b.projects.length - a.projects.length || a.name.localeCompare(b.name),
+    );
   },
 });
 

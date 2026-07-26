@@ -30,6 +30,8 @@ export const createProject = mutation({
   args: {
     name: v.string(),
     templateId: v.optional(templateIdValidator),
+    /** When set (Next.js), skip static seed files and run this CLI in the workspace. */
+    pendingScaffoldCommand: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await verifyAuth(ctx);
@@ -40,6 +42,7 @@ export const createProject = mutation({
 
     const templateId = args.templateId ?? DEFAULT_TEMPLATE_ID;
     const ownerId = identity.subject;
+    const pendingScaffoldCommand = args.pendingScaffoldCommand?.trim() || undefined;
 
     const projectId = await ctx.db.insert("projects", {
       name,
@@ -51,8 +54,21 @@ export const createProject = mutation({
       visibility: "private",
       status: "in-progress",
       progress: 5,
+      ...(pendingScaffoldCommand
+        ? { pendingScaffoldCommand }
+        : {}),
     });
-    await seedProjectFiles(ctx, projectId, templateId);
+
+    // CLI scaffolds (create-next-app) need an empty root — skip static seed files.
+    if (!pendingScaffoldCommand) {
+      await seedProjectFiles(ctx, projectId, templateId);
+    } else {
+      await ctx.db.patch(projectId, {
+        templateId,
+        syncedAt: Date.now(),
+      });
+    }
+
     await ensureOwnerMembership(ctx, projectId, ownerId, {
       email: identityEmail(identity) ?? undefined,
       name: identityDisplayName(identity),
@@ -64,9 +80,27 @@ export const createProject = mutation({
       actorName: identityDisplayName(identity),
       type: "released",
       title: "New project created",
-      detail: name,
+      detail: pendingScaffoldCommand
+        ? `${name} (scaffolding)`
+        : name,
     });
     return projectId;
+  },
+});
+
+export const clearPendingScaffold = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await verifyProjectOwnerAccess(ctx, args.projectId);
+    if (!project.pendingScaffoldCommand) {
+      return;
+    }
+    await ctx.db.patch(args.projectId, {
+      pendingScaffoldCommand: undefined,
+      updatedAt: Date.now(),
+    });
   },
 });
 

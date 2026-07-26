@@ -3,8 +3,20 @@
 import { ProjectsStatCard } from "@/features/projects/components/workspace/projects-stat-card";
 import { useWorkspaceStats } from "@/features/projects/hooks/use-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ProjectFilter } from "@/features/projects/lib/projects-workspace-types";
 
-export function ProjectsStatsRow() {
+type ProjectsStatsRowProps = {
+  onFilterChange?: (filter: ProjectFilter) => void;
+};
+
+const STAT_FILTER: Record<string, ProjectFilter> = {
+  pinned: "pinned",
+  recent: "recent",
+  shared: "shared",
+  public: "public",
+};
+
+export function ProjectsStatsRow({ onFilterChange }: ProjectsStatsRowProps) {
   const stats = useWorkspaceStats();
 
   if (stats === undefined) {
@@ -20,7 +32,16 @@ export function ProjectsStatsRow() {
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {stats.map((stat, index) => (
-        <ProjectsStatCard key={stat.id} stat={stat} index={index} />
+        <ProjectsStatCard
+          key={stat.id}
+          stat={stat}
+          index={index}
+          onClick={
+            onFilterChange && STAT_FILTER[stat.id]
+              ? () => onFilterChange(STAT_FILTER[stat.id]!)
+              : undefined
+          }
+        />
       ))}
     </section>
   );

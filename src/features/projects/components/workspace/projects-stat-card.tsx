@@ -28,9 +28,14 @@ const icons = {
 type ProjectsStatCardProps = {
   stat: WorkspaceStat;
   index: number;
+  onClick?: () => void;
 };
 
-export function ProjectsStatCard({ stat, index }: ProjectsStatCardProps) {
+export function ProjectsStatCard({
+  stat,
+  index,
+  onClick,
+}: ProjectsStatCardProps) {
   const Icon = icons[stat.icon];
 
   return (
@@ -38,10 +43,24 @@ export function ProjectsStatCard({ stat, index }: ProjectsStatCardProps) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.35 }}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "group relative overflow-hidden rounded-[20px] border border-border/60 bg-card/80 p-5 shadow-[0_12px_40px_-28px_rgba(76,29,149,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_50px_-28px_rgba(76,29,149,0.55)]",
         "bg-gradient-to-br",
         toneStyles[stat.tone],
+        onClick && "cursor-pointer",
       )}
     >
       <div className="relative z-10 flex items-start justify-between gap-3">

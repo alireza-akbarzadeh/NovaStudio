@@ -215,9 +215,72 @@ export async function deployNetlifyFromGit(args: {
   return {
     siteId: site.id,
     siteName: site.name,
-    buildId: build.id || build.deploy_id || site.id,
+    buildId: build.deploy_id || build.id || site.id,
     url: site.ssl_url || site.url,
     inspectorUrl: site.admin_url,
     status: "building",
+  };
+}
+
+type NetlifyDeploy = {
+  id: string;
+  state?: string;
+  error_message?: string | null;
+  ssl_url?: string;
+  url?: string;
+  deploy_url?: string;
+  admin_url?: string;
+  site_id?: string;
+};
+
+/** Map Netlify deploy `state` into a compact status we store in Convex. */
+export function normalizeNetlifyDeployState(state: string | undefined): string {
+  const value = (state ?? "").toLowerCase();
+  if (value === "ready") return "ready";
+  if (value === "error" || value === "failed") return "error";
+  if (value === "canceled" || value === "cancelled") return "cancelled";
+  if (
+    value === "new" ||
+    value === "pending" ||
+    value === "building" ||
+    value === "enqueued" ||
+    value === "uploading" ||
+    value === "uploaded" ||
+    value === "preparing" ||
+    value === "prepared" ||
+    value === "processing" ||
+    value === "processed" ||
+    value === "retrying"
+  ) {
+    return "building";
+  }
+  return value || "building";
+}
+
+export async function fetchNetlifyDeployStatus(args: {
+  token: string;
+  deployId: string;
+}): Promise<{
+  status: string;
+  url?: string;
+  inspectorUrl?: string;
+  errorMessage?: string;
+  rawState?: string;
+}> {
+  const response = await fetch(
+    `https://api.netlify.com/api/v1/deploys/${encodeURIComponent(args.deployId)}`,
+    { headers: { Authorization: `Bearer ${args.token}` } },
+  );
+  if (!response.ok) {
+    throw new Error(await response.text() || "Could not fetch Netlify deploy status");
+  }
+  const deploy = (await response.json()) as NetlifyDeploy;
+  const status = normalizeNetlifyDeployState(deploy.state);
+  return {
+    status,
+    url: deploy.ssl_url || deploy.url || deploy.deploy_url,
+    inspectorUrl: deploy.admin_url,
+    errorMessage: deploy.error_message ?? undefined,
+    rawState: deploy.state,
   };
 }

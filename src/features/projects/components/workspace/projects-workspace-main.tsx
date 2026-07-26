@@ -17,6 +17,8 @@ import type {
 
 type ProjectsWorkspaceMainProps = {
   projects: WorkspaceProject[];
+  /** Full catalog before filters — for empty pin messaging. */
+  allProjects?: WorkspaceProject[];
   search: string;
   onSearchChange: (value: string) => void;
   filter: ProjectFilter;
@@ -31,6 +33,7 @@ type ProjectsWorkspaceMainProps = {
 
 export function ProjectsWorkspaceMain({
   projects,
+  allProjects,
   search,
   onSearchChange,
   filter,
@@ -66,13 +69,38 @@ export function ProjectsWorkspaceMain({
           />
           {projects.length === 0 ? (
             <div className="rounded-[22px] border border-dashed border-border/70 bg-card/60 px-6 py-12 text-center text-sm text-muted-foreground backdrop-blur">
-              No projects match your filters. Try another search or reset the
-              filter chips.
+              {filter === "pinned" ? (
+                <>
+                  <p className="font-medium text-foreground/90">
+                    No pinned projects yet
+                  </p>
+                  <p className="mt-2">
+                    Hover a project under Continue Working and click the pin
+                    icon, then come back to this filter.
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-4 text-sm font-medium text-primary hover:underline"
+                    onClick={() => onFilterChange("all")}
+                  >
+                    Show all projects
+                  </button>
+                </>
+              ) : (
+                <>
+                  No projects match your filters. Try another search or reset the
+                  filter chips.
+                </>
+              )}
             </div>
           ) : (
             <>
-              <ProjectsStatsRow />
-              <PinnedProjectsSection projects={projects} />
+              <ProjectsStatsRow onFilterChange={onFilterChange} />
+              <PinnedProjectsSection
+                projects={projects}
+                allProjects={allProjects}
+                onManagePins={() => onFilterChange("pinned")}
+              />
               <ContinueWorkingSection projects={projects} />
               <CommunityProjectsSection onRequestAccess={onRequestAccess} />
               <TrendingProjectsSection />

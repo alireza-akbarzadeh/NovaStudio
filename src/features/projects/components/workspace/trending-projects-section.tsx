@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { SectionHeader } from "@/features/projects/components/workspace/section-header";
 import { TrendingProjectCard } from "@/features/projects/components/workspace/trending-project-card";
 import { usePublicProjects } from "@/features/projects/hooks/use-workspace";
@@ -8,6 +10,7 @@ import type { WorkspaceProject } from "@/features/projects/lib/projects-workspac
 export function TrendingProjectsSection() {
   const publicProjects = usePublicProjects();
   const trending = ((publicProjects ?? []) as WorkspaceProject[]).slice(0, 8);
+  const router = useRouter();
 
   return (
     <section>
@@ -15,6 +18,8 @@ export function TrendingProjectsSection() {
         eyebrow="This week"
         title="Trending Projects"
         description="Most recently updated public community workspaces."
+        actionLabel="See all"
+        onAction={() => router.push("/projects/trending")}
       />
       {publicProjects === undefined ? (
         <p className="text-sm text-muted-foreground">Loading trending…</p>

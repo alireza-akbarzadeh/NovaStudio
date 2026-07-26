@@ -37,6 +37,7 @@ import { PreviewServerProvider } from "@/features/workspace/components/preview-s
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
+import { usePendingScaffold } from "@/features/workspace/hooks/use-pending-scaffold";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceFocusSync } from "@/features/workspace/hooks/use-workspace-focus-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -71,6 +72,7 @@ function WorkspaceLayoutInner({
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
   useUserJsonTabShortcut(projectId);
+  usePendingScaffold(projectId);
   useWebContainerAutoInstall(projectId);
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);

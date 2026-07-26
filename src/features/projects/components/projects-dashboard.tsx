@@ -7,7 +7,7 @@ import {
 import { Manrope } from "next/font/google";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
@@ -16,6 +16,7 @@ import { GitHubConnectionStatus } from "@/features/github/components/github-conn
 import { ProjectActionRow } from "@/features/projects/components/project-action-row";
 import { ProjectCommandDialog } from "@/features/projects/components/project-command-dialog";
 import { ProjectList } from "@/features/projects/components/project-list";
+import { useOptionalProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { ThemeSection } from "@/features/projects/components/theme-sections";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +33,15 @@ type ProjectsDashboardProps = {
 export function ProjectsDashboard({ compact = false }: ProjectsDashboardProps) {
   const router = useRouter();
   const { openPricing } = usePricingDialog();
+  const projectsDialog = useOptionalProjectsDialog();
   const [commandOpen, setCommandOpen] = useState(false);
   const [cloneOpen, setCloneOpen] = useState(false);
+
+  const goToNewProject = useCallback(() => {
+    // Dialog lives above the page tree — close it before the URL changes.
+    projectsDialog?.closeProjects();
+    router.push("/projects/new");
+  }, [projectsDialog, router]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -43,14 +51,14 @@ export function ProjectsDashboard({ compact = false }: ProjectsDashboardProps) {
       }
       if (event.key === "n" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-        router.push("/projects/new");
+        goToNewProject();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [router]);
+  }, [goToNewProject]);
 
   return (
     <>
@@ -105,7 +113,7 @@ export function ProjectsDashboard({ compact = false }: ProjectsDashboardProps) {
                 description="Start from a template"
                 shortcut="⌘N"
                 delay={0.08}
-                onClick={() => router.push("/projects/new")}
+                onClick={goToNewProject}
               />
               <ProjectActionRow
                 icon={<FolderPlusIcon className="size-4" />}

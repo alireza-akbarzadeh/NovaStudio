@@ -2,12 +2,15 @@
 
 import { MoreHorizontalIcon, StarIcon } from "lucide-react";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
 import { TechBadge } from "@/features/projects/components/workspace/tech-badge";
+import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useTogglePin } from "@/features/projects/hooks/use-workspace";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
-import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
 type PinnedProjectCardProps = {
@@ -17,13 +20,34 @@ type PinnedProjectCardProps = {
 
 export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
   const togglePin = useTogglePin();
+  const { openProject, isPending } = useOpenWorkspaceProject();
+
+  const handleUnpin = async () => {
+    try {
+      await togglePin({ projectId: project.id as Id<"projects"> });
+      toast.success("Unpinned");
+    } catch (error) {
+      toast.error(parseConvexErrorMessage(error, "Could not update pin"));
+    }
+  };
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 + index * 0.05, duration: 0.35 }}
-      className="group relative flex min-w-[280px] max-w-[320px] shrink-0 flex-col overflow-hidden rounded-[22px] border border-border/60 bg-card/85 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.5)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-30px_rgba(76,29,149,0.55)]"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open ${project.name}`}
+      aria-busy={isPending}
+      onClick={() => openProject(project.id)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openProject(project.id);
+        }
+      }}
+      className="group relative flex min-w-[280px] max-w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-[22px] border border-border/60 bg-card/85 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.5)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-30px_rgba(76,29,149,0.55)]"
     >
       <div className={cn("relative h-36 overflow-hidden", project.coverTone)}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.28),transparent_55%)]" />
@@ -31,17 +55,19 @@ export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
         <button
           type="button"
           className="absolute top-3 right-3 inline-flex size-8 items-center justify-center rounded-full bg-black/25 text-amber-300 backdrop-blur transition hover:scale-105 hover:bg-black/35"
-          aria-label="Favourite project"
-          onClick={() =>
-            void togglePin({ projectId: project.id as Id<"projects"> })
-          }
+          aria-label="Unpin project"
+          onClick={(event) => {
+            event.stopPropagation();
+            void handleUnpin();
+          }}
         >
           <StarIcon className="size-4 fill-current" />
         </button>
         <button
           type="button"
-          className="absolute top-3 left-3 inline-flex size-8 items-center justify-center rounded-full bg-black/20 text-white/90 backdrop-blur opacity-0 transition group-hover:opacity-100"
+          className="absolute top-3 left-3 inline-flex size-8 items-center justify-center rounded-full bg-black/20 text-white/90 opacity-0 backdrop-blur transition group-hover:opacity-100"
           aria-label="More actions"
+          onClick={(event) => event.stopPropagation()}
         >
           <MoreHorizontalIcon className="size-4" />
         </button>

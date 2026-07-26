@@ -2,6 +2,7 @@
 
 import { ContinueProjectCard } from "@/features/projects/components/workspace/continue-project-card";
 import { SectionHeader } from "@/features/projects/components/workspace/section-header";
+import { useExpireStaleImports } from "@/features/projects/hooks/use-expire-stale-imports";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
 
 type ContinueWorkingSectionProps = {
@@ -17,6 +18,8 @@ function importRank(project: WorkspaceProject) {
 export function ContinueWorkingSection({
   projects,
 }: ContinueWorkingSectionProps) {
+  useExpireStaleImports(projects);
+
   // Prefer live / failed clones so the optimistic card is always visible.
   const recent = [...projects]
     .filter((project) => !project.pinned)

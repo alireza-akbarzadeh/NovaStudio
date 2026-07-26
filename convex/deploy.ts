@@ -249,6 +249,78 @@ export const insertDeployment = internalMutation({
   },
 });
 
+export const updateDeployment = internalMutation({
+  args: {
+    deploymentId: v.id("deployments"),
+    status: v.string(),
+    url: v.optional(v.string()),
+    inspectorUrl: v.optional(v.string()),
+    notify: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const deployment = await ctx.db.get(args.deploymentId);
+    if (!deployment) return null;
+
+    const prev = deployment.status;
+    const next = args.status;
+    if (
+      prev === next &&
+      (args.url === undefined || args.url === deployment.url) &&
+      (args.inspectorUrl === undefined ||
+        args.inspectorUrl === deployment.inspectorUrl)
+    ) {
+      return deployment;
+    }
+
+    await ctx.db.patch(args.deploymentId, {
+      status: next,
+      ...(args.url !== undefined ? { url: args.url } : {}),
+      ...(args.inspectorUrl !== undefined
+        ? { inspectorUrl: args.inspectorUrl }
+        : {}),
+      updatedAt: Date.now(),
+    });
+
+    if (args.notify && prev !== next && (next === "ready" || next === "error")) {
+      const project = await ctx.db.get(deployment.projectId);
+      const title =
+        next === "ready"
+          ? `${deployment.provider === "netlify" ? "Netlify" : "Vercel"} deploy succeeded`
+          : `${deployment.provider === "netlify" ? "Netlify" : "Vercel"} deploy failed`;
+      const href =
+        next === "ready"
+          ? args.url ?? deployment.url ?? `/projects/${deployment.projectId}`
+          : args.inspectorUrl ??
+            deployment.inspectorUrl ??
+            `/projects/${deployment.projectId}`;
+
+      await createNotification(ctx, {
+        userId: deployment.createdBy,
+        title,
+        body:
+          next === "ready"
+            ? args.url ??
+              deployment.url ??
+              `"${project?.name ?? "Project"}" is live.`
+            : `Deploy for "${project?.name ?? "project"}" failed. Open the provider dashboard for logs.`,
+        tone: next === "ready" ? "green" : "orange",
+        soundKind: next === "ready" ? "success" : "error",
+        href,
+        projectId: deployment.projectId,
+      });
+    }
+
+    return await ctx.db.get(args.deploymentId);
+  },
+});
+
+export const getDeploymentInternal = internalQuery({
+  args: { deploymentId: v.id("deployments") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.deploymentId);
+  },
+});
+
 export const getProjectTargetInternal = internalQuery({
   args: {
     projectId: v.id("projects"),

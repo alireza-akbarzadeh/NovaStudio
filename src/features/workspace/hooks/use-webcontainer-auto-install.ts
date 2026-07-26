@@ -4,13 +4,16 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
+import { useProject } from "@/features/projects/hooks/use-projects";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 /**
  * When WebContainer is ready and the project has package.json but no
  * node_modules, open the terminal and run the detected install once.
+ * Skipped while a CLI scaffold (create-next-app) is still pending.
  */
 export function useWebContainerAutoInstall(projectId: string) {
+  const project = useProject({ projectId });
   const webcontainer = useOptionalWebContainer();
   const requestTerminalCommand = useWorkspaceStore(
     (s) => s.requestTerminalCommand,
@@ -22,8 +25,10 @@ export function useWebContainerAutoInstall(projectId: string) {
   const installAttempted = webcontainer?.installAttempted ?? false;
   const installCommand = webcontainer?.installCommand;
   const markInstallAttempted = webcontainer?.markInstallAttempted;
+  const pendingScaffold = Boolean(project?.pendingScaffoldCommand);
 
   useEffect(() => {
+    if (pendingScaffold) return;
     if (!ready || !needsInstall || installAttempted) return;
     if (!installCommand || !markInstallAttempted) return;
     if (attemptedForRef.current === projectId) return;
@@ -40,6 +45,7 @@ export function useWebContainerAutoInstall(projectId: string) {
     installCommand,
     markInstallAttempted,
     needsInstall,
+    pendingScaffold,
     projectId,
     ready,
     requestTerminalCommand,

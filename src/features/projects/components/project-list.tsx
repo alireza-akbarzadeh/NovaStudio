@@ -3,7 +3,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { ArrowRightIcon } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { Doc } from "@/convex/_generated/dataModel";
 import { ProjectListSkeleton } from "@/features/projects/components/project-list-loading";
@@ -11,6 +11,7 @@ import {
   getProjectsIcons,
   ProjectRow,
 } from "@/features/projects/components/project-row";
+import { useExpireStaleImports } from "@/features/projects/hooks/use-expire-stale-imports";
 import { useImportStatusLabel } from "@/features/projects/hooks/use-import-status-label";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useProjectPartial } from "@/features/projects/hooks/use-projects";
@@ -110,6 +111,17 @@ function ContinueCard({
 export function ProjectList({ onViewAll }: ProjectListProps) {
   const projects = useProjectPartial({ limit: 6 });
   const { openProject, isPending } = useOpenWorkspaceProject();
+
+  const watchProjects = useMemo(
+    () =>
+      projects?.map((project) => ({
+        id: project._id,
+        importStatus: project.importStatus,
+        importStartedAt: project.importStartedAt,
+      })),
+    [projects],
+  );
+  useExpireStaleImports(watchProjects);
 
   if (projects === undefined) {
     return (

@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { ActivityFeedItem } from "@/features/projects/components/workspace/activity-feed-item";
 import { SectionHeader } from "@/features/projects/components/workspace/section-header";
 import { useWorkspaceActivity } from "@/features/projects/hooks/use-workspace";
@@ -7,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function ActivityFeedSection() {
   const activity = useWorkspaceActivity();
+  const router = useRouter();
 
   return (
     <section>
@@ -14,6 +17,8 @@ export function ActivityFeedSection() {
         eyebrow="Timeline"
         title="Activity Feed"
         description="Stay in sync with updates across your collaborative workspaces."
+        actionLabel="View all"
+        onAction={() => router.push("/projects/activity")}
       />
       <div className="rounded-[22px] border border-border/60 bg-card/80 p-5 shadow-[0_14px_40px_-30px_rgba(76,29,149,0.4)] backdrop-blur-xl">
         {activity === undefined ? (
