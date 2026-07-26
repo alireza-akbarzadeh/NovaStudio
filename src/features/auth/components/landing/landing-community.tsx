@@ -1,14 +1,14 @@
 "use client";
 
-import { motion } from "motion/react";
 import {
   ArrowRight,
-  Github,
   GitPullRequest,
   Heart,
   Star,
   Users,
 } from "lucide-react";
+import { motion } from "motion/react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,19 @@ import { cn } from "@/lib/utils";
 import { display } from "./display-font";
 import { LANDING } from "./landing-colors";
 import { Section, SectionLabel } from "./landing-section";
+
+function GithubIcon({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/images/github.png"
+      alt=""
+      width={20}
+      height={20}
+      className={cn("shrink-0 object-contain", className)}
+      aria-hidden
+    />
+  );
+}
 
 const GITHUB_ORG = "https://github.com/alireza-akbarzadeh";
 const GITHUB_REPO = "https://github.com/alireza-akbarzadeh/NovaStudio";
@@ -31,83 +44,7 @@ const CONTRIBUTORS = [
     prs: 220,
     role: "Creator",
   },
-  {
-    i: "AB",
-    n: "Ava Brooks",
-    gh: "avabrooks",
-    c: "from-blue-500 to-cyan-400",
-    prs: 142,
-  },
-  {
-    i: "MC",
-    n: "Maya Chen",
-    gh: "mayachen",
-    c: "from-violet-500 to-fuchsia-400",
-    prs: 128,
-  },
-  {
-    i: "JD",
-    n: "Jordan Diaz",
-    gh: "jordand",
-    c: "from-emerald-500 to-teal-400",
-    prs: 96,
-  },
-  {
-    i: "EV",
-    n: "Elena Voss",
-    gh: "elenavoss",
-    c: "from-amber-500 to-orange-400",
-    prs: 84,
-  },
-  {
-    i: "RP",
-    n: "Raj Patel",
-    gh: "rajpatel",
-    c: "from-cyan-500 to-blue-400",
-    prs: 73,
-  },
-  {
-    i: "LK",
-    n: "Leo Kim",
-    gh: "leokim",
-    c: "from-fuchsia-500 to-violet-400",
-    prs: 61,
-  },
-  {
-    i: "AT",
-    n: "Aiko Tanaka",
-    gh: "aikot",
-    c: "from-rose-500 to-pink-400",
-    prs: 58,
-  },
-  {
-    i: "DO",
-    n: "David Okonkwo",
-    gh: "davido",
-    c: "from-teal-500 to-emerald-400",
-    prs: 47,
-  },
-  {
-    i: "SL",
-    n: "Sarah Lin",
-    gh: "sarahlin",
-    c: "from-indigo-500 to-blue-400",
-    prs: 39,
-  },
-  {
-    i: "MV",
-    n: "Maxim Volkov",
-    gh: "mvolkov",
-    c: "from-sky-500 to-cyan-400",
-    prs: 33,
-  },
-  {
-    i: "NK",
-    n: "Nora Klein",
-    gh: "noraklein",
-    c: "from-purple-500 to-violet-400",
-    prs: 28,
-  },
+
 ] as const;
 
 const SPONSORS = [
@@ -156,7 +93,7 @@ export function LandingCommunity() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.5 }}
-        className="rounded-3xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md sm:p-8"
+        className="rounded-3xl border border-white/10 bg-white/2 p-6 backdrop-blur-md sm:p-8"
       >
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-sm font-medium text-white">
@@ -169,7 +106,7 @@ export function LandingCommunity() {
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs text-white/50 transition-colors hover:text-white"
           >
-            <Github className="h-3.5 w-3.5" /> View on GitHub{" "}
+            <GithubIcon className="h-3.5 w-3.5" /> View on GitHub{" "}
             <ArrowRight className="h-3 w-3" />
           </a>
         </div>
@@ -186,9 +123,9 @@ export function LandingCommunity() {
               transition={{ delay: (i % 6) * 0.05, duration: 0.3 }}
               whileHover={{ y: -4 }}
               className={cn(
-                "group relative flex flex-col items-center gap-2 rounded-2xl border bg-white/[0.02] p-4 text-center transition-colors hover:border-white/20",
+                "group relative flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-colors hover:border-white/20",
                 "role" in c && c.role
-                  ? "border-cyan-400/30 bg-cyan-500/[0.04] ring-1 ring-cyan-400/20"
+                  ? "border-cyan-400/30 bg-cyan-500/4 ring-1 ring-cyan-400/20"
                   : "border-white/10",
               )}
             >
@@ -199,7 +136,7 @@ export function LandingCommunity() {
               ) : null}
               <div
                 className={cn(
-                  "flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br text-sm font-semibold text-white",
+                  "flex h-12 w-12 items-center justify-center rounded-full bg-linear-to-br text-sm font-semibold text-white",
                   c.c,
                 )}
               >
@@ -207,7 +144,7 @@ export function LandingCommunity() {
               </div>
               <div className="text-xs font-medium text-white">{c.n}</div>
               <div className="flex items-center gap-1 text-[10px] text-white/40">
-                <Github className="h-3 w-3" /> @{c.gh}
+                <GithubIcon className="h-3 w-3" /> @{c.gh}
               </div>
               <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-cyan-400">
                 <GitPullRequest className="h-3 w-3" /> {c.prs}
@@ -274,7 +211,7 @@ export function LandingCommunity() {
           <div className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-blue-500/20 opacity-0 blur-3xl transition-opacity group-hover:opacity-100" />
           <div className="relative">
             <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15">
-              <Github className="h-5 w-5 text-cyan-400" />
+              <GithubIcon className="h-5 w-5" />
             </div>
             <h3 className="text-lg font-semibold text-white">
               Become a contributor
