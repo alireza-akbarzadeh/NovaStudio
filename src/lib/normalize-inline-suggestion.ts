@@ -1,10 +1,10 @@
 /**
- * Turn messy LLM completion output into plain text suitable for Monaco
- * inline ghost-text (no fences, no XML wrappers, no commentary).
+ * Strip BOM, markdown fences, and common wrappers from LLM code output.
+ * Does not reject chatty preambles or cap length (callers decide).
  */
-export function normalizeInlineSuggestion(raw: string): string | null {
+export function stripLlmCodeWrapper(raw: string): string {
   let text = raw.replace(/^\uFEFF/, "").trim();
-  if (!text) return null;
+  if (!text) return "";
 
   // Prefer explicit <suggestion> body when the model wraps output.
   const tagged = text.match(/<suggestion>\s*([\s\S]*?)\s*<\/suggestion>/i);
@@ -19,12 +19,19 @@ export function normalizeInlineSuggestion(raw: string): string | null {
   }
 
   // Models sometimes emit fragmented fences mid-string — strip markers.
-  text = text
+  return text
     .replace(/```[\w+-]*[ \t]*/g, "")
     .replace(/```/g, "")
     .replace(/<\/?suggestion>/gi, "")
     .trim();
+}
 
+/**
+ * Turn messy LLM completion output into plain text suitable for Monaco
+ * inline ghost-text (no fences, no XML wrappers, no commentary).
+ */
+export function normalizeInlineSuggestion(raw: string): string | null {
+  let text = stripLlmCodeWrapper(raw);
   if (!text) return null;
 
   // Drop obvious chatty preambles.
@@ -42,4 +49,12 @@ export function normalizeInlineSuggestion(raw: string): string | null {
   }
 
   return text;
+}
+
+/**
+ * Normalize a full selection rewrite for inline AI edit (no length cap).
+ */
+export function normalizeQuickEdit(raw: string): string | null {
+  const text = stripLlmCodeWrapper(raw);
+  return text || null;
 }

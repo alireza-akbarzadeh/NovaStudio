@@ -54,7 +54,7 @@ These are the biggest daily-friction gaps you called out.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 14 | Inline AI edit (⌘K in editor) | `todo` | Selection → rewrite → Accept / Reject. |
+| 14 | Inline AI edit (⌘K in editor) | `doing` | Selection → rewrite → Accept / Reject. |
 | 15 | Multi-file AI apply with diffs | `todo` | Per-file diff cards, Apply all / Reject. |
 | 16 | Zen / Focus mode | `todo` | Hide chrome, center editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
