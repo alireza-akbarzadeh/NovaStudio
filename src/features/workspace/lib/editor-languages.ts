@@ -55,6 +55,13 @@ const LANGUAGE_LABELS: Array<{ test: RegExp; label: string }> = [
   { test: /\.html?$/i, label: "HTML" },
   { test: /\.jsonc?$/i, label: "JSON" },
   { test: /\.mdx?$/i, label: "Markdown" },
+  { test: /\.ya?ml$/i, label: "YAML" },
+  { test: /\.go$/i, label: "Go" },
+  { test: /\.py$/i, label: "Python" },
+  { test: /\.rs$/i, label: "Rust" },
+  { test: /\.sql$/i, label: "SQL" },
+  { test: /\.sh$/i, label: "Shell" },
+  { test: /\.toml$/i, label: "TOML" },
 ];
 
 export function getLanguageLabel(filePath: string | null | undefined): string {

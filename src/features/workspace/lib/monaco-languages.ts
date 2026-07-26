@@ -14,9 +14,21 @@ export function monacoModelPath(filePath: string): string {
  * Monaco 0.56+ uses top-level `monaco.typescript` / `monaco.css` / `monaco.html`.
  */
 export function configureMonacoLanguages(monaco: Monaco) {
-  configureTypescriptReact(monaco);
-  configureHtml(monaco);
-  configureCss(monaco);
+  try {
+    configureTypescriptReact(monaco);
+  } catch (error) {
+    console.warn("[editor] TypeScript language service setup failed", error);
+  }
+  try {
+    configureHtml(monaco);
+  } catch (error) {
+    console.warn("[editor] HTML language service setup failed", error);
+  }
+  try {
+    configureCss(monaco);
+  } catch (error) {
+    console.warn("[editor] CSS language service setup failed", error);
+  }
 }
 
 function configureTypescriptReact(monaco: Monaco) {

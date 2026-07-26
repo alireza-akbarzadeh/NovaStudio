@@ -171,7 +171,7 @@ function WorkspaceLayoutInner({
 
           <ResizableHandle
             className={cn(
-              "w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40",
+              "w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=vertical]:w-1.5",
               !sidebarOpen && "pointer-events-none opacity-0",
             )}
           />
@@ -196,7 +196,9 @@ function WorkspaceLayoutInner({
 
               <ResizableHandle
                 className={cn(
-                  "h-1.5 bg-transparent after:hidden hover:bg-ws-accent/40",
+                  // Match sidebar↔editor gutter (w-1.5). Base handle uses
+                  // aria-[orientation=horizontal]:h-px which would collapse this.
+                  "h-1.5 w-full bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=horizontal]:h-1.5",
                   !terminalOpen && "pointer-events-none opacity-0",
                 )}
               />
@@ -219,7 +221,7 @@ function WorkspaceLayoutInner({
 
           <ResizableHandle
             className={cn(
-              "w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40",
+              "w-1.5 bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=vertical]:w-1.5",
               !aiPanelOpen && "pointer-events-none opacity-0",
             )}
           />

@@ -17,7 +17,9 @@ import {
   monacoLanguageForPath,
   supportsAiSuggestion,
 } from "@/features/workspace/lib/editor-languages";
+import { LanguageSupportBanner } from "@/features/workspace/components/language-support-banner";
 import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
+import { resolveSafeMonacoLanguage } from "@/features/workspace/lib/language-support";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import {
@@ -43,6 +45,41 @@ import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 function fileNameFromPath(filePath: string) {
   const parts = filePath.split("/");
   return parts.at(-1) ?? filePath;
+}
+
+function safeConfigureMonaco(
+  monaco: Parameters<OnMount>[1],
+  enabledIds: ReadonlySet<string>,
+) {
+  try {
+    registerNovaStudioThemes(monaco);
+    registerExtensionThemes(monaco);
+    activateExtensions(monaco, enabledIds);
+    configureMonacoLanguages(monaco);
+  } catch (error) {
+    console.warn("[editor] language/theme setup failed", error);
+  }
+}
+
+function safeSetModelLanguage(
+  monaco: Parameters<OnMount>[1],
+  model: editor.ITextModel | null,
+  requested: string,
+) {
+  if (!model) return;
+  try {
+    const language = resolveSafeMonacoLanguage(monaco, requested);
+    if (model.getLanguageId() !== language) {
+      monaco.editor.setModelLanguage(model, language);
+    }
+  } catch (error) {
+    console.warn("[editor] setModelLanguage failed; using plaintext", error);
+    try {
+      monaco.editor.setModelLanguage(model, "plaintext");
+    } catch {
+      // ignore — model may already be disposed
+    }
+  }
 }
 
 type CodeEditorProps = {
@@ -119,10 +156,12 @@ export function CodeEditor({
     let cancelled = false;
     void loader.init().then((monaco) => {
       if (cancelled) return;
-      activateExtensions(monaco, enabledIds);
-      if (model.getLanguageId() !== language) {
-        monaco.editor.setModelLanguage(model, language);
+      try {
+        activateExtensions(monaco, enabledIds);
+      } catch (error) {
+        console.warn("[editor] extension activate failed", error);
       }
+      safeSetModelLanguage(monaco, model, language);
     });
     return () => {
       cancelled = true;
@@ -204,89 +243,105 @@ export function CodeEditor({
     for (const d of disposablesRef.current) d.dispose();
     disposablesRef.current = [];
 
-    registerNovaStudioThemes(monaco);
-    registerExtensionThemes(monaco);
-    activateExtensions(monaco, enabledIds);
-    monaco.editor.setTheme(theme);
-    configureMonacoLanguages(monaco);
+    try {
+      safeConfigureMonaco(monaco, enabledIds);
+      monaco.editor.setTheme(theme);
 
-    // Ensure model language + URI extension stay aligned for JSX/TSX/CSS.
-    const model = ed.getModel();
-    if (model && language) {
-      monaco.editor.setModelLanguage(model, language);
+      // Ensure model language + URI extension stay aligned for JSX/TSX/CSS.
+      safeSetModelLanguage(monaco, ed.getModel(), language);
+
+      if (!readOnly) {
+        disposablesRef.current.push(
+          registerFormatAction(ed, monaco, filePath, tabSize),
+        );
+      }
+
+      disposablesRef.current.push({
+        dispose: registerActiveMonacoEditor(filePath, ed),
+      });
+
+      if (!readOnly && supportsAiSuggestion(filePath)) {
+        try {
+          const ai = registerAiInlineCompletions(monaco, ed, filePath, fileName);
+          if (ai) disposablesRef.current.push(ai);
+        } catch (error) {
+          console.warn("[editor] AI completions unavailable", error);
+        }
+      }
+
+      // Monaco validates JSX but does not color tags — decorate .tsx/.jsx.
+      try {
+        const jsxHighlight = registerJsxSyntaxHighlight(monaco, ed, filePath);
+        if (jsxHighlight) disposablesRef.current.push(jsxHighlight);
+      } catch (error) {
+        console.warn("[editor] JSX highlight unavailable", error);
+      }
+
+      try {
+        const autoClose = registerJsxAutoCloseTags(ed, filePath);
+        if (autoClose) disposablesRef.current.push(autoClose);
+      } catch (error) {
+        console.warn("[editor] JSX autoclose unavailable", error);
+      }
+
+      try {
+        disposablesRef.current.push(
+          registerGoToDefinition(monaco, ed, (): GoToDefinitionContext | null => {
+            const navigate = onGoToDefinitionRef.current;
+            if (!navigate) return null;
+            return {
+              currentPath: filePathRef.current,
+              files: definitionFilesRef.current ?? [],
+              onNavigate: navigate,
+            };
+          }),
+        );
+      } catch (error) {
+        console.warn("[editor] go-to-definition unavailable", error);
+      }
+
+      editorRef.current = ed;
+      onCreateEditor?.(ed);
+    } catch (error) {
+      console.error("[editor] mount failed", error);
+      editorRef.current = ed;
+      onCreateEditor?.(ed);
     }
-
-    if (!readOnly) {
-      disposablesRef.current.push(
-        registerFormatAction(ed, monaco, filePath, tabSize),
-      );
-    }
-
-    disposablesRef.current.push({
-      dispose: registerActiveMonacoEditor(filePath, ed),
-    });
-
-    if (!readOnly && supportsAiSuggestion(filePath)) {
-      const ai = registerAiInlineCompletions(monaco, ed, filePath, fileName);
-      if (ai) disposablesRef.current.push(ai);
-    }
-
-    // Monaco validates JSX but does not color tags — decorate .tsx/.jsx.
-    const jsxHighlight = registerJsxSyntaxHighlight(monaco, ed, filePath);
-    if (jsxHighlight) disposablesRef.current.push(jsxHighlight);
-
-    const autoClose = registerJsxAutoCloseTags(ed, filePath);
-    if (autoClose) disposablesRef.current.push(autoClose);
-
-    disposablesRef.current.push(
-      registerGoToDefinition(monaco, ed, (): GoToDefinitionContext | null => {
-        const navigate = onGoToDefinitionRef.current;
-        if (!navigate) return null;
-        return {
-          currentPath: filePathRef.current,
-          files: definitionFilesRef.current ?? [],
-          onNavigate: navigate,
-        };
-      }),
-    );
-
-    editorRef.current = ed;
-    onCreateEditor?.(ed);
   };
 
   const modelPath = useMemo(() => monacoModelPath(filePath), [filePath]);
 
   return (
-    <div className="polaris-monaco h-full min-h-0">
-      <Editor
-        height="100%"
-        // file:///… keeps .tsx/.jsx/.css so Monaco enables JSX + CSS services.
-        path={modelPath}
-        language={language}
-        theme={theme}
-        value={collaborative ? undefined : value}
-        onChange={
-          collaborative
-            ? undefined
-            : (next) => {
-                if (next == null) return;
-                onChange?.(next);
-              }
-        }
-        options={options}
-        beforeMount={(monaco) => {
-          registerNovaStudioThemes(monaco);
-          registerExtensionThemes(monaco);
-          activateExtensions(monaco, enabledIds);
-          configureMonacoLanguages(monaco);
-        }}
-        onMount={handleMount}
-        loading={
-          <div className="flex h-full items-center justify-center bg-ws-bg text-[12px] text-ws-text-muted">
-            Loading editor…
-          </div>
-        }
-      />
+    <div className="polaris-monaco flex h-full min-h-0 flex-col">
+      <LanguageSupportBanner languageId={language} />
+      <div className="min-h-0 flex-1">
+        <Editor
+          height="100%"
+          // file:///… keeps .tsx/.jsx/.css so Monaco enables JSX + CSS services.
+          path={modelPath}
+          language={language}
+          theme={theme}
+          value={collaborative ? undefined : value}
+          onChange={
+            collaborative
+              ? undefined
+              : (next) => {
+                  if (next == null) return;
+                  onChange?.(next);
+                }
+          }
+          options={options}
+          beforeMount={(monaco) => {
+            safeConfigureMonaco(monaco, enabledIds);
+          }}
+          onMount={handleMount}
+          loading={
+            <div className="flex h-full items-center justify-center bg-ws-bg text-[12px] text-ws-text-muted">
+              Loading editor…
+            </div>
+          }
+        />
+      </div>
     </div>
   );
 }
