@@ -183,6 +183,7 @@ export default defineSchema({
         formatOnSave: v.optional(v.boolean()),
         autoSave: v.optional(v.boolean()),
         formatOnSaveAll: v.optional(v.boolean()),
+        liveCollaboration: v.optional(v.boolean()),
       }),
     ),
     settingsJson: v.optional(v.string()),

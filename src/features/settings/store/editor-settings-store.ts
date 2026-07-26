@@ -111,6 +111,7 @@ export const useEditorSettingsStore = create<EditorSettingsState>((set, get) => 
       formatOnSave,
       autoSave,
       formatOnSaveAll,
+      liveCollaboration,
     } = get();
     return {
       fontSize,
@@ -123,6 +124,7 @@ export const useEditorSettingsStore = create<EditorSettingsState>((set, get) => 
       formatOnSave,
       autoSave,
       formatOnSaveAll,
+      liveCollaboration,
     };
   },
 }));

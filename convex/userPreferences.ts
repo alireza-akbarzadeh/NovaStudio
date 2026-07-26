@@ -20,6 +20,7 @@ export const editorSettingsValidator = v.object({
   formatOnSave: v.optional(v.boolean()),
   autoSave: v.optional(v.boolean()),
   formatOnSaveAll: v.optional(v.boolean()),
+  liveCollaboration: v.optional(v.boolean()),
 });
 
 const SETTINGS_JSON_MAX_CHARS = 32_000;

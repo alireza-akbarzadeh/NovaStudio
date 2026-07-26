@@ -8,7 +8,10 @@ import {
   type GitPanelTab,
   type LeftPanelView,
 } from "@/features/workspace/store/workspace-store";
+import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
+import { isLiveblocksConfigured } from "@/features/workspace/lib/liveblocks-configured";
 import { isApplePlatform } from "@/lib/keyboard";
+import { toast } from "sonner";
 
 export type CommandId =
   | "toggleSidebar"
@@ -42,7 +45,8 @@ export type CommandId =
   | "formatDocument"
   | "saveFile"
   | "saveAllFiles"
-  | "inlineAiEdit";
+  | "inlineAiEdit"
+  | "toggleLiveCollaboration";
 
 export type Command = {
   id: CommandId;
@@ -292,6 +296,27 @@ export const workspaceCommands: Command[] = [
       if (!requestInlineAiEdit()) {
         store().openCommandPalette();
       }
+    },
+  },
+  {
+    id: "toggleLiveCollaboration",
+    allowInInput: true,
+    run: () => {
+      if (!isLiveblocksConfigured()) {
+        toast.message("Liveblocks is not configured", {
+          description:
+            "Add LIVEBLOCKS_SECRET_KEY and NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY.",
+        });
+        return;
+      }
+      const editorStore = useEditorSettingsStore.getState();
+      const next = !editorStore.liveCollaboration;
+      editorStore.setSettings({ liveCollaboration: next });
+      toast.message(next ? "Live editing on" : "Live editing off", {
+        description: next
+          ? "Shared editing and named cursors are active."
+          : "Editing without a Liveblocks room.",
+      });
     },
   },
 ];

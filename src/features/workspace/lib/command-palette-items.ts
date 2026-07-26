@@ -53,6 +53,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+k",
   },
   {
+    id: "toggleLiveCollaboration",
+    label: "Toggle Live Editing",
+    keywords: "liveblocks collaboration cursors realtime collab share",
+  },
+  {
     id: "showExplorer",
     label: "Toggle Explorer",
     keywords: "files tree sidebar",

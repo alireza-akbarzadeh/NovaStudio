@@ -12,6 +12,11 @@ export type EditorSettings = {
   autoSave: boolean;
   /** Format each file when using Save All (⌘⇧S / Ctrl+⇧S). */
   formatOnSaveAll: boolean;
+  /**
+   * Legacy Liveblocks toggle (kept for settings JSON compatibility).
+   * CRDT collab is hard-disabled — Convex autosave handles cross-device sync.
+   */
+  liveCollaboration: boolean;
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -25,6 +30,7 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   formatOnSave: true,
   autoSave: true,
   formatOnSaveAll: false,
+  liveCollaboration: false,
 };
 
 export const FONT_SIZE_MIN = 11;
@@ -67,5 +73,7 @@ export function clampEditorSettings(
     autoSave: partial.autoSave ?? DEFAULT_EDITOR_SETTINGS.autoSave,
     formatOnSaveAll:
       partial.formatOnSaveAll ?? DEFAULT_EDITOR_SETTINGS.formatOnSaveAll,
+    liveCollaboration:
+      partial.liveCollaboration ?? DEFAULT_EDITOR_SETTINGS.liveCollaboration,
   };
 }

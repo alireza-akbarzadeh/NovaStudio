@@ -24,6 +24,7 @@ import {
   TAB_SIZE_OPTIONS,
 } from "@/features/settings/lib/editor-settings";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
+import { LIVEBLOCKS_COLLAB_ENABLED } from "@/features/workspace/lib/liveblocks-configured";
 
 function SettingRow({
   label,
@@ -239,6 +240,23 @@ export function EditorSettingsPanel() {
           checked={autoSave}
           onCheckedChange={(checked) => setSettings({ autoSave: checked })}
           aria-label="Auto Save"
+        />
+      </SettingRow>
+
+      <Separator />
+
+      <SettingRow
+        label="Live collaboration"
+        description={
+          LIVEBLOCKS_COLLAB_ENABLED
+            ? "Connect Liveblocks for shared editing and named live cursors."
+            : "Disabled — projects sync through Convex autosave across browsers and devices. Simultaneous typing in the same file is not supported."
+        }
+      >
+        <Switch
+          checked={false}
+          disabled
+          aria-label="Live collaboration"
         />
       </SettingRow>
 

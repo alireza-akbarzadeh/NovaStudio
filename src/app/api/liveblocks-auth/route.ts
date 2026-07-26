@@ -11,13 +11,18 @@ import { colorForUserIdClient } from "@/features/workspace/lib/collaborator-colo
 function getLiveblocks() {
   const secret = process.env.LIVEBLOCKS_SECRET_KEY;
   if (!secret) {
-    throw new Error("LIVEBLOCKS_SECRET_KEY is not configured");
+    return null;
   }
   return new Liveblocks({ secret });
 }
 
 export async function POST(request: Request) {
   try {
+    const liveblocks = getLiveblocks();
+    if (!liveblocks) {
+      return new NextResponse("Liveblocks is not configured", { status: 503 });
+    }
+
     const { userId, getToken } = await auth();
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
@@ -61,7 +66,6 @@ export async function POST(request: Request) {
       userId;
     const color = colorForUserIdClient(userId);
 
-    const liveblocks = getLiveblocks();
     const session = liveblocks.prepareSession(userId, {
       userInfo: {
         name,

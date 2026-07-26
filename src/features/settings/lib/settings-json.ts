@@ -19,6 +19,7 @@ export const SETTINGS_JSON_KEYS = {
   formatOnSave: "editor.formatOnSave",
   autoSave: "files.autoSave",
   formatOnSaveAll: "editor.formatOnSaveAll",
+  liveCollaboration: "nova.liveCollaboration",
   minimap: "editor.minimap.enabled",
   fontLigatures: "editor.fontLigatures",
   smoothScrolling: "editor.smoothScrolling",
@@ -71,6 +72,7 @@ export function editorToSettingsRecord(
     [SETTINGS_JSON_KEYS.formatOnSave]: editor.formatOnSave,
     [SETTINGS_JSON_KEYS.autoSave]: editor.autoSave ? "afterDelay" : "off",
     [SETTINGS_JSON_KEYS.formatOnSaveAll]: editor.formatOnSaveAll,
+    [SETTINGS_JSON_KEYS.liveCollaboration]: editor.liveCollaboration,
   };
 }
 
@@ -115,6 +117,7 @@ export function parseSettingsJson(text: string): ParsedUserSettings {
     formatOnSave: readBoolean(raw[SETTINGS_JSON_KEYS.formatOnSave]),
     autoSave: readAutoSave(raw[SETTINGS_JSON_KEYS.autoSave]),
     formatOnSaveAll: readBoolean(raw[SETTINGS_JSON_KEYS.formatOnSaveAll]),
+    liveCollaboration: readBoolean(raw[SETTINGS_JSON_KEYS.liveCollaboration]),
   });
 
   const overrides: MonacoJsonOverrides = {};

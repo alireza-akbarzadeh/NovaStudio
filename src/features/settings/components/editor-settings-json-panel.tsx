@@ -108,6 +108,7 @@ export function EditorSettingsJsonPanel({
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.fontSize}</code>,{" "}
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.formatOnSave}</code>,{" "}
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.autoSave}</code>,{" "}
+            <code className="text-[11px]">{SETTINGS_JSON_KEYS.liveCollaboration}</code>,{" "}
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.formatOnSaveAll}</code>,
             and more.
           </p>

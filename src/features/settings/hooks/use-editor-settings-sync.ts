@@ -30,6 +30,7 @@ export function useEditorSettingsSync() {
   const formatOnSave = useEditorSettingsStore((s) => s.formatOnSave);
   const autoSave = useEditorSettingsStore((s) => s.autoSave);
   const formatOnSaveAll = useEditorSettingsStore((s) => s.formatOnSaveAll);
+  const liveCollaboration = useEditorSettingsStore((s) => s.liveCollaboration);
 
   const hasHydratedFromServer = useRef(false);
   const skipNextSave = useRef(true);
@@ -75,6 +76,7 @@ export function useEditorSettingsSync() {
         formatOnSave: state.formatOnSave,
         autoSave: state.autoSave,
         formatOnSaveAll: state.formatOnSaveAll,
+        liveCollaboration: state.liveCollaboration,
       };
       const json = mergeEditorIntoSettingsJson(state.settingsJson, editor);
       // Keep local JSON text aligned when form controls change.
@@ -102,6 +104,7 @@ export function useEditorSettingsSync() {
     formatOnSave,
     autoSave,
     formatOnSaveAll,
+    liveCollaboration,
     upsertEditor,
   ]);
 }
