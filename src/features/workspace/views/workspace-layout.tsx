@@ -24,8 +24,9 @@ import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-
 import { WorkspaceCommandPalette } from "@/features/workspace/components/workspace-command-palette";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
-import { WorkspaceNotificationsPanel } from "@/features/workspace/components/workspace-notifications-panel";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
+import { WorkspaceCommentsPanel } from "@/features/workspace/components/workspace-comments-panel";
+import { WorkspaceNotificationsPanel } from "@/features/workspace/components/workspace-notifications-panel";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
@@ -246,6 +247,7 @@ function WorkspaceLayoutInner({
         </ResizablePanelGroup>
 
         <WorkspaceChatPanel projectId={projectId} />
+        <WorkspaceCommentsPanel projectId={projectId} />
         <WorkspaceNotificationsPanel />
         <WorkspaceRightActivityBar />
       </div>

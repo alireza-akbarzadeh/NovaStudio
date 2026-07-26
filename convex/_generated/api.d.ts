@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as blog from "../blog.js";
 import type * as chat from "../chat.js";
 import type * as collab from "../collab.js";
+import type * as comments from "../comments.js";
 import type * as contact from "../contact.js";
 import type * as deploy from "../deploy.js";
 import type * as deployActions from "../deployActions.js";
@@ -65,6 +66,7 @@ declare const fullApi: ApiFromModules<{
   blog: typeof blog;
   chat: typeof chat;
   collab: typeof collab;
+  comments: typeof comments;
   contact: typeof contact;
   deploy: typeof deploy;
   deployActions: typeof deployActions;

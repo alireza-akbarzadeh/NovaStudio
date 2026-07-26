@@ -36,7 +36,7 @@ export function buildMonacoOptions(
     wordWrap: settings.wordWrap ? "on" : "off",
     lineNumbers: settings.lineNumbers ? "on" : "off",
     lineNumbersMinChars: 3,
-    glyphMargin: false,
+    glyphMargin: true,
     folding: true,
     foldingHighlight: false,
     showFoldingControls: "mouseover",

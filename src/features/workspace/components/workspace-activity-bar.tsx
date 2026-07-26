@@ -7,6 +7,7 @@ import {
   FolderTreeIcon,
   GitBranchIcon,
   ListTreeIcon,
+  MessageCircleIcon,
   MessageSquareIcon,
   MoonIcon,
   PackageIcon,
@@ -215,6 +216,7 @@ export function WorkspaceRightActivityBar() {
     (s) => s.notificationsPanelOpen,
   );
   const chatPanelOpen = useWorkspaceStore((s) => s.chatPanelOpen);
+  const commentsPanelOpen = useWorkspaceStore((s) => s.commentsPanelOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
@@ -253,6 +255,16 @@ export function WorkspaceRightActivityBar() {
           side="right"
         >
           <MessageSquareIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+
+        <RailButton
+          label="Live Comments"
+          shortcut={formatModShortcut("mod+shift+u", isApple)}
+          active={commentsPanelOpen}
+          onClick={() => runCommand("toggleCommentsPanel")}
+          side="right"
+        >
+          <MessageCircleIcon className="size-4" strokeWidth={1.75} />
         </RailButton>
 
         <RailButton

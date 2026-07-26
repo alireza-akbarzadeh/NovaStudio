@@ -348,7 +348,7 @@ export class MonacoBinding {
 
     if (awareness) {
       editors.forEach((editor) => {
-        editor.onDidChangeCursorSelection(() => {
+        const publishSelection = () => {
           if (editor.getModel() !== monacoModel) return;
           const sel = editor.getSelection();
           if (sel === null) return;
@@ -363,10 +363,13 @@ export class MonacoBinding {
             anchor: Y.createRelativePositionFromTypeIndex(ytext, anchor),
             head: Y.createRelativePositionFromTypeIndex(ytext, head),
           });
-        });
+        };
+        editor.onDidChangeCursorSelection(publishSelection);
+        publishSelection();
         awareness.on("change", this._rerenderDecorations);
       });
       this.awareness = awareness;
+      this._rerenderDecorations();
     }
   }
 

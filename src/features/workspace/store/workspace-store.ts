@@ -77,6 +77,11 @@ type WorkspaceState = WorkspacePrefs & {
   settingsOpen: boolean;
   notificationsPanelOpen: boolean;
   chatPanelOpen: boolean;
+  commentsPanelOpen: boolean;
+  /** Selected line-comment thread in the comments panel. */
+  activeCommentThreadId: string | null;
+  /** Draft line for creating a new comment (from glyph / command). */
+  commentDraftLine: number | null;
   goToFileOpen: boolean;
   commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
@@ -116,6 +121,11 @@ type WorkspaceState = WorkspacePrefs & {
   toggleChatPanel: () => void;
   openChatPanel: () => void;
   closeChatPanel: () => void;
+  toggleCommentsPanel: () => void;
+  openCommentsPanel: () => void;
+  closeCommentsPanel: () => void;
+  setActiveCommentThreadId: (id: string | null) => void;
+  setCommentDraftLine: (line: number | null) => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -281,6 +291,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   settingsOpen: false,
   notificationsPanelOpen: false,
   chatPanelOpen: false,
+  commentsPanelOpen: false,
+  activeCommentThreadId: null,
+  commentDraftLine: null,
   goToFileOpen: false,
   commandPaletteOpen: false,
   gitInitDialogOpen: false,
@@ -335,7 +348,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return {
         aiPanelOpen: nextOpen,
         ...(nextOpen
-          ? { chatPanelOpen: false, notificationsPanelOpen: false }
+          ? {
+              chatPanelOpen: false,
+              notificationsPanelOpen: false,
+              commentsPanelOpen: false,
+            }
           : {}),
       };
     }),
@@ -345,7 +362,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return {
         notificationsPanelOpen: nextOpen,
         ...(nextOpen
-          ? { chatPanelOpen: false, aiPanelOpen: false }
+          ? {
+              chatPanelOpen: false,
+              aiPanelOpen: false,
+              commentsPanelOpen: false,
+            }
           : {}),
       };
     }),
@@ -354,6 +375,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       notificationsPanelOpen: true,
       chatPanelOpen: false,
       aiPanelOpen: false,
+      commentsPanelOpen: false,
     }),
   closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
   toggleChatPanel: () =>
@@ -362,7 +384,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       return {
         chatPanelOpen: nextOpen,
         ...(nextOpen
-          ? { notificationsPanelOpen: false, aiPanelOpen: false }
+          ? {
+              notificationsPanelOpen: false,
+              aiPanelOpen: false,
+              commentsPanelOpen: false,
+            }
           : {}),
       };
     }),
@@ -371,8 +397,38 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       chatPanelOpen: true,
       notificationsPanelOpen: false,
       aiPanelOpen: false,
+      commentsPanelOpen: false,
     }),
   closeChatPanel: () => set({ chatPanelOpen: false }),
+  toggleCommentsPanel: () =>
+    set((s) => {
+      const nextOpen = !s.commentsPanelOpen;
+      return {
+        commentsPanelOpen: nextOpen,
+        ...(nextOpen
+          ? {
+              notificationsPanelOpen: false,
+              aiPanelOpen: false,
+              chatPanelOpen: false,
+            }
+          : { activeCommentThreadId: null, commentDraftLine: null }),
+      };
+    }),
+  openCommentsPanel: () =>
+    set({
+      commentsPanelOpen: true,
+      notificationsPanelOpen: false,
+      aiPanelOpen: false,
+      chatPanelOpen: false,
+    }),
+  closeCommentsPanel: () =>
+    set({
+      commentsPanelOpen: false,
+      activeCommentThreadId: null,
+      commentDraftLine: null,
+    }),
+  setActiveCommentThreadId: (id) => set({ activeCommentThreadId: id }),
+  setCommentDraftLine: (line) => set({ commentDraftLine: line }),
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),

@@ -144,6 +144,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+c",
   },
   {
+    id: "toggleCommentsPanel",
+    label: "Toggle Live Comments",
+    keywords: "line comments figma threads review annotate",
+    shortcut: "mod+shift+u",
+  },
+  {
     id: "toggleSidebar",
     label: "Toggle Sidebar",
     keywords: "explorer panel left",

@@ -309,6 +309,35 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_project_created", ["projectId", "createdAt"]),
 
+  /** Figma-style line comment threads on project files. */
+  projectCommentThreads: defineTable({
+    projectId: v.id("projects"),
+    filePath: v.string(),
+    /** 1-based line number in the file. */
+    line: v.number(),
+    body: v.string(),
+    resolved: v.boolean(),
+    authorUserId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    authorColor: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_updated", ["projectId", "updatedAt"])
+    .index("by_project_file", ["projectId", "filePath"]),
+
+  projectCommentReplies: defineTable({
+    threadId: v.id("projectCommentThreads"),
+    projectId: v.id("projects"),
+    body: v.string(),
+    authorUserId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    authorColor: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_thread_created", ["threadId", "createdAt"]),
+
   projectDeadlines: defineTable({
     projectId: v.id("projects"),
     title: v.string(),

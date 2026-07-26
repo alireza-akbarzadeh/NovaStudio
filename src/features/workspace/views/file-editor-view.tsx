@@ -31,6 +31,7 @@ import { PrettierIcon } from "@/features/workspace/components/prettier-icon";
 import { WorkspacePreviewPanel } from "@/features/workspace/components/workspace-preview-panel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
+import { useFileLineComments } from "@/features/workspace/hooks/use-file-line-comments";
 import {
   useProjectFile,
   useProjectFiles,
@@ -459,6 +460,12 @@ export function FileEditorView({
   const setCurrentFilePath = useWorkspaceStore((s) => s.setCurrentFilePath);
   const setBreadcrumb = useWorkspaceStore((s) => s.setBreadcrumb);
   const readOnly = access ? !access.canEdit : false;
+
+  useFileLineComments({
+    projectId,
+    filePath,
+    enabled: Boolean(filePath) && syncWorkspaceChrome,
+  });
 
   useEffect(() => {
     if (!syncWorkspaceChrome || !filePath) return;

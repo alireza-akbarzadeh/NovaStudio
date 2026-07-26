@@ -17,6 +17,7 @@ export type CommandId =
   | "toggleAiPanel"
   | "toggleNotifications"
   | "toggleChatPanel"
+  | "toggleCommentsPanel"
   | "openSettings"
   | "toggleSettings"
   | "closeSettings"
@@ -107,6 +108,12 @@ export const workspaceCommands: Command[] = [
     run: () => store().toggleChatPanel(),
   },
   {
+    id: "toggleCommentsPanel",
+    shortcut: "mod+shift+u",
+    allowInInput: true,
+    run: () => store().toggleCommentsPanel(),
+  },
+  {
     id: "openSettings",
     shortcut: "mod+,",
     allowInInput: true,
@@ -135,6 +142,7 @@ export const workspaceCommands: Command[] = [
       else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
       else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
       else if (s.chatPanelOpen) s.closeChatPanel();
+      else if (s.commentsPanelOpen) s.closeCommentsPanel();
     },
   },
   {
@@ -367,7 +375,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.goToFileOpen &&
       !s.cloneFromGitHubOpen &&
       !s.notificationsPanelOpen &&
-      !s.chatPanelOpen
+      !s.chatPanelOpen &&
+      !s.commentsPanelOpen
     ) {
       return false;
     }

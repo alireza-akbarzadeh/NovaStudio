@@ -1,6 +1,7 @@
 "use client";
 
 import { CodeEditor } from "@/features/workspace/components/code-editor";
+import { CollaborativeCursorStyles } from "@/features/workspace/components/collaborative-cursor-styles";
 import { EditorErrorBoundary } from "@/features/workspace/components/editor-error-boundary";
 import { LiveblocksFileRoom } from "@/features/workspace/components/liveblocks-file-room";
 import { useCollaborativeEditor } from "@/features/workspace/hooks/use-collaborative-editor";
@@ -28,6 +29,7 @@ function LiveblocksCollaborativeEditor(props: CollaborativeCodeEditorProps) {
       fallbackContent={displayValue || props.initialContent}
     >
       <div className="relative h-full min-h-0">
+        <CollaborativeCursorStyles />
         <CodeEditor
           value={displayValue}
           filePath={filePath}
