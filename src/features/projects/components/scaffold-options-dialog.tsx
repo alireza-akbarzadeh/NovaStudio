@@ -15,12 +15,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   buildScaffoldCommand,
+  DEFAULT_NEXT_SCAFFOLD_OPTIONS,
   DEFAULT_SCAFFOLD_OPTIONS,
+  isNextVersionRiskyInWebContainer,
   NEXT_VERSION_PRESETS,
   PACKAGE_MANAGER_OPTIONS,
   scaffoldDialogDescription,
   scaffoldDialogTitle,
   VERSION_PRESETS,
+  WEBCONTAINER_NEXT_VERSION,
   type PackageManager,
   type ScaffoldOptions,
   type ScaffoldTemplateId,
@@ -81,12 +84,18 @@ export function ScaffoldOptionsDialog({
 
   useEffect(() => {
     if (open) {
-      setOptions(DEFAULT_SCAFFOLD_OPTIONS);
+      setOptions(
+        templateId === "nextjs"
+          ? DEFAULT_NEXT_SCAFFOLD_OPTIONS
+          : DEFAULT_SCAFFOLD_OPTIONS,
+      );
     }
   }, [open, templateId]);
 
   const isNext = templateId === "nextjs";
   const versionPresets = isNext ? NEXT_VERSION_PRESETS : VERSION_PRESETS;
+  const nextPreviewRisky =
+    isNext && isNextVersionRiskyInWebContainer(options.version);
   const preview = templateId
     ? buildScaffoldCommand(templateId, options)
     : "";
@@ -161,8 +170,22 @@ export function ScaffoldOptionsDialog({
             </div>
             <p className="text-[11px] text-muted-foreground">
               Use a preset or type any npm dist-tag / semver (e.g.{" "}
-              <code className="text-foreground/80">15.1.0</code>).
+              <code className="text-foreground/80">
+                {WEBCONTAINER_NEXT_VERSION}
+              </code>
+              ).
             </p>
+            {nextPreviewRisky ? (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                Next.js 15.5+ and 16 crash the in-browser preview (
+                <code className="text-foreground/80">workStore</code> / Turbopack
+                WASM). Prefer{" "}
+                <code className="text-foreground/80">
+                  {WEBCONTAINER_NEXT_VERSION}
+                </code>
+                .
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -239,6 +262,12 @@ export function ScaffoldOptionsDialog({
                 </>
               ) : null}
             </div>
+            {isNext && options.turbopack ? (
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                Turbopack is not supported in WebContainer (WASM). Leave it off
+                for a working preview.
+              </p>
+            ) : null}
           </div>
 
           <div className="rounded-md border border-border/50 bg-muted/40 px-3 py-2 font-mono text-[11px] leading-relaxed break-all text-muted-foreground">

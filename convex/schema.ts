@@ -142,6 +142,7 @@ export default defineSchema({
     status: v.string(),
     url: v.optional(v.string()),
     inspectorUrl: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
     target: v.union(v.literal("preview"), v.literal("production")),
     createdBy: v.string(),
     createdAt: v.number(),
@@ -341,6 +342,8 @@ export default defineSchema({
     authorName: v.optional(v.string()),
     authorImageUrl: v.optional(v.string()),
     authorColor: v.optional(v.string()),
+    /** Project members mentioned with @ in the body. */
+    mentionedUserIds: v.optional(v.array(v.string())),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -355,6 +358,7 @@ export default defineSchema({
     authorName: v.optional(v.string()),
     authorImageUrl: v.optional(v.string()),
     authorColor: v.optional(v.string()),
+    mentionedUserIds: v.optional(v.array(v.string())),
     createdAt: v.number(),
   }).index("by_thread_created", ["threadId", "createdAt"]),
 

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
 import { isDebuggableScriptPath } from "@/features/workspace/lib/debug-session";
 import { useDebugStore } from "@/features/workspace/store/debug-store";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 type UseMonacoBreakpointsArgs = {
   filePath: string;
@@ -37,8 +38,8 @@ function breakpointDecorations(lines: number[]) {
 }
 
 /**
- * Toggle breakpoints by clicking the glyph margin (left of line numbers),
- * matching VS Code. Also supports F9 and line-number clicks.
+ * Toggle breakpoints by left-clicking the glyph margin / line numbers.
+ * Right-click opens the shared gutter context menu (comment + breakpoint).
  */
 export function useMonacoBreakpoints({
   filePath,
@@ -48,6 +49,9 @@ export function useMonacoBreakpoints({
     (s) => s.breakpointsByPath[filePath] ?? EMPTY_LINES,
   );
   const toggleBreakpoint = useDebugStore((s) => s.toggleBreakpoint);
+  const openGutterContextMenu = useWorkspaceStore(
+    (s) => s.openGutterContextMenu,
+  );
   const decorationIdsRef = useRef<string[]>([]);
   const linesRef = useRef(lines);
   linesRef.current = lines;
@@ -57,6 +61,7 @@ export function useMonacoBreakpoints({
 
     let disposed = false;
     let mouseDisposable: { dispose: () => void } | null = null;
+    let contextDisposable: { dispose: () => void } | null = null;
     let actionDisposable: { dispose: () => void } | null = null;
     let pollId = 0;
 
@@ -78,17 +83,41 @@ export function useMonacoBreakpoints({
         );
       }
 
-      // Glyph margin (2) or line numbers (3) — left-click toggles BP.
-      // Alt+glyph is reserved for line comments.
+      // Glyph margin (2) or line numbers (3).
       mouseDisposable = ed.onMouseDown((event) => {
         const type = event.target.type;
         if (type !== 2 && type !== 3) return;
-        if (type === 2 && event.event.altKey) return;
         const line = event.target.position?.lineNumber;
         if (!line) return;
+
+        // Right-click → context menu (comment / breakpoint).
+        if (event.event.rightButton) {
+          event.event.preventDefault();
+          event.event.stopPropagation();
+          openGutterContextMenu({
+            x: event.event.posx,
+            y: event.event.posy,
+            line,
+            filePath,
+          });
+          return;
+        }
+
+        // Left-click only; Alt+glyph is reserved for jumping to an existing comment.
+        if (!event.event.leftButton) return;
+        if (type === 2 && event.event.altKey) return;
+
         event.event.preventDefault();
         event.event.stopPropagation();
         toggleAt(line);
+      });
+
+      // Suppress browser menu on gutter so our menu owns right-click.
+      contextDisposable = ed.onContextMenu((event) => {
+        const type = event.target.type;
+        if (type !== 2 && type !== 3) return;
+        event.event.preventDefault();
+        event.event.stopPropagation();
       });
 
       actionDisposable = ed.addAction({
@@ -121,6 +150,7 @@ export function useMonacoBreakpoints({
       disposed = true;
       window.clearTimeout(pollId);
       mouseDisposable?.dispose();
+      contextDisposable?.dispose();
       actionDisposable?.dispose();
       const ed = getActiveMonacoEditor(filePath);
       if (ed && decorationIdsRef.current.length > 0) {
@@ -131,7 +161,7 @@ export function useMonacoBreakpoints({
       }
       decorationIdsRef.current = [];
     };
-  }, [enabled, filePath, toggleBreakpoint]);
+  }, [enabled, filePath, openGutterContextMenu, toggleBreakpoint]);
 
   useEffect(() => {
     if (!enabled || !filePath || !isDebuggableScriptPath(filePath)) return;

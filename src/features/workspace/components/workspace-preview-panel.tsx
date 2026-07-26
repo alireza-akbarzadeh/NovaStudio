@@ -36,6 +36,11 @@ import {
 } from "@/features/workspace/lib/preview-utils";
 import { detectPreviewHost } from "@/features/workspace/lib/preview-host";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
+import {
+  packageJsonHasRiskyNext,
+  rewriteWebContainerNextError,
+  WEBCONTAINER_NEXT_VERSION,
+} from "@/features/workspace/lib/webcontainer/next-compat";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +64,8 @@ type PreviewError = {
   source: "build" | "runtime" | "network";
   message: string;
   stack?: string;
+  /** Product-level hint (e.g. WebContainer Next.js limit). */
+  kind?: "next-webcontainer";
 };
 
 const DEVICE_ICONS: Record<
@@ -215,28 +222,54 @@ export function WorkspacePreviewPanel({
     return () => window.clearTimeout(timer);
   }, [code, filePath, webcontainer]);
 
-  // Surface preview-originated server errors in the overlay once.
+  // Surface preview / server errors in the overlay (rewrite known WC Next crashes).
   useEffect(() => {
     if (!previewServer?.logs.length) return;
     const lastError = [...previewServer.logs]
       .reverse()
-      .find((l) => l.level === "error" && l.source === "preview");
+      .find((l) => {
+        if (l.level !== "error") return false;
+        if (l.source === "preview") return true;
+        return rewriteWebContainerNextError(l.message) != null;
+      });
     if (!lastError || lastError.id === lastPreviewErrorIdRef.current) return;
     lastPreviewErrorIdRef.current = lastError.id;
+    const rewritten = rewriteWebContainerNextError(lastError.message, {
+      packageJson,
+      packageManager: webcontainer?.packageManager ?? "npm",
+    });
     setPreviewError({
       source: "runtime",
-      message: lastError.message,
+      message: rewritten ?? lastError.message,
+      kind: rewritten ? "next-webcontainer" : undefined,
     });
     setErrorDismissed(false);
-  }, [previewServer?.logs]);
+  }, [
+    packageJson,
+    previewServer?.logs,
+    webcontainer?.packageManager,
+  ]);
 
   // Surface server start failures as overlay errors.
   useEffect(() => {
     if (serverStatus === "error" && serverError) {
-      setPreviewError({ source: "build", message: serverError });
+      const rewritten = rewriteWebContainerNextError(serverError, {
+        packageJson,
+        packageManager: webcontainer?.packageManager ?? "npm",
+      });
+      setPreviewError({
+        source: "build",
+        message: rewritten ?? serverError,
+        kind: rewritten ? "next-webcontainer" : undefined,
+      });
       setErrorDismissed(false);
     }
-  }, [serverError, serverStatus]);
+  }, [
+    packageJson,
+    serverError,
+    serverStatus,
+    webcontainer?.packageManager,
+  ]);
 
   // Esbuild fallback — only for static / simple projects, never for Vite/Next.
   useEffect(() => {
@@ -370,10 +403,18 @@ export function WorkspacePreviewPanel({
       }
 
       if (event.data.type === "runtime-error") {
+        const raw = event.data.stack
+          ? `${event.data.message}\n${event.data.stack}`
+          : event.data.message;
+        const rewritten = rewriteWebContainerNextError(raw, {
+          packageJson,
+          packageManager: webcontainer?.packageManager ?? "npm",
+        });
         setPreviewError({
           source: "runtime",
-          message: event.data.message,
-          stack: event.data.stack,
+          message: rewritten ?? event.data.message,
+          stack: rewritten ? undefined : event.data.stack,
+          kind: rewritten ? "next-webcontainer" : undefined,
         });
         setErrorDismissed(false);
         setConsoleEntries((prev) => [
@@ -381,9 +422,7 @@ export function WorkspacePreviewPanel({
           {
             id: `${event.data.timestamp}-error-${Math.random().toString(36).slice(2, 7)}`,
             level: "error",
-            message: event.data.stack
-              ? `${event.data.message}\n${event.data.stack}`
-              : event.data.message,
+            message: rewritten ?? raw,
             timestamp: event.data.timestamp,
           },
         ]);
@@ -392,7 +431,12 @@ export function WorkspacePreviewPanel({
 
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [packageJson, webcontainer?.packageManager]);
+
+  const showRiskyNextBanner =
+    useHotReload &&
+    packageJsonHasRiskyNext(packageJson) &&
+    !(previewError?.kind === "next-webcontainer" && !errorDismissed);
 
   const onSubmitUrl = (event: React.FormEvent) => {
     event.preventDefault();
@@ -608,6 +652,21 @@ export function WorkspacePreviewPanel({
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {showRiskyNextBanner ? (
+          <div
+            role="status"
+            className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-ws-text"
+          >
+            <span className="font-medium text-amber-800 dark:text-amber-300">
+              Next.js 15.5+ / 16 may crash this preview.
+            </span>{" "}
+            WebContainer cannot run those versions yet. Pin{" "}
+            <code className="rounded bg-ws-bg px-1 py-0.5 font-mono text-[10px]">
+              next@{WEBCONTAINER_NEXT_VERSION}
+            </code>{" "}
+            in the terminal for a working preview.
+          </div>
+        ) : null}
         <div
           className={cn(
             "relative min-h-0 flex-1 overflow-auto",
@@ -710,11 +769,13 @@ function PreviewErrorOverlay({
   onRefresh: () => void;
 }) {
   const title =
-    error.source === "build"
-      ? "Build error"
-      : error.source === "runtime"
-        ? "Runtime error"
-        : "Preview error";
+    error.kind === "next-webcontainer"
+      ? "Preview runtime limit"
+      : error.source === "build"
+        ? "Build error"
+        : error.source === "runtime"
+          ? "Runtime error"
+          : "Preview error";
 
   return (
     <div className="absolute inset-0 z-10 flex items-start justify-center overflow-auto bg-black/40 p-4 backdrop-blur-[1px]">

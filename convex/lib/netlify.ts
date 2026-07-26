@@ -23,6 +23,20 @@ type NetlifyBuild = {
   sha?: string;
 };
 
+function siteAdminBase(site: NetlifySite): string {
+  const fromApi = site.admin_url?.replace(/\/$/, "");
+  if (fromApi) return fromApi;
+  return `https://app.netlify.com/sites/${encodeURIComponent(site.name)}`;
+}
+
+function deployInspectorUrl(site: NetlifySite, deployId?: string | null): string {
+  const base = siteAdminBase(site);
+  if (deployId && deployId !== site.id) {
+    return `${base}/deploys/${encodeURIComponent(deployId)}`;
+  }
+  return `${base}/deploys`;
+}
+
 export async function verifyNetlifyToken(token: string): Promise<{
   accountId: string;
   accountName: string;
@@ -201,7 +215,7 @@ export async function deployNetlifyFromGit(args: {
       siteName: site.name,
       buildId: site.id,
       url: site.ssl_url || site.url,
-      inspectorUrl: site.admin_url,
+      inspectorUrl: `${siteAdminBase(site)}/configuration/general`,
       status: "needs_setup",
       needsManualLink: true,
     };
@@ -211,13 +225,14 @@ export async function deployNetlifyFromGit(args: {
     token: args.token,
     siteId: site.id,
   });
+  const buildId = build.deploy_id || build.id || site.id;
 
   return {
     siteId: site.id,
     siteName: site.name,
-    buildId: build.deploy_id || build.id || site.id,
+    buildId,
     url: site.ssl_url || site.url,
-    inspectorUrl: site.admin_url,
+    inspectorUrl: deployInspectorUrl(site, build.deploy_id || build.id),
     status: "building",
   };
 }
@@ -278,7 +293,11 @@ export async function fetchNetlifyDeployStatus(args: {
   const status = normalizeNetlifyDeployState(deploy.state);
   return {
     status,
-    url: deploy.ssl_url || deploy.url || deploy.deploy_url,
+    // Only surface the public URL once the deploy is actually live.
+    url:
+      status === "ready"
+        ? deploy.ssl_url || deploy.url || deploy.deploy_url
+        : undefined,
     inspectorUrl: deploy.admin_url,
     errorMessage: deploy.error_message ?? undefined,
     rawState: deploy.state,

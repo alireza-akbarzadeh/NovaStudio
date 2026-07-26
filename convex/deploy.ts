@@ -6,7 +6,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-
+import { createNotification } from "./lib/createNotification";
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
 
 export const getConnection = query({
@@ -254,7 +254,9 @@ export const updateDeployment = internalMutation({
     deploymentId: v.id("deployments"),
     status: v.string(),
     url: v.optional(v.string()),
+    clearUrl: v.optional(v.boolean()),
     inspectorUrl: v.optional(v.string()),
+    errorMessage: v.optional(v.string()),
     notify: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -265,19 +267,31 @@ export const updateDeployment = internalMutation({
     const next = args.status;
     if (
       prev === next &&
+      !args.clearUrl &&
       (args.url === undefined || args.url === deployment.url) &&
       (args.inspectorUrl === undefined ||
-        args.inspectorUrl === deployment.inspectorUrl)
+        args.inspectorUrl === deployment.inspectorUrl) &&
+      (args.errorMessage === undefined ||
+        args.errorMessage === deployment.errorMessage)
     ) {
       return deployment;
     }
 
     await ctx.db.patch(args.deploymentId, {
       status: next,
-      ...(args.url !== undefined ? { url: args.url } : {}),
+      ...(args.clearUrl
+        ? { url: undefined }
+        : args.url !== undefined
+          ? { url: args.url }
+          : {}),
       ...(args.inspectorUrl !== undefined
         ? { inspectorUrl: args.inspectorUrl }
         : {}),
+      ...(args.errorMessage !== undefined
+        ? { errorMessage: args.errorMessage }
+        : next === "ready"
+          ? { errorMessage: undefined }
+          : {}),
       updatedAt: Date.now(),
     });
 
@@ -294,6 +308,13 @@ export const updateDeployment = internalMutation({
             deployment.inspectorUrl ??
             `/projects/${deployment.projectId}`;
 
+      const errorHint = args.errorMessage ?? deployment.errorMessage;
+      const isRepoAccess =
+        typeof errorHint === "string" &&
+        /unable to access repository|host key verification|could not read from remote|permissions may have changed/i.test(
+          errorHint,
+        );
+
       await createNotification(ctx, {
         userId: deployment.createdBy,
         title,
@@ -302,7 +323,9 @@ export const updateDeployment = internalMutation({
             ? args.url ??
               deployment.url ??
               `"${project?.name ?? "Project"}" is live.`
-            : `Deploy for "${project?.name ?? "project"}" failed. Open the provider dashboard for logs.`,
+            : isRepoAccess
+              ? `Netlify can’t clone the GitHub repo. Install/authorize the Netlify GitHub App for this repository, then redeploy.`
+              : `Deploy for "${project?.name ?? "project"}" failed. Open the provider dashboard for logs.`,
         tone: next === "ready" ? "green" : "orange",
         soundKind: next === "ready" ? "success" : "error",
         href,

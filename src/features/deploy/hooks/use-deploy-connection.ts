@@ -146,7 +146,10 @@ export function useDeployProject(projectId: string) {
         toast.success(
           `${provider === "vercel" ? "Vercel" : "Netlify"} deploy started`,
           {
-            description: result.url ?? result.status,
+            description:
+              result.status === "building"
+                ? "Build is running — watch status in the Deploy menu."
+                : (result.url ?? result.status),
             action: result.url
               ? {
                   label: "Open",
@@ -177,4 +180,37 @@ export function useDeployProject(projectId: string) {
     deployingProvider,
     isDeploying: deployingProvider !== null,
   };
+}
+
+export function useProjectDeployments(projectId: string, limit = 8) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.deploy.listProjectDeployments,
+    isAuthenticated
+      ? { projectId: projectId as Id<"projects">, limit }
+      : "skip",
+  );
+}
+
+export function useProjectDeployTarget(
+  projectId: string,
+  provider: DeployProvider,
+) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.deploy.getProjectTarget,
+    isAuthenticated
+      ? { projectId: projectId as Id<"projects">, provider }
+      : "skip",
+  );
+}
+
+export function useRefreshDeploymentStatus() {
+  const refresh = useAction(api.deployActions.refreshDeploymentStatus);
+  return useCallback(
+    async (deploymentId: Id<"deployments">) => {
+      return await refresh({ deploymentId });
+    },
+    [refresh],
+  );
 }

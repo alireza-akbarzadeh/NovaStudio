@@ -9,7 +9,7 @@ import {
   normalizeGitHubRepo,
   type DeployProvider,
 } from "./lib/deploy";
-import { deployNetlifyFromGit, verifyNetlifyToken } from "./lib/netlify";
+import { deployNetlifyFromGit, fetchNetlifyDeployStatus, verifyNetlifyToken } from "./lib/netlify";
 import { deployVercelFromGit, verifyVercelToken } from "./lib/vercel";
 
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
@@ -72,6 +72,7 @@ export const deployProject = action({
         inspectorUrl?: string;
         status: string;
         externalId: string;
+        deploymentId: string;
         needsManualLink?: boolean;
         importUrl?: string;
       }
@@ -95,7 +96,7 @@ export const deployProject = action({
 
     if (!project.githubRepoUrl) {
       throw new Error(
-        "Publish this project to GitHub first, then deploy from the Publish menu.",
+        "Publish this project to GitHub first, then deploy from the rocket menu.",
       );
     }
 
@@ -143,16 +144,19 @@ export const deployProject = action({
           teamId: connection.teamId,
         });
 
-        await ctx.runMutation(internal.deploy.insertDeployment, {
-          projectId: args.projectId,
-          provider: "vercel",
-          externalId: result.deploymentId,
-          status: result.status,
-          url: result.url,
-          inspectorUrl: result.inspectorUrl,
-          target: args.target,
-          createdBy: identity.subject,
-        });
+        const deploymentId = await ctx.runMutation(
+          internal.deploy.insertDeployment,
+          {
+            projectId: args.projectId,
+            provider: "vercel",
+            externalId: result.deploymentId,
+            status: result.status,
+            url: result.url,
+            inspectorUrl: result.inspectorUrl,
+            target: args.target,
+            createdBy: identity.subject,
+          },
+        );
 
         return {
           ok: true,
@@ -161,6 +165,7 @@ export const deployProject = action({
           inspectorUrl: result.inspectorUrl,
           status: result.status,
           externalId: result.deploymentId,
+          deploymentId,
         };
       }
 
@@ -180,16 +185,19 @@ export const deployProject = action({
         url: result.url,
       });
 
-      await ctx.runMutation(internal.deploy.insertDeployment, {
-        projectId: args.projectId,
-        provider: "netlify",
-        externalId: result.buildId,
-        status: result.status,
-        url: result.url,
-        inspectorUrl: result.inspectorUrl,
-        target: args.target,
-        createdBy: identity.subject,
-      });
+      const deploymentId = await ctx.runMutation(
+        internal.deploy.insertDeployment,
+        {
+          projectId: args.projectId,
+          provider: "netlify",
+          externalId: result.buildId,
+          status: result.status,
+          url: result.url,
+          inspectorUrl: result.inspectorUrl,
+          target: args.target,
+          createdBy: identity.subject,
+        },
+      );
 
       return {
         ok: true,
@@ -198,6 +206,7 @@ export const deployProject = action({
         inspectorUrl: result.inspectorUrl,
         status: result.status,
         externalId: result.buildId,
+        deploymentId,
         needsManualLink: result.needsManualLink,
         importUrl: result.needsManualLink
           ? githubImportUrl("netlify", repoUrl)
@@ -214,5 +223,98 @@ export const deployProject = action({
         importUrl: githubImportUrl(args.provider, repoUrl),
       };
     }
+  },
+});
+
+/**
+ * Poll Netlify (or return cached row) and update the deployment document.
+ * Creates an in-app + push notification when status flips to ready/error.
+ */
+export const refreshDeploymentStatus = action({
+  args: {
+    deploymentId: v.id("deployments"),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    status: string;
+    url?: string;
+    inspectorUrl?: string;
+    errorMessage?: string;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Sign in to refresh deploy status");
+    }
+
+    const deployment = await ctx.runQuery(
+      internal.deploy.getDeploymentInternal,
+      { deploymentId: args.deploymentId },
+    );
+    if (!deployment) {
+      throw new Error("Deployment not found");
+    }
+    if (deployment.createdBy !== identity.subject) {
+      // Allow project editors via assertCanDeploy.
+      await ctx.runQuery(internal.deploy.assertCanDeploy, {
+        projectId: deployment.projectId,
+        userId: identity.subject,
+      });
+    }
+
+    if (
+      deployment.status === "ready" ||
+      deployment.status === "error" ||
+      deployment.status === "cancelled" ||
+      deployment.status === "needs_setup"
+    ) {
+      return {
+        status: deployment.status,
+        url: deployment.url,
+        inspectorUrl: deployment.inspectorUrl,
+      };
+    }
+
+    if (deployment.provider !== "netlify") {
+      // Vercel polling can be added later; return stored status for now.
+      return {
+        status: deployment.status,
+        url: deployment.url,
+        inspectorUrl: deployment.inspectorUrl,
+      };
+    }
+
+    const connection = await ctx.runQuery(internal.deploy.getConnectionSecret, {
+      userId: identity.subject,
+      provider: "netlify",
+    });
+    if (!connection) {
+      throw new Error("Netlify is not connected");
+    }
+
+    const latest = await fetchNetlifyDeployStatus({
+      token: connection.accessToken,
+      deployId: deployment.externalId,
+    });
+
+    await ctx.runMutation(internal.deploy.updateDeployment, {
+      deploymentId: args.deploymentId,
+      status: latest.status,
+      // Failed / building deploys should not keep a public site URL — that
+      // leads users to a Netlify "Site not found" page instead of logs.
+      url: latest.status === "ready" ? latest.url : undefined,
+      clearUrl: latest.status !== "ready",
+      inspectorUrl: latest.inspectorUrl ?? deployment.inspectorUrl,
+      errorMessage: latest.errorMessage,
+      notify: true,
+    });
+
+    return {
+      status: latest.status,
+      url: latest.status === "ready" ? latest.url ?? deployment.url : undefined,
+      inspectorUrl: latest.inspectorUrl ?? deployment.inspectorUrl,
+      errorMessage: latest.errorMessage,
+    };
   },
 });

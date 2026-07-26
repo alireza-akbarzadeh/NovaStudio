@@ -94,6 +94,13 @@ type WorkspaceState = WorkspacePrefs & {
   activeCommentThreadId: string | null;
   /** Draft line for creating a new comment (from glyph / command). */
   commentDraftLine: number | null;
+  /** Right-click gutter menu (breakpoint / comment). */
+  gutterContextMenu: {
+    x: number;
+    y: number;
+    line: number;
+    filePath: string;
+  } | null;
   goToFileOpen: boolean;
   commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
@@ -150,6 +157,13 @@ type WorkspaceState = WorkspacePrefs & {
   closeCommentsPanel: () => void;
   setActiveCommentThreadId: (id: string | null) => void;
   setCommentDraftLine: (line: number | null) => void;
+  openGutterContextMenu: (menu: {
+    x: number;
+    y: number;
+    line: number;
+    filePath: string;
+  }) => void;
+  closeGutterContextMenu: () => void;
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
@@ -325,6 +339,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   commentsPanelOpen: false,
   activeCommentThreadId: null,
   commentDraftLine: null,
+  gutterContextMenu: null,
   goToFileOpen: false,
   commandPaletteOpen: false,
   gitInitDialogOpen: false,
@@ -473,6 +488,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }),
   setActiveCommentThreadId: (id) => set({ activeCommentThreadId: id }),
   setCommentDraftLine: (line) => set({ commentDraftLine: line }),
+  openGutterContextMenu: (menu) => set({ gutterContextMenu: menu }),
+  closeGutterContextMenu: () => set({ gutterContextMenu: null }),
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),

@@ -27,6 +27,7 @@ import { runCommand } from "@/features/workspace/commands/registry";
 import { ProjectPresenceAvatars } from "@/features/workspace/components/project-presence-avatars";
 import { WorkspaceBreadcrumb } from "@/features/workspace/components/workspace-breadcrumb";
 import { WorkspaceGitMenu } from "@/features/workspace/components/workspace-git-menu";
+import { WorkspaceDeployMenu } from "@/features/workspace/components/workspace-deploy-menu";
 import { WorkspaceLiveCollabMenu } from "@/features/workspace/components/workspace-live-collab-menu";
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
@@ -225,6 +226,7 @@ export function WorkspaceToolbar({
           />
 
           <WorkspaceGitMenu projectId={projectId} />
+          <WorkspaceDeployMenu projectId={projectId} />
           <WorkspacePublishMenu projectId={projectId} />
         </div>
 

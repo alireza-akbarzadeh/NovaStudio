@@ -1,3 +1,8 @@
+import {
+  isNextVersionRiskyInWebContainer,
+  WEBCONTAINER_NEXT_VERSION,
+} from "@/features/workspace/lib/webcontainer/next-compat";
+
 export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
 
 export type ScaffoldTemplateId = "nextjs" | "react" | "vite" | "tanstack";
@@ -15,6 +20,11 @@ export type ScaffoldOptions = {
   turbopack: boolean;
 };
 
+export {
+  isNextVersionRiskyInWebContainer,
+  WEBCONTAINER_NEXT_VERSION,
+} from "@/features/workspace/lib/webcontainer/next-compat";
+
 export const DEFAULT_SCAFFOLD_OPTIONS: ScaffoldOptions = {
   packageManager: "npm",
   version: "latest",
@@ -23,7 +33,15 @@ export const DEFAULT_SCAFFOLD_OPTIONS: ScaffoldOptions = {
   tailwind: true,
   appRouter: true,
   srcDir: true,
-  turbopack: true,
+  // Turbopack is unsupported on WebContainer WASM bindings.
+  turbopack: false,
+};
+
+/** Defaults for Next.js scaffolds running inside the in-browser preview. */
+export const DEFAULT_NEXT_SCAFFOLD_OPTIONS: ScaffoldOptions = {
+  ...DEFAULT_SCAFFOLD_OPTIONS,
+  version: WEBCONTAINER_NEXT_VERSION,
+  turbopack: false,
 };
 
 export const VERSION_PRESETS = [
@@ -32,9 +50,9 @@ export const VERSION_PRESETS = [
 ] as const;
 
 export const NEXT_VERSION_PRESETS = [
-  { id: "latest", label: "Latest" },
-  { id: "15", label: "15.x" },
-  { id: "14", label: "14.x" },
+  { id: WEBCONTAINER_NEXT_VERSION, label: "15.3.9 (preview)" },
+  { id: "14.2.18", label: "14.2.18" },
+  { id: "latest", label: "Latest (may break)" },
   { id: "canary", label: "Canary" },
 ] as const;
 
@@ -70,7 +88,7 @@ export function scaffoldDialogTitle(id: ScaffoldTemplateId): string {
 export function scaffoldDialogDescription(id: ScaffoldTemplateId): string {
   switch (id) {
     case "nextjs":
-      return "Pick package manager, version, and features. We’ll open the editor and run create-next-app in the terminal.";
+      return `Pick package manager, version, and features. We’ll run create-next-app in the terminal. Default ${WEBCONTAINER_NEXT_VERSION} — Next 15.5+ / 16 break the in-browser preview.`;
     case "react":
       return "Pick package manager and version. We’ll run create-vite with the React template in your workspace terminal.";
     case "vite":
@@ -126,6 +144,9 @@ function createNextAppCommand(options: ScaffoldOptions): string {
   ];
   if (options.turbopack) {
     flags.push("--turbopack");
+  } else if (isNextVersionRiskyInWebContainer(version)) {
+    // Next 16+ defaults to Turbopack; force webpack for WebContainer.
+    flags.push("--no-turbopack");
   }
   flags.push("--yes");
   const flagStr = flags.join(" ");
@@ -191,8 +212,8 @@ export function buildCreateNextAppCommand(options: ScaffoldOptions): string {
   return buildScaffoldCommand("nextjs", options);
 }
 
-/** @deprecated Use DEFAULT_SCAFFOLD_OPTIONS */
-export const DEFAULT_NEXT_SCAFFOLD = DEFAULT_SCAFFOLD_OPTIONS;
+/** @deprecated Use DEFAULT_NEXT_SCAFFOLD_OPTIONS */
+export const DEFAULT_NEXT_SCAFFOLD = DEFAULT_NEXT_SCAFFOLD_OPTIONS;
 
 /** @deprecated Use NEXT_VERSION_PRESETS */
 export const NEXT_VERSION_OPTIONS = NEXT_VERSION_PRESETS;

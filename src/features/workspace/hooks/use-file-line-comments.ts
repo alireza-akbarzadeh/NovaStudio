@@ -43,8 +43,9 @@ function decorationOptions(thread: CommentThreadGlyph) {
 }
 
 /**
- * Syncs Figma-style comment glyphs into Monaco for the active file and
- * routes gutter clicks into the comments panel.
+ * Syncs Figma-style comment glyphs into Monaco for the active file.
+ * Left-click a comment glyph (or Alt+gutter) opens that thread;
+ * right-click is handled by the shared gutter context menu.
  */
 export function useFileLineComments({
   projectId,
@@ -56,6 +57,9 @@ export function useFileLineComments({
     (s) => s.setActiveCommentThreadId,
   );
   const setCommentDraftLine = useWorkspaceStore((s) => s.setCommentDraftLine);
+  const openGutterContextMenu = useWorkspaceStore(
+    (s) => s.openGutterContextMenu,
+  );
 
   const threads = useQuery(
     api.comments.listThreads,
@@ -104,12 +108,27 @@ export function useFileLineComments({
     const attach = (ed: editor.IStandaloneCodeEditor) => {
       applyDecorations(ed);
 
-      // Glyph margin left-click → comments only with Alt (breakpoints own the default click).
       mouseDisposable = ed.onMouseDown((event) => {
         if (event.target.type !== 2) return;
-        if (!event.event.altKey) return;
         const line = event.target.position?.lineNumber;
         if (!line) return;
+
+        if (event.event.rightButton) {
+          event.event.preventDefault();
+          event.event.stopPropagation();
+          openGutterContextMenu({
+            x: event.event.posx,
+            y: event.event.posy,
+            line,
+            filePath,
+          });
+          return;
+        }
+
+        // Alt+click comment glyph → open thread / draft (left-click is breakpoint).
+        if (!event.event.leftButton || !event.event.altKey) return;
+        event.event.preventDefault();
+        event.event.stopPropagation();
         openForLine(line);
       });
 
@@ -156,6 +175,7 @@ export function useFileLineComments({
     enabled,
     filePath,
     openCommentsPanel,
+    openGutterContextMenu,
     setActiveCommentThreadId,
     setCommentDraftLine,
   ]);

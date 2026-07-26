@@ -458,21 +458,28 @@
   background: color-mix(in oklab, var(--ws-accent) 8%, transparent);
 }
 
-/* Debugger breakpoints — red circle in glyph margin (left of line numbers) */
+/* Debugger breakpoints — red circle in glyph margin (left of line numbers).
+   Draw via ::before so the host keeps Monaco’s full line-height box/top. */
 .polaris-monaco .margin-view-overlays .cgmr {
   cursor: pointer;
 }
 
 .polaris-monaco .polaris-breakpoint-glyph {
-  background: #e5484d !important;
-  border-radius: 50%;
-  width: 10px !important;
-  height: 10px !important;
-  min-width: 10px !important;
-  margin-left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
+  background: transparent !important;
   cursor: pointer;
+}
+
+.polaris-monaco .polaris-breakpoint-glyph::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background-color: #e5484d;
+  pointer-events: none;
 }
 
 .polaris-monaco .polaris-breakpoint-line {

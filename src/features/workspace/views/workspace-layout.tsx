@@ -27,6 +27,7 @@ import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
 import { WorkspaceCommentsPanel } from "@/features/workspace/components/workspace-comments-panel";
+import { WorkspaceGutterContextMenu } from "@/features/workspace/components/workspace-gutter-context-menu";
 import { WorkspaceNotificationsPanel } from "@/features/workspace/components/workspace-notifications-panel";
 import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspace-settings-dialog";
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
@@ -266,6 +267,7 @@ function WorkspaceLayoutInner({
 
         <WorkspaceChatPanel projectId={projectId} />
         <WorkspaceCommentsPanel projectId={projectId} />
+        <WorkspaceGutterContextMenu projectId={projectId} />
         <WorkspaceNotificationsPanel />
         {!zenMode ? <WorkspaceRightActivityBar /> : null}
 
