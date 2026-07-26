@@ -16,6 +16,9 @@ export const SETTINGS_JSON_KEYS = {
   highlightActiveLine: "editor.renderLineHighlight",
   bracketMatching: "editor.matchBrackets",
   lineHeight: "editor.lineHeight",
+  formatOnSave: "editor.formatOnSave",
+  autoSave: "files.autoSave",
+  formatOnSaveAll: "editor.formatOnSaveAll",
   minimap: "editor.minimap.enabled",
   fontLigatures: "editor.fontLigatures",
   smoothScrolling: "editor.smoothScrolling",
@@ -65,6 +68,9 @@ export function editorToSettingsRecord(
       ? "near"
       : "never",
     [SETTINGS_JSON_KEYS.lineHeight]: editor.lineHeight,
+    [SETTINGS_JSON_KEYS.formatOnSave]: editor.formatOnSave,
+    [SETTINGS_JSON_KEYS.autoSave]: editor.autoSave ? "afterDelay" : "off",
+    [SETTINGS_JSON_KEYS.formatOnSaveAll]: editor.formatOnSaveAll,
   };
 }
 
@@ -106,6 +112,9 @@ export function parseSettingsJson(text: string): ParsedUserSettings {
       raw[SETTINGS_JSON_KEYS.bracketMatching],
     ),
     lineHeight: readNumber(raw[SETTINGS_JSON_KEYS.lineHeight]),
+    formatOnSave: readBoolean(raw[SETTINGS_JSON_KEYS.formatOnSave]),
+    autoSave: readAutoSave(raw[SETTINGS_JSON_KEYS.autoSave]),
+    formatOnSaveAll: readBoolean(raw[SETTINGS_JSON_KEYS.formatOnSaveAll]),
   });
 
   const overrides: MonacoJsonOverrides = {};
@@ -130,6 +139,24 @@ function readNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function readBoolean(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  return undefined;
+}
+
+function readAutoSave(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (value === "off") return false;
+  if (
+    value === "afterDelay" ||
+    value === "onFocusChange" ||
+    value === "onWindowChange"
+  ) {
+    return true;
+  }
+  return undefined;
 }
 
 function readOnOff(value: unknown): boolean | undefined {

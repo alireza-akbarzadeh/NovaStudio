@@ -54,6 +54,18 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     id: "editor",
     title: "Editor",
     shortcuts: [
+      {
+        id: "save",
+        label: "Save file",
+        keys: "⌘ S",
+        description: "Formats (if enabled) then writes to Convex immediately",
+      },
+      {
+        id: "save-all",
+        label: "Save all files",
+        keys: "⌘ ⇧ S",
+        description: "Flush every open / unsaved editor buffer",
+      },
       { id: "find", label: "Find", keys: "⌘ F" },
       { id: "replace", label: "Replace", keys: "⌘ H" },
       { id: "undo", label: "Undo", keys: "⌘ Z" },

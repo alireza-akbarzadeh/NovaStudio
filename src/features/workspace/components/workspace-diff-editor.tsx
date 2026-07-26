@@ -19,11 +19,14 @@ import {
   monacoModelPath,
 } from "@/features/workspace/lib/monaco-languages";
 import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
+import { configureMonacoLoader } from "@/features/workspace/lib/monaco-loader";
 import {
   POLARIS_THEME_DARK,
   POLARIS_THEME_LIGHT,
   registerNovaStudioThemes,
 } from "@/features/workspace/lib/monaco-theme";
+
+configureMonacoLoader();
 
 type WorkspaceDiffEditorProps = {
   filePath: string;

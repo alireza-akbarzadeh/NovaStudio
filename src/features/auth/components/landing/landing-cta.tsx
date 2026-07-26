@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { Show, SignUpButton } from "@clerk/nextjs";
 import { ArrowRight, Play } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
@@ -12,7 +13,6 @@ import { display } from "./display-font";
 import { GlowOrb } from "./glow-orb";
 import { LANDING } from "./landing-colors";
 import { Section } from "./landing-section";
-import { PricingLink } from "./pricing-link";
 
 export function LandingCta() {
   const { openProjects } = useProjectsDialog();
@@ -78,9 +78,9 @@ export function LandingCta() {
               variant="outline"
               className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
             >
-              <PricingLink>
-                <Play className="mr-2 h-4 w-4" /> View pricing
-              </PricingLink>
+              <Link href="/demo">
+                <Play className="mr-2 h-4 w-4" /> Watch Demo
+              </Link>
             </Button>
           </div>
         </div>

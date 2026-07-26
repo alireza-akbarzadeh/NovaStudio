@@ -7,6 +7,9 @@
     "node": ">=20.9.0"
   },
   "scripts": {
+    "postinstall": "node scripts/copy-monaco.mjs",
+    "predev": "node scripts/copy-monaco.mjs",
+    "prebuild": "node scripts/copy-monaco.mjs",
     "dev": "next dev",
     "auth:check": "node scripts/clerk-convex-auth.mjs check",
     "auth:sync": "node scripts/clerk-convex-auth.mjs sync",

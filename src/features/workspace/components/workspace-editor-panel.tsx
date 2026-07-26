@@ -44,6 +44,7 @@ import { NewProjectForm } from "@/features/projects/components/new-project-form"
 import { ShortcutsPanel } from "@/features/settings/components/shortcuts-panel";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
+import { useFileDirtyStore } from "@/features/workspace/lib/file-save-controller";
 import {
   type EditorTab,
   useWorkspaceStore,
@@ -114,6 +115,25 @@ function EditorTabsOverflowMenu({
         sideOffset={4}
         className="min-w-56 rounded-lg border-ws-border bg-ws-panel p-1 text-ws-text shadow-lg"
       >
+        <DropdownMenuItem
+          className={OVERFLOW_ITEM}
+          onClick={() => runCommand("saveFile")}
+        >
+          Save
+          <DropdownMenuShortcut className="text-ws-text-muted">
+            ⌘S
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className={OVERFLOW_ITEM}
+          onClick={() => runCommand("saveAllFiles")}
+        >
+          Save All
+          <DropdownMenuShortcut className="text-ws-text-muted">
+            ⌘⇧S
+          </DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="mx-0 my-1 bg-ws-border" />
         <DropdownMenuItem
           className={OVERFLOW_ITEM}
           onClick={() => runCommand("openCommandPalette")}
@@ -188,6 +208,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
     unpinTab,
     keepOpen,
   } = useEditorTabs(projectId);
+  const dirtyMap = useFileDirtyStore((s) => s.dirty);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const dragIdRef = useRef<string | null>(null);
@@ -244,6 +265,10 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
           const active = tab.id === activeTabId;
           const isDragging = draggingId === tab.id;
           const isDropTarget = dropTargetId === tab.id && draggingId !== tab.id;
+          const isDirty =
+            tab.kind === "file" &&
+            Boolean(tab.path) &&
+            Boolean(dirtyMap[`${projectId}:${tab.path}`]);
           const showPinnedDivider =
             Boolean(tab.pinned) &&
             !tabs[index + 1]?.pinned &&
@@ -282,7 +307,11 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                       if (tab.preview) keepOpen(tab.id);
                     }}
                     className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-                    title={tab.path ?? tab.title}
+                    title={
+                      isDirty
+                        ? `${tab.path ?? tab.title} (unsaved)`
+                        : (tab.path ?? tab.title)
+                    }
                   >
                     {tab.pinned ? (
                       <PinIcon className="size-3 shrink-0 text-ws-accent opacity-80" />
@@ -293,6 +322,7 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                       className={cn(
                         "truncate font-normal",
                         tab.preview && "italic",
+                        isDirty && "text-ws-text",
                       )}
                     >
                       {tab.title}
@@ -300,19 +330,31 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                   </button>
                   <button
                     type="button"
-                    aria-label={`Close ${tab.title}`}
+                    aria-label={
+                      isDirty ? `Unsaved — close ${tab.title}` : `Close ${tab.title}`
+                    }
                     onClick={(event) => {
                       event.stopPropagation();
                       closeTab(tab.id);
                     }}
                     className={cn(
-                      "inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-ws-text-muted transition-opacity hover:bg-ws-hover-deep hover:text-ws-text",
-                      active
+                      "relative inline-flex size-4 shrink-0 items-center justify-center rounded-sm text-ws-text-muted transition-opacity hover:bg-ws-hover-deep hover:text-ws-text",
+                      active || isDirty
                         ? "opacity-70"
                         : "opacity-0 group-hover:opacity-100",
                     )}
                   >
-                    <XIcon className="size-3" />
+                    {isDirty ? (
+                      <>
+                        <span
+                          aria-hidden
+                          className="size-1.5 rounded-full bg-ws-accent group-hover:hidden"
+                        />
+                        <XIcon className="hidden size-3 group-hover:block" />
+                      </>
+                    ) : (
+                      <XIcon className="size-3" />
+                    )}
                   </button>
                 </div>
               </ContextMenuTrigger>

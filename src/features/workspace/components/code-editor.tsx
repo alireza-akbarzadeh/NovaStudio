@@ -34,6 +34,7 @@ import {
 } from "@/features/workspace/lib/monaco-languages";
 import { registerJsxAutoCloseTags } from "@/features/workspace/lib/monaco-jsx-autoclose";
 import { registerJsxSyntaxHighlight } from "@/features/workspace/lib/monaco-jsx-highlight";
+import { configureMonacoLoader } from "@/features/workspace/lib/monaco-loader";
 import { buildMonacoOptions } from "@/features/workspace/lib/monaco-options";
 import {
   POLARIS_THEME_DARK,
@@ -42,6 +43,25 @@ import {
 } from "@/features/workspace/lib/monaco-theme";
 import type { ProjectFileEntry } from "@/features/workspace/lib/resolve-import-path";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+
+configureMonacoLoader();
+
+function EditorLoadingFallback({ value }: { value: string }) {
+  return (
+    <div className="relative h-full min-h-0 overflow-hidden bg-ws-bg">
+      <pre
+        aria-hidden
+        className="pointer-events-none h-full overflow-hidden p-4 font-mono text-[12px] leading-5 whitespace-pre-wrap text-ws-text-secondary/70"
+      >
+        {value || " "}
+      </pre>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-ws-bg to-transparent" />
+      <div className="pointer-events-none absolute right-3 bottom-3 rounded-md bg-ws-panel/90 px-2 py-1 text-[10px] text-ws-text-muted">
+        Loading editor…
+      </div>
+    </div>
+  );
+}
 
 function fileNameFromPath(filePath: string) {
   const parts = filePath.split("/");
@@ -329,10 +349,19 @@ export function CodeEditor({
           path={modelPath}
           language={language}
           theme={theme}
+          // When collaborative, never pass controlled `value` — monaco-react
+          // full-replaces the model on each update and fights Yjs/Liveblocks.
           value={collaborative ? undefined : value}
           onChange={
             collaborative
-              ? undefined
+              ? onChange
+                ? (next) => {
+                    // Uncontrolled + onChange: persist during reconnect without
+                    // letting React own the buffer.
+                    if (next == null) return;
+                    onChange(next);
+                  }
+                : undefined
               : (next) => {
                   if (next == null) return;
                   onChange?.(next);
@@ -343,11 +372,7 @@ export function CodeEditor({
             safeConfigureMonaco(monaco, enabledIds);
           }}
           onMount={handleMount}
-          loading={
-            <div className="flex h-full items-center justify-center bg-ws-bg text-[12px] text-ws-text-muted">
-              Loading editor…
-            </div>
-          }
+          loading={<EditorLoadingFallback value={value} />}
         />
       </div>
     </div>

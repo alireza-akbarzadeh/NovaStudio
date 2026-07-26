@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# Monaco AMD build copied by `node scripts/copy-monaco.mjs` (postinstall)
+/public/monaco/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

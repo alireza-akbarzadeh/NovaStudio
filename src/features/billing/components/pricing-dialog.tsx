@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useBilling } from "@/features/billing/hooks/use-billing";
+import { clerkPricingAppearance } from "@/features/billing/lib/clerk-appearance";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -190,36 +191,37 @@ function PricingDialog({
         }}
         className={cn(
           "flex max-h-[min(92vh,900px)] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl",
-          "border-border/70 bg-background shadow-[0_32px_120px_-24px_rgba(0,0,0,0.65)]",
+          "border-white/10 bg-[#0a0b14] text-white",
+          "shadow-[0_32px_120px_-24px_rgba(0,0,0,0.85)]",
           // Stay under Clerk drawers/portals.
           "z-40",
         )}
-        overlayClassName="z-40"
+        overlayClassName="z-40 bg-[#06070d]/72 backdrop-blur-md"
       >
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse 80% 55% at 12% 0%, color-mix(in oklch, var(--ring) 18%, transparent), transparent 55%), radial-gradient(ellipse 60% 45% at 88% 100%, color-mix(in oklch, var(--accent) 45%, transparent), transparent 50%)",
+              "radial-gradient(ellipse 80% 55% at 12% 0%, rgba(139,92,246,0.18), transparent 55%), radial-gradient(ellipse 60% 45% at 88% 100%, rgba(59,130,246,0.12), transparent 50%)",
           }}
         />
 
-        <DialogHeader className="relative z-10 shrink-0 border-b border-border/60 px-6 py-5 text-left sm:px-8">
+        <DialogHeader className="relative z-10 shrink-0 border-b border-white/10 px-6 py-5 text-left sm:px-8">
           <DialogTitle
             className={cn(
               display.className,
-              "text-xl font-semibold tracking-tight sm:text-2xl",
+              "text-xl font-semibold tracking-tight text-white sm:text-2xl",
             )}
           >
             Choose your NovaStudio plan
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
+          <DialogDescription className="text-sm text-white/50">
             Subscribe or manage billing below. Plans and prices come from your
             Clerk Dashboard.
           </DialogDescription>
           {isLoaded && isPro ? (
-            <p className="pt-1 text-sm text-emerald-600 dark:text-emerald-400">
+            <p className="pt-1 text-sm text-emerald-400">
               You&apos;re on Pro. Manage your subscription from your account
               menu → Manage account → Billing.
             </p>
@@ -233,12 +235,10 @@ function PricingDialog({
           {open ? (
             <PricingTable
               for="user"
+              highlightedPlan="pro"
               newSubscriptionRedirectUrl={redirectUrl}
-              appearance={{
-                elements: {
-                  rootBox: "mx-auto w-full",
-                },
-              }}
+              appearance={clerkPricingAppearance}
+              checkoutProps={{ appearance: clerkPricingAppearance }}
             />
           ) : null}
         </div>

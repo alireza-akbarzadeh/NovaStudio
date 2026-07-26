@@ -108,6 +108,9 @@ export const useEditorSettingsStore = create<EditorSettingsState>((set, get) => 
       highlightActiveLine,
       bracketMatching,
       lineHeight,
+      formatOnSave,
+      autoSave,
+      formatOnSaveAll,
     } = get();
     return {
       fontSize,
@@ -117,6 +120,9 @@ export const useEditorSettingsStore = create<EditorSettingsState>((set, get) => 
       highlightActiveLine,
       bracketMatching,
       lineHeight,
+      formatOnSave,
+      autoSave,
+      formatOnSaveAll,
     };
   },
 }));

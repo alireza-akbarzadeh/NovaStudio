@@ -35,6 +35,18 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     keywords: "prettier beautify format code",
   },
   {
+    id: "saveFile",
+    label: "Save File",
+    keywords: "write persist flush disk convex",
+    shortcut: "mod+s",
+  },
+  {
+    id: "saveAllFiles",
+    label: "Save All Files",
+    keywords: "write persist flush all open dirty",
+    shortcut: "mod+shift+s",
+  },
+  {
     id: "inlineAiEdit",
     label: "Inline AI Edit",
     keywords: "quick edit rewrite selection ai ask edit",

@@ -126,7 +126,12 @@ export function registerAiInlineCompletions(
     if (debounceTimer) clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       debounceTimer = null;
-      if (!editorInstance.getModel()) return;
+      const model = editorInstance.getModel();
+      if (!model) return;
+      // Skip when the buffer was wiped/empty — avoids empty-context fetches
+      // during Liveblocks seed races and noisy failure toasts.
+      if (model.getValueLength() === 0) return;
+      if (!editorInstance.hasTextFocus()) return;
       void editorInstance.trigger(
         "polaris-ai",
         "editor.action.inlineSuggest.trigger",
@@ -135,8 +140,16 @@ export function registerAiInlineCompletions(
     }, 350);
   };
 
-  const contentSub = editorInstance.onDidChangeModelContent(trigger);
-  const cursorSub = editorInstance.onDidChangeCursorPosition(trigger);
+  const contentSub = editorInstance.onDidChangeModelContent((event) => {
+    // Full-model replaces (Yjs reseed / external apply) are not local typing.
+    if (event.isFlush) return;
+    if (!editorInstance.hasTextFocus()) return;
+    trigger();
+  });
+  const cursorSub = editorInstance.onDidChangeCursorPosition(() => {
+    if (!editorInstance.hasTextFocus()) return;
+    trigger();
+  });
 
   // Kick once after mount so the first pause can show a completion.
   trigger();

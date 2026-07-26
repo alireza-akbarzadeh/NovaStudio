@@ -8,6 +8,7 @@ import {
   activateExtensions,
   monacoThemeIdForActiveExtension,
 } from "@/features/extensions/lib/activate";
+import { configureMonacoLoader } from "@/features/workspace/lib/monaco-loader";
 import {
   POLARIS_THEME_DARK,
   POLARIS_THEME_LIGHT,
@@ -29,6 +30,7 @@ export function useExtensionsSync() {
   useEffect(() => {
     if (!ready) return;
 
+    configureMonacoLoader();
     let cancelled = false;
     void loader.init().then((monaco) => {
       if (cancelled) return;

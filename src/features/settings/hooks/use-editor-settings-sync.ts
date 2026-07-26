@@ -27,6 +27,9 @@ export function useEditorSettingsSync() {
   const highlightActiveLine = useEditorSettingsStore((s) => s.highlightActiveLine);
   const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
+  const formatOnSave = useEditorSettingsStore((s) => s.formatOnSave);
+  const autoSave = useEditorSettingsStore((s) => s.autoSave);
+  const formatOnSaveAll = useEditorSettingsStore((s) => s.formatOnSaveAll);
 
   const hasHydratedFromServer = useRef(false);
   const skipNextSave = useRef(true);
@@ -69,6 +72,9 @@ export function useEditorSettingsSync() {
         highlightActiveLine: state.highlightActiveLine,
         bracketMatching: state.bracketMatching,
         lineHeight: state.lineHeight,
+        formatOnSave: state.formatOnSave,
+        autoSave: state.autoSave,
+        formatOnSaveAll: state.formatOnSaveAll,
       };
       const json = mergeEditorIntoSettingsJson(state.settingsJson, editor);
       // Keep local JSON text aligned when form controls change.
@@ -93,6 +99,9 @@ export function useEditorSettingsSync() {
     highlightActiveLine,
     bracketMatching,
     lineHeight,
+    formatOnSave,
+    autoSave,
+    formatOnSaveAll,
     upsertEditor,
   ]);
 }

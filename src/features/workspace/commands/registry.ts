@@ -37,6 +37,8 @@ export type CommandId =
   | "showGitHistory"
   | "findInFiles"
   | "formatDocument"
+  | "saveFile"
+  | "saveAllFiles"
   | "inlineAiEdit";
 
 export type Command = {
@@ -237,6 +239,26 @@ export const workspaceCommands: Command[] = [
     run: () => {
       void import("@/features/workspace/lib/format-active-document").then(
         ({ formatActiveDocument }) => formatActiveDocument(),
+      );
+    },
+  },
+  {
+    id: "saveFile",
+    shortcut: "mod+s",
+    allowInInput: true,
+    run: () => {
+      void import("@/features/workspace/lib/file-save-controller").then(
+        ({ saveActiveFile }) => saveActiveFile(),
+      );
+    },
+  },
+  {
+    id: "saveAllFiles",
+    shortcut: "mod+shift+s",
+    allowInInput: true,
+    run: () => {
+      void import("@/features/workspace/lib/file-save-controller").then(
+        ({ saveAllFiles }) => saveAllFiles(),
       );
     },
   },

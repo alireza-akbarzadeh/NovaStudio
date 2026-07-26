@@ -65,6 +65,9 @@ export function EditorSettingsPanel() {
   const highlightActiveLine = useEditorSettingsStore((s) => s.highlightActiveLine);
   const bracketMatching = useEditorSettingsStore((s) => s.bracketMatching);
   const lineHeight = useEditorSettingsStore((s) => s.lineHeight);
+  const formatOnSave = useEditorSettingsStore((s) => s.formatOnSave);
+  const autoSave = useEditorSettingsStore((s) => s.autoSave);
+  const formatOnSaveAll = useEditorSettingsStore((s) => s.formatOnSaveAll);
   const setSettings = useEditorSettingsStore((s) => s.setSettings);
   const resetSettings = useEditorSettingsStore((s) => s.resetSettings);
 
@@ -210,6 +213,47 @@ export function EditorSettingsPanel() {
             setSettings({ bracketMatching: checked })
           }
           aria-label="Bracket matching"
+        />
+      </SettingRow>
+
+      <Separator />
+
+      <SettingRow
+        label="Format on Save"
+        description="Run Prettier before ⌘S / Ctrl+S writes the file to Convex"
+      >
+        <Switch
+          checked={formatOnSave}
+          onCheckedChange={(checked) => setSettings({ formatOnSave: checked })}
+          aria-label="Format on Save"
+        />
+      </SettingRow>
+
+      <Separator />
+
+      <SettingRow
+        label="Auto Save"
+        description="Debounce-save edits to Convex while typing. Turn off to save only with ⌘S / Save All."
+      >
+        <Switch
+          checked={autoSave}
+          onCheckedChange={(checked) => setSettings({ autoSave: checked })}
+          aria-label="Auto Save"
+        />
+      </SettingRow>
+
+      <Separator />
+
+      <SettingRow
+        label="Format on Save All"
+        description="When using ⌘⇧S / Ctrl+⇧S, format each open file before saving"
+      >
+        <Switch
+          checked={formatOnSaveAll}
+          onCheckedChange={(checked) =>
+            setSettings({ formatOnSaveAll: checked })
+          }
+          aria-label="Format on Save All"
         />
       </SettingRow>
 

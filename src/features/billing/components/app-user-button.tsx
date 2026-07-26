@@ -5,6 +5,7 @@ import { CreditCardIcon, SettingsIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
+import { clerkAppearance } from "@/features/billing/lib/clerk-appearance";
 
 type AppUserButtonProps = ComponentProps<typeof UserButton> & {
   /** When set, Settings opens this workspace editor tab instead of /settings. */
@@ -16,12 +17,24 @@ export function AppUserButton({
   children,
   settingsHref = "/projects/settings",
   onOpenSettings,
+  appearance,
   ...props
 }: AppUserButtonProps) {
   const { openPricing } = usePricingDialog();
 
+  const mergedAppearance = appearance
+    ? {
+        ...clerkAppearance,
+        ...appearance,
+        elements: {
+          ...(clerkAppearance.elements as Record<string, string>),
+          ...(appearance.elements as Record<string, string> | undefined),
+        },
+      }
+    : clerkAppearance;
+
   return (
-    <UserButton {...props}>
+    <UserButton {...props} appearance={mergedAppearance}>
       <UserButton.MenuItems>
         {onOpenSettings ? (
           <UserButton.Action

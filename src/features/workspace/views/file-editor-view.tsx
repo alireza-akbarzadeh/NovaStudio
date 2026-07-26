@@ -370,13 +370,19 @@ function FileEditorContent({
 
   // Keep local preview/chrome in sync with Convex/AI writes and drafts.
   useEffect(() => {
-    if (!seedContent) return;
-    if (seedContent === content) return;
-    // Empty UI with real content, or AI draft matching seed — adopt it.
-    if (!content || draft?.content === seedContent) {
-      setContent(seedContent);
+    const draftNow = loadFileContentDraft(projectId, filePath);
+    const next = resolveSeedContent(
+      initialContent,
+      serverUpdatedAt,
+      draftNow,
+    );
+    if (!next) return;
+    if (next === content) return;
+    // Empty UI with real content, or draft/server ahead of local preview.
+    if (!content || draftNow?.content === next || next.length >= content.length) {
+      setContent(next);
     }
-  }, [content, draft?.content, seedContent]);
+  }, [content, filePath, initialContent, projectId, serverUpdatedAt]);
 
   const onGoToDefinition = (target: DefinitionTarget) => {
     setPendingEditorReveal({
@@ -411,7 +417,10 @@ function FileEditorContent({
           <CollaborativeCodeEditor
             projectId={projectId}
             filePath={filePath}
-            initialContent={seedContent}
+            // Pass Convex content only — never the local draft/seed. Feeding
+            // draft back as "server" made the dirty baseline chase keystrokes
+            // and skipped persisting newly created file buffers.
+            initialContent={initialContent}
             serverUpdatedAt={serverUpdatedAt}
             readOnly={readOnly}
             onContentChange={setContent}

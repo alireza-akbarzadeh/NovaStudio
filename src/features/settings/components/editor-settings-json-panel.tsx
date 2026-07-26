@@ -19,6 +19,9 @@ import {
   POLARIS_THEME_LIGHT,
   registerNovaStudioThemes,
 } from "@/features/workspace/lib/monaco-theme";
+import { configureMonacoLoader } from "@/features/workspace/lib/monaco-loader";
+
+configureMonacoLoader();
 
 /**
  * VS Code–style settings.json editor.
@@ -103,9 +106,10 @@ export function EditorSettingsJsonPanel({
             VS Code–style user settings for this account. Saved to your profile
             and restored on every device when you sign in. Supported keys include{" "}
             <code className="text-[11px]">{SETTINGS_JSON_KEYS.fontSize}</code>,{" "}
-            <code className="text-[11px]">{SETTINGS_JSON_KEYS.wordWrap}</code>,{" "}
-            <code className="text-[11px]">{SETTINGS_JSON_KEYS.minimap}</code>, and
-            more.
+            <code className="text-[11px]">{SETTINGS_JSON_KEYS.formatOnSave}</code>,{" "}
+            <code className="text-[11px]">{SETTINGS_JSON_KEYS.autoSave}</code>,{" "}
+            <code className="text-[11px]">{SETTINGS_JSON_KEYS.formatOnSaveAll}</code>,
+            and more.
           </p>
         </div>
         <Button

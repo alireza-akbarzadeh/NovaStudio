@@ -238,9 +238,28 @@ export class MonacoBinding {
     ytext.observe(this._ytextObserver);
 
     {
+      // Initial sync. Prefer Monaco when it is ahead of Y (empty room or
+      // typed-ahead during seed/bind). lib0 mutex skips nested work, so
+      // seeding Y inside mux does not echo through `_ytextObserver`.
       const ytextValue = ytext.toString();
-      if (monacoModel.getValue() !== ytextValue) {
-        monacoModel.setValue(ytextValue);
+      const monacoValue = monacoModel.getValue();
+      if (monacoValue !== ytextValue) {
+        const monacoAhead =
+          !!monacoValue &&
+          (!ytextValue ||
+            (monacoValue.length > ytextValue.length &&
+              monacoValue.startsWith(ytextValue)));
+        if (monacoAhead) {
+          this.mux(() => {
+            this.doc.transact(() => {
+              const len = ytext.toString().length;
+              if (len > 0) ytext.delete(0, len);
+              if (monacoValue) ytext.insert(0, monacoValue);
+            }, this);
+          });
+        } else {
+          monacoModel.setValue(ytextValue);
+        }
       }
     }
 

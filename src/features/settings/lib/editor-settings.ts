@@ -6,6 +6,12 @@ export type EditorSettings = {
   highlightActiveLine: boolean;
   bracketMatching: boolean;
   lineHeight: number;
+  /** Format with Prettier before ⌘S / Ctrl+S. */
+  formatOnSave: boolean;
+  /** Debounced autosave to Convex while typing. */
+  autoSave: boolean;
+  /** Format each file when using Save All (⌘⇧S / Ctrl+⇧S). */
+  formatOnSaveAll: boolean;
 };
 
 export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
@@ -16,6 +22,9 @@ export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
   highlightActiveLine: true,
   bracketMatching: true,
   lineHeight: 1.6,
+  formatOnSave: true,
+  autoSave: true,
+  formatOnSaveAll: false,
 };
 
 export const FONT_SIZE_MIN = 11;
@@ -54,5 +63,9 @@ export function clampEditorSettings(
     bracketMatching:
       partial.bracketMatching ?? DEFAULT_EDITOR_SETTINGS.bracketMatching,
     lineHeight,
+    formatOnSave: partial.formatOnSave ?? DEFAULT_EDITOR_SETTINGS.formatOnSave,
+    autoSave: partial.autoSave ?? DEFAULT_EDITOR_SETTINGS.autoSave,
+    formatOnSaveAll:
+      partial.formatOnSaveAll ?? DEFAULT_EDITOR_SETTINGS.formatOnSaveAll,
   };
 }

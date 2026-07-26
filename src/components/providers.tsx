@@ -1,7 +1,6 @@
 "use client";
 
 import { ClerkProvider, useAuth, useClerk } from "@clerk/nextjs";
-import { dark } from "@clerk/themes";
 import {
   Authenticated,
   AuthLoading,
@@ -15,6 +14,7 @@ import { usePathname } from "next/navigation";
 import { AuthLoadingView } from "@/features/auth/components/auth-loading-view";
 import { LandingView } from "@/features/auth/components/unauthenticated-view";
 import { PricingDialogProvider } from "@/features/billing/components/pricing-dialog";
+import { clerkAppearance } from "@/features/billing/lib/clerk-appearance";
 import { NotificationProvider } from "@/features/notifications/components/notification-provider";
 import { ProjectsDialogProvider } from "@/features/projects/components/projects-dialog";
 import { ConfirmDialogProvider } from "@/components/confirm-dialog";
@@ -90,11 +90,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider
-      appearance={{
-        theme: dark,
-      }}
-    >
+    <ClerkProvider appearance={clerkAppearance}>
       <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
         <ThemeProvider
           attribute="class"

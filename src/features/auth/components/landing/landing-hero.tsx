@@ -2,8 +2,9 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "motion/react";
-import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
+import { Show, SignUpButton } from "@clerk/nextjs";
 import { ArrowRight, Check, Play } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
@@ -14,7 +15,6 @@ import { GlowOrb } from "./glow-orb";
 import { LANDING } from "./landing-colors";
 import { LandingHeroEditor } from "./landing-hero-editor";
 import { Section } from "./landing-section";
-import { PricingLink } from "./pricing-link";
 
 export function LandingHero() {
   const { openProjects } = useProjectsDialog();
@@ -114,15 +114,16 @@ export function LandingHero() {
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </Button>
               </SignUpButton>
-              <SignInButton mode="modal" forceRedirectUrl="/projects">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
-                >
-                  <Play className="mr-2 h-4 w-4" /> Sign in
-                </Button>
-              </SignInButton>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
+              >
+                <Link href="/demo">
+                  <Play className="mr-2 h-4 w-4" /> Watch Demo
+                </Link>
+              </Button>
             </Show>
             <Show when="signed-in">
               <Button
@@ -139,7 +140,9 @@ export function LandingHero() {
                 variant="outline"
                 className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
               >
-                <PricingLink>View pricing</PricingLink>
+                <Link href="/demo">
+                  <Play className="mr-2 h-4 w-4" /> Watch Demo
+                </Link>
               </Button>
             </Show>
           </motion.div>

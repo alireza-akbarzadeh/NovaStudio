@@ -25,20 +25,27 @@ import type {
 } from "@/features/workspace/lib/collab-editor/types";
 import { softCollaboratorColor } from "@/features/workspace/lib/collab-cursor-theme";
 import {
-  clearFileContentDraft,
   loadFileContentDraft,
-  resolveSeedContent,
+  pickAuthoritativeContent,
   saveFileContentDraft,
   shouldApplyExternalContent,
   shouldReseedLiveblocks,
 } from "@/features/workspace/lib/file-content-drafts";
+import {
+  markFileDirty,
+  registerFileSaveHandler,
+} from "@/features/workspace/lib/file-save-controller";
+import { runFormatDocument } from "@/features/workspace/lib/monaco-format";
 import { MonacoBinding } from "@/features/workspace/lib/y-monaco-binding";
+import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { useRoom, useStatus, useUpdateMyPresence } from "@/liveblocks.config";
 
 const SAVE_DEBOUNCE_MS = 800;
 const EMPTY_RESEED_COOLDOWN_MS = 750;
 const STALE_AUTOSAVE_GUARD_MS = 5000;
+/** Block Yjs→Convex autosave until seed is applied (prevents stale room wipe). */
+const AUTOSAVE_SEED_GRACE_MS = 1200;
 
 export function useCollaborativeEditor({
   projectId,
@@ -74,14 +81,36 @@ export function useCollaborativeEditor({
   const ytextRef = useRef<Y.Text | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const awarenessRef = useRef<Awareness | null>(null);
-  const persistToServerRef = useRef<(content: string, epoch: number) => void>(
-    () => {},
-  );
+  const persistToServerRef = useRef<
+    (
+      content: string,
+      epoch: number,
+      options?: { force?: boolean },
+    ) => Promise<boolean>
+  >(async () => false);
   const readyRef = useRef(false);
+  /** False until Liveblocks has been seeded from Convex/draft — blocks wipe autosaves. */
+  const autosaveAllowedRef = useRef(false);
+  const autosaveGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [ready, setReady] = useState(false);
   const [collabReady, setCollabReady] = useState(false);
+  /**
+   * Once Yjs has owned this file's Monaco model, never hand control back to
+   * React `value` — @monaco-editor/react full-replaces the model on every
+   * controlled update, which wipes keystrokes during reconnect / status blips.
+   */
+  const [docOwnedByCollab, setDocOwnedByCollab] = useState(false);
   const [value, setValue] = useState(initialContent);
+
+  // New file identity → allow a fresh controlled seed until Yjs binds again.
+  useEffect(() => {
+    setDocOwnedByCollab(false);
+    setReady(false);
+    setCollabReady(false);
+  }, [filePath, projectId]);
 
   useEffect(() => {
     readyRef.current = ready;
@@ -93,6 +122,14 @@ export function useCollaborativeEditor({
     onContentChangeRef.current = onContentChange;
     readOnlyRef.current = readOnly;
   }, [initialContent, onContentChange, readOnly, serverUpdatedAt]);
+
+  // Establish a clean baseline from Convex once per open (includes "").
+  // Do not touch the dirty flag here — finishSetup / syncDirtyFlag own it.
+  // Calling markFileDirty(false) raced with unsaved buffers after reconnect.
+  useEffect(() => {
+    if (lastSavedContentRef.current !== null) return;
+    lastSavedContentRef.current = initialContent;
+  }, [filePath, initialContent, projectId]);
 
   const knownContent = useCallback(
     () =>
@@ -115,50 +152,86 @@ export function useCollaborativeEditor({
     onContentChangeRef.current?.(text);
   }, []);
 
+  const syncDirtyFlag = useCallback(
+    (content: string) => {
+      const baseline = lastSavedContentRef.current ?? initialContentRef.current;
+      markFileDirty(projectId, filePath, content !== baseline);
+    },
+    [filePath, projectId],
+  );
+
   // ── Convex persistence ───────────────────────────────────────────────
 
   useEffect(() => {
-    persistToServerRef.current = (content: string, epoch: number) => {
-      if (epoch !== saveEpochRef.current) return;
+    persistToServerRef.current = async (
+      content: string,
+      epoch: number,
+      options?: { force?: boolean },
+    ) => {
+      if (epoch !== saveEpochRef.current) return false;
 
       const known =
         loadFileContentDraft(projectId, filePath)?.content ||
         initialContentRef.current ||
         value;
       // Never let an empty buffer wipe a known non-empty file (AI write / draft).
-      if (!content && known) return;
+      if (!content && known) return false;
 
       // If draft is newer and differs, a stale autosave lost the race with AI.
-      const draft = loadFileContentDraft(projectId, filePath);
-      if (
-        draft &&
-        draft.content &&
-        draft.content !== content &&
-        Date.now() - draft.updatedAt < STALE_AUTOSAVE_GUARD_MS &&
-        draft.content.length >= content.length
-      ) {
-        return;
+      // Manual Save ({ force: true }) always writes the explicit buffer.
+      if (!options?.force) {
+        const draft = loadFileContentDraft(projectId, filePath);
+        if (
+          draft &&
+          draft.content &&
+          draft.content !== content &&
+          Date.now() - draft.updatedAt < STALE_AUTOSAVE_GUARD_MS &&
+          draft.content.length > content.length
+        ) {
+          return false;
+        }
       }
 
       pendingContentRef.current = null;
+      // Keep a durable local copy until the next successful load confirms Convex.
+      saveFileContentDraft(projectId, filePath, content);
 
-      void updateContent({
-        projectId: projectId as Id<"projects">,
-        path: filePath,
-        content,
-      })
-        .then(() => {
-          if (epoch !== saveEpochRef.current) return;
-          lastSavedContentRef.current = content;
-          const latest = loadFileContentDraft(projectId, filePath);
-          if (latest && latest.content === content) {
-            clearFileContentDraft(projectId, filePath, { keepMemory: true });
-          }
-        })
-        .catch(() => {
-          if (epoch !== saveEpochRef.current) return;
-          saveFileContentDraft(projectId, filePath, content);
+      try {
+        await updateContent({
+          projectId: projectId as Id<"projects">,
+          path: filePath,
+          content,
         });
+        if (epoch !== saveEpochRef.current) return false;
+        lastSavedContentRef.current = content;
+        markFileDirty(projectId, filePath, false);
+
+        // Keep Liveblocks room aligned with what we just persisted.
+        const ytext = ytextRef.current;
+        const ydoc = ydocRef.current;
+        if (ytext && ydoc && ytext.toString() !== content) {
+          applyingExternalRef.current = true;
+          try {
+            replaceYText(ydoc, ytext, content);
+            const ed = editorRef.current;
+            const model = ed?.getModel();
+            if (ed && model && model.getValue() !== content) {
+              replaceMonacoContentPreservingCursor(ed, model, content);
+            }
+          } catch (error) {
+            console.warn("[collab] post-save Yjs sync failed", error);
+          } finally {
+            applyingExternalRef.current = false;
+          }
+        }
+
+        return true;
+      } catch {
+        if (epoch !== saveEpochRef.current) return false;
+        saveFileContentDraft(projectId, filePath, content);
+        markFileDirty(projectId, filePath, true);
+        return false;
+      }
     };
   }, [filePath, projectId, updateContent, value]);
 
@@ -167,41 +240,84 @@ export function useCollaborativeEditor({
       const known = knownContent();
       if (!content && known) return;
 
+      syncDirtyFlag(content);
       useWorkspaceStore.getState().promotePreviewTabByPath(filePath);
       pendingContentRef.current = content;
+
+      if (!autosaveAllowedRef.current) return;
+      if (!useEditorSettingsStore.getState().autoSave) return;
+
       const epoch = saveEpochRef.current;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         saveTimerRef.current = null;
-        persistToServerRef.current(content, epoch);
+        void persistToServerRef.current(content, epoch);
       }, SAVE_DEBOUNCE_MS);
     },
-    [filePath, knownContent],
+    [filePath, knownContent, syncDirtyFlag],
   );
 
-  const flushPendingSave = useCallback(() => {
+  const flushPendingSave = useCallback(async () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
-    if (readOnlyRef.current) return;
+    if (readOnlyRef.current) return false;
 
-    const fromEditor = editorRef.current?.getModel()?.getValue();
+    const model = editorRef.current?.getModel();
+    const fromEditor = model?.getValue();
     const fromYjs = ytextRef.current?.toString();
-    const content =
-      fromEditor ?? fromYjs ?? pendingContentRef.current ?? null;
-    if (content === null) return;
+    const fromDraft = loadFileContentDraft(projectId, filePath)?.content;
+
+    let content: string | null =
+      fromEditor !== undefined
+        ? fromEditor
+        : (fromYjs ?? pendingContentRef.current ?? fromDraft ?? null);
+
+    // Bind/seed race: Monaco briefly shows a truncated stale buffer while the
+    // durable draft still has the full file — never flush the truncated one.
+    if (
+      content !== null &&
+      fromDraft &&
+      fromDraft.length > content.length &&
+      (fromDraft.startsWith(content) || content.length === 0)
+    ) {
+      content = fromDraft;
+    }
+
+    if (content === null) return false;
 
     const known = knownContent();
     if (!content && known) {
-      persistToServerRef.current(known, saveEpochRef.current);
-      return;
+      return persistToServerRef.current(known, saveEpochRef.current, {
+        force: true,
+      });
     }
 
     saveFileContentDraft(projectId, filePath, content);
     pendingContentRef.current = content;
-    persistToServerRef.current(content, saveEpochRef.current);
-  }, [filePath, knownContent, projectId]);
+    syncDirtyFlag(content);
+    // Manual save must not be blocked by the stale-autosave guard.
+    return persistToServerRef.current(content, saveEpochRef.current, {
+      force: true,
+    });
+  }, [filePath, knownContent, projectId, syncDirtyFlag]);
+
+  // Register for ⌘S / Save All
+  useEffect(() => {
+    if (readOnly) return;
+    return registerFileSaveHandler({
+      projectId,
+      path: filePath,
+      flush: () => flushPendingSave(),
+      format: async () => {
+        const ed = editorRef.current;
+        if (!ed) return false;
+        const tabSize = useEditorSettingsStore.getState().tabSize;
+        return runFormatDocument(ed, filePath, tabSize);
+      },
+    });
+  }, [filePath, flushPendingSave, projectId, readOnly]);
 
   // ── Monaco ↔ Yjs binding ─────────────────────────────────────────────
 
@@ -219,30 +335,50 @@ export function useCollaborativeEditor({
       awareness,
     );
     setCollabReady(true);
+    setDocOwnedByCollab(true);
   }, []);
 
   /**
    * Apply Convex/AI content into the open editor without blanking the UI.
    * Prefer a Monaco model replace (y-monaco syncs safely) over raw Y.Text mutation.
+   *
+   * `asSaved: true` (default) means this buffer matches durable Convex — clear dirty.
+   * Pass `asSaved: false` when restoring a local draft / resisting an empty Yjs pulse.
    */
   const applyExternalContent = useCallback(
-    (next: string) => {
+    (next: string, options?: { asSaved?: boolean }) => {
       if (!next) return;
       if (applyingExternalRef.current) return;
+      const asSaved = options?.asSaved !== false;
 
       const currentY = ytextRef.current?.toString() ?? "";
       const currentEditor =
         editorRef.current?.getModel()?.getValue() ?? value;
       if (currentY === next || currentEditor === next) {
         saveFileContentDraft(projectId, filePath, next);
+        if (asSaved) {
+          lastSavedContentRef.current = next;
+          markFileDirty(projectId, filePath, false);
+        } else {
+          syncDirtyFlag(next);
+        }
         publishLocal(next);
         return;
       }
 
       applyingExternalRef.current = true;
-      saveEpochRef.current += 1;
-      cancelPendingSave();
+      if (asSaved) {
+        saveEpochRef.current += 1;
+        cancelPendingSave();
+      }
       saveFileContentDraft(projectId, filePath, next);
+      if (asSaved) {
+        lastSavedContentRef.current = next;
+        markFileDirty(projectId, filePath, false);
+      } else {
+        pendingContentRef.current = next;
+        syncDirtyFlag(next);
+      }
       publishLocal(next);
 
       const ed = editorRef.current;
@@ -279,26 +415,32 @@ export function useCollaborativeEditor({
       }
       applyingExternalRef.current = false;
     },
-    [cancelPendingSave, filePath, projectId, publishLocal, value],
+    [cancelPendingSave, filePath, projectId, publishLocal, syncDirtyFlag, value],
   );
 
   // ── Liveblocks room lifecycle ────────────────────────────────────────
+  //
+  // Important: do NOT null `editorRef` here. Monaco's onMount fires once;
+  // clearing the ref on every status blip permanently orphans the Yjs bind
+  // (typing stays local, refresh loses the file). Only tear down on cleanup.
 
   useEffect(() => {
+    if (status !== "connected") return;
+
     seededRef.current = false;
     acceptRemoteEditsRef.current = false;
-    lastSavedContentRef.current = null;
-    // Reset collab gate when the room/file identity changes.
+    autosaveAllowedRef.current = false;
+    if (autosaveGraceTimerRef.current) {
+      clearTimeout(autosaveGraceTimerRef.current);
+      autosaveGraceTimerRef.current = null;
+    }
+    bindingRef.current?.destroy();
+    bindingRef.current = null;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional lifecycle reset
     setReady(false);
     setCollabReady(false);
-    bindingRef.current?.destroy();
-    bindingRef.current = null;
-    editorRef.current = null;
     saveEpochRef.current += 1;
     cancelPendingSave();
-
-    if (status !== "connected") return;
 
     const provider = getYjsProviderForRoom(room);
     const ydoc = provider.getYDoc();
@@ -322,11 +464,13 @@ export function useCollaborativeEditor({
 
     const resolveSeed = () => {
       const draft = loadFileContentDraft(projectId, filePath);
-      return resolveSeedContent(
-        initialContentRef.current,
-        serverUpdatedAtRef.current,
+      const monacoContent = editorRef.current?.getModel()?.getValue() ?? "";
+      return pickAuthoritativeContent({
+        serverContent: initialContentRef.current,
+        ytextContent: ytext.toString(),
         draft,
-      );
+        monacoContent,
+      });
     };
 
     const seedIfNeeded = () => {
@@ -339,9 +483,17 @@ export function useCollaborativeEditor({
         } catch (error) {
           console.warn("[collab] seed failed", error);
         }
-        saveFileContentDraft(projectId, filePath, seed);
-        if (seed !== initialContentRef.current && !readOnlyRef.current) {
-          scheduleServerSave(seed);
+        if (seed) {
+          saveFileContentDraft(projectId, filePath, seed);
+        }
+        // If the authoritative buffer is ahead of Convex (typed offline / fallback),
+        // persist it once seed is done — after the autosave grace, via explicit flush.
+        if (
+          seed &&
+          seed !== initialContentRef.current &&
+          !readOnlyRef.current
+        ) {
+          pendingContentRef.current = seed;
         }
       }
       seededRef.current = true;
@@ -352,11 +504,45 @@ export function useCollaborativeEditor({
       seedIfNeeded();
       const text = ytext.toString() || resolveSeed();
       publishLocal(text);
+      // Baseline is always the Convex copy; dirty when the live buffer differs.
+      lastSavedContentRef.current =
+        lastSavedContentRef.current ?? initialContentRef.current;
+      if (text === initialContentRef.current) {
+        lastSavedContentRef.current = text;
+      }
+      markFileDirty(projectId, filePath, text !== initialContentRef.current);
+      if (text && text !== initialContentRef.current) {
+        pendingContentRef.current = text;
+        saveFileContentDraft(projectId, filePath, text);
+      }
       acceptRemoteEditsRef.current = true;
       setReady(true);
       if (editorRef.current) {
         bindMonaco(editorRef.current);
       }
+
+      // Allow autosave only after seed has settled — prevents stale Yjs wipe.
+      autosaveGraceTimerRef.current = setTimeout(() => {
+        autosaveGraceTimerRef.current = null;
+        if (cancelled) return;
+        autosaveAllowedRef.current = true;
+        const pending = pendingContentRef.current;
+        if (
+          !pending ||
+          pending === initialContentRef.current ||
+          readOnlyRef.current
+        ) {
+          return;
+        }
+        // Keep dirty badge when auto-save is off; only flush if enabled.
+        if (!useEditorSettingsStore.getState().autoSave) {
+          markFileDirty(projectId, filePath, true);
+          return;
+        }
+        void persistToServerRef.current(pending, saveEpochRef.current, {
+          force: true,
+        });
+      }, AUTOSAVE_SEED_GRACE_MS);
     };
 
     const onText = () => {
@@ -379,11 +565,25 @@ export function useCollaborativeEditor({
           return;
         }
         lastEmptyReseedAtRef.current = now;
-        applyExternalContent(known);
+        // Restore buffer without claiming it was persisted to Convex.
+        applyExternalContent(known, { asSaved: false });
         return;
       }
 
       if (!acceptRemoteEditsRef.current && !text && seed) return;
+
+      // Before autosave is armed, never let a shorter Yjs buffer replace a
+      // longer known Convex/draft buffer in the UI.
+      if (
+        !autosaveAllowedRef.current &&
+        known &&
+        text &&
+        text.length < known.length &&
+        known.startsWith(text)
+      ) {
+        publishLocal(known);
+        return;
+      }
 
       publishLocal(text);
 
@@ -407,9 +607,11 @@ export function useCollaborativeEditor({
       provider.on("sync", onSync);
     }
 
-    const onPageHide = () => flushPendingSave();
+    const onPageHide = () => {
+      void flushPendingSave();
+    };
     const onVisibility = () => {
-      if (document.visibilityState === "hidden") flushPendingSave();
+      if (document.visibilityState === "hidden") void flushPendingSave();
     };
     window.addEventListener("pagehide", onPageHide);
     document.addEventListener("visibilitychange", onVisibility);
@@ -417,21 +619,37 @@ export function useCollaborativeEditor({
     return () => {
       cancelled = true;
       acceptRemoteEditsRef.current = false;
+      autosaveAllowedRef.current = false;
+      if (autosaveGraceTimerRef.current) {
+        clearTimeout(autosaveGraceTimerRef.current);
+        autosaveGraceTimerRef.current = null;
+      }
       if (onSync) provider.off("sync", onSync);
       ytext.unobserve(onText);
       bindingRef.current?.destroy();
       bindingRef.current = null;
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibility);
-      flushPendingSave();
+      void flushPendingSave();
       ytextRef.current = null;
       ydocRef.current = null;
       awarenessRef.current = null;
       setReady(false);
       setCollabReady(false);
+      // Keep editorRef + docOwnedByCollab: Monaco stays mounted/uncontrolled
+      // across Liveblocks status transitions so typing is not wiped.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- room/file identity
   }, [filePath, projectId, room, status]);
+
+  // Monaco onMount is once-only; if Liveblocks becomes ready after mount
+  // (the common case), finishSetup may have missed editorRef — bind here.
+  useEffect(() => {
+    if (!ready) return;
+    const ed = editorRef.current;
+    if (!ed || bindingRef.current) return;
+    bindMonaco(ed);
+  }, [ready, bindMonaco, filePath, projectId]);
 
   // ── Convex/AI → open editor ──────────────────────────────────────────
 
@@ -522,12 +740,12 @@ export function useCollaborativeEditor({
   const reconnecting = status === "disconnected";
   const connecting =
     status === "connecting" || status === "initial" || !ready;
+  const yjsBound = collabReady && ready && !reconnecting;
 
-  const displayValue =
-    value ||
-    initialContent ||
-    loadFileContentDraft(projectId, filePath)?.content ||
-    "";
+  // Prefer live buffer, then durable draft, then Convex — never let an empty
+  // pulse hide in-progress edits (especially on newly created files).
+  const draftContent = loadFileContentDraft(projectId, filePath)?.content;
+  const displayValue = value || draftContent || initialContent || "";
 
   const fallbackOnChange = readOnly
     ? undefined
@@ -552,12 +770,15 @@ export function useCollaborativeEditor({
     displayValue,
     filePath,
     readOnly,
-    collaborative: ready && !reconnecting,
+    // Uncontrolled as soon as collab is ready (and forever after first bind).
+    // Prevents monaco-react controlled replaces from fighting Yjs/Liveblocks.
+    collaborative: docOwnedByCollab || ready,
     connecting,
     reconnecting,
     definitionFiles,
     onGoToDefinition,
-    onChange: ready && !reconnecting ? undefined : fallbackOnChange,
+    // While unbound, persist via React onChange. While bound, Yjs owns saves.
+    onChange: yjsBound ? undefined : fallbackOnChange,
     onCreateEditor,
   };
 }

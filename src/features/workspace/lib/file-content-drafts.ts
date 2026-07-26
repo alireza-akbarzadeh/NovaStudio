@@ -118,16 +118,71 @@ export function resolveSeedContent(
 }
 
 /**
- * True when Liveblocks came back empty/stale and we should push known content
- * into the Y.Doc instead of treating the empty room as authoritative.
+ * Pick what should win when Convex, Liveblocks, Monaco, and drafts disagree.
+ *
+ * This is the core fix for “I saved, refreshed, and my file was wiped”:
+ * a stale non-empty Liveblocks room used to beat Convex, then autosave wrote
+ * that stale buffer back to Convex.
+ */
+export function pickAuthoritativeContent(args: {
+  serverContent: string;
+  ytextContent: string;
+  draft: FileContentDraft | null;
+  monacoContent?: string;
+}): string {
+  const {
+    serverContent,
+    ytextContent,
+    draft,
+    monacoContent = "",
+  } = args;
+
+  // Unsaved local draft that diverged from Convex — never discard it.
+  if (draft?.content && draft.content !== serverContent) {
+    return draft.content;
+  }
+
+  // Live Monaco buffer ahead of both (typed while collab was still connecting).
+  if (
+    monacoContent &&
+    monacoContent !== serverContent &&
+    monacoContent !== ytextContent &&
+    monacoContent.length >= Math.max(serverContent.length, ytextContent.length)
+  ) {
+    return monacoContent;
+  }
+
+  // Draft matches server (or no draft): durable Convex copy vs Liveblocks room.
+  if (!ytextContent) return serverContent || monacoContent;
+  if (!serverContent) return ytextContent || monacoContent;
+  if (ytextContent === serverContent) return serverContent;
+
+  // Stale Liveblocks room is shorter than Convex — Convex wins (classic wipe cause).
+  if (serverContent.length > ytextContent.length) {
+    return serverContent;
+  }
+
+  // Liveblocks is longer: likely peer edits not flushed yet — keep the room.
+  if (ytextContent.length > serverContent.length) {
+    return ytextContent;
+  }
+
+  // Same length but different text — prefer Convex (last durable write).
+  return serverContent;
+}
+
+/**
+ * True when Liveblocks should be rewritten to match the authoritative seed.
  */
 export function shouldReseedLiveblocks(
   ytextContent: string,
   seed: string,
 ): boolean {
   if (!seed) return false;
+  if (ytextContent === seed) return false;
   if (!ytextContent) return true;
-  return false;
+  // Any divergence on cold load: seed already went through pickAuthoritativeContent.
+  return true;
 }
 
 /**
@@ -154,6 +209,11 @@ export function shouldApplyExternalContent(args: {
   // Intentional external write (AI tool): draft was stamped with the incoming
   // server payload before/when Convex updated. Safe to push into the editor.
   if (draft && draft.content === serverContent) {
+    return true;
+  }
+
+  // Server is clearly ahead of a shorter Liveblocks buffer — recover.
+  if (serverContent.length > ytextContent.length) {
     return true;
   }
 
