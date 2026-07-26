@@ -1,10 +1,24 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DEMO_STEPS, STEP_MS } from "./constants";
 
-export function useDemoTour() {
+type UseDemoTourOptions = {
+  /** When false, arrow/space shortcuts are disabled (landing embed). */
+  enableKeyboard?: boolean;
+  /** When false, autoplay is paused (e.g. off-screen). */
+  active?: boolean;
+  /** Loop back to the first step after the finale. */
+  loop?: boolean;
+};
+
+export function useDemoTour({
+  enableKeyboard = true,
+  active = true,
+  loop = false,
+}: UseDemoTourOptions = {}) {
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -20,11 +34,13 @@ export function useDemoTour() {
   const advance = useCallback(() => {
     setIndex((cur) => {
       const current = DEMO_STEPS[cur];
-      if (current?.isFinal) return cur;
+      if (current?.isFinal) {
+        return loop ? 0 : cur;
+      }
       return Math.min(cur + 1, DEMO_STEPS.length - 1);
     });
     setProgress(0);
-  }, []);
+  }, [loop]);
 
   const prev = useCallback(() => {
     setIndex((cur) => Math.max(cur - 1, 0));
@@ -42,8 +58,8 @@ export function useDemoTour() {
   }, []);
 
   useEffect(() => {
-    if (!playing || step.isFinal) {
-      if (step.isFinal) setProgress(1);
+    if (!active || !playing || (step.isFinal && !loop)) {
+      if (step.isFinal && !loop) setProgress(1);
       return;
     }
 
@@ -61,10 +77,21 @@ export function useDemoTour() {
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
     };
-  }, [index, playing, step.isFinal, advance]);
+  }, [index, playing, step.isFinal, advance, active, loop]);
 
   useEffect(() => {
+    if (!enableKeyboard) return;
+
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       if (e.key === "ArrowRight") {
         e.preventDefault();
         advance();
@@ -75,12 +102,12 @@ export function useDemoTour() {
       }
       if (e.key === " ") {
         e.preventDefault();
-        if (!step.isFinal) togglePlaying();
+        if (!step.isFinal || loop) togglePlaying();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [advance, prev, step.isFinal, togglePlaying]);
+  }, [advance, prev, step.isFinal, togglePlaying, enableKeyboard, loop]);
 
   return {
     index,

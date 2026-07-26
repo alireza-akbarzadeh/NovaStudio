@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
 import { Show, SignUpButton } from "@clerk/nextjs";
 import { ArrowRight, Check, Play } from "lucide-react";
-import Link from "next/link";
+import { motion, useScroll, useTransform } from "motion/react";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
@@ -15,6 +14,13 @@ import { GlowOrb } from "./glow-orb";
 import { LANDING } from "./landing-colors";
 import { LandingHeroEditor } from "./landing-hero-editor";
 import { Section } from "./landing-section";
+
+function scrollToDemo() {
+  document.getElementById("demo")?.scrollIntoView({
+    behavior: "smooth",
+    block: "center",
+  });
+}
 
 export function LandingHero() {
   const { openProjects } = useProjectsDialog();
@@ -83,7 +89,7 @@ export function LandingHero() {
           >
             Build Software Together.
             <br />
-            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-blue-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent">
               Powered by AI.
             </span>
           </motion.h1>
@@ -115,14 +121,12 @@ export function LandingHero() {
                 </Button>
               </SignUpButton>
               <Button
-                asChild
                 size="lg"
                 variant="outline"
+                onClick={scrollToDemo}
                 className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
               >
-                <Link href="/demo">
-                  <Play className="mr-2 h-4 w-4" /> Watch Demo
-                </Link>
+                <Play className="mr-2 h-4 w-4" /> Watch Demo
               </Button>
             </Show>
             <Show when="signed-in">
@@ -135,14 +139,12 @@ export function LandingHero() {
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </Button>
               <Button
-                asChild
                 size="lg"
                 variant="outline"
+                onClick={scrollToDemo}
                 className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
               >
-                <Link href="/demo">
-                  <Play className="mr-2 h-4 w-4" /> Watch Demo
-                </Link>
+                <Play className="mr-2 h-4 w-4" /> Watch Demo
               </Button>
             </Show>
           </motion.div>
@@ -164,19 +166,19 @@ export function LandingHero() {
             </span>
           </motion.div>
         </Section>
-
-        <Section className="pb-24">
-          <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.9, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="relative mx-auto max-w-5xl"
-          >
-            <div className="absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[2rem] bg-gradient-to-b from-blue-500/20 via-violet-500/10 to-transparent blur-2xl" />
-            <LandingHeroEditor />
-          </motion.div>
-        </Section>
       </motion.div>
+
+      <Section className="relative pb-24">
+        <motion.div
+          initial={{ opacity: 0, y: 60, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.9, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="relative mx-auto max-w-5xl"
+        >
+          <div className="absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[2rem] bg-gradient-to-b from-blue-500/20 via-violet-500/10 to-transparent blur-2xl" />
+          <LandingHeroEditor />
+        </motion.div>
+      </Section>
     </div>
   );
 }

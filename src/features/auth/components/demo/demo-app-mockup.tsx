@@ -4,12 +4,16 @@ import { motion } from "motion/react";
 import {
   Activity,
   Bot,
+  Bug,
   CheckCircle2,
   ChevronDown,
+  CircleDot,
   Code2,
   GitBranch,
   Layers,
+  MessageSquare,
   MousePointer2,
+  Play,
   Rocket,
   Terminal,
 } from "lucide-react";
@@ -21,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 import {
   DEMO_AVATARS,
+  DEMO_CHAT_MESSAGES,
   DEMO_FILES,
   DEMO_TABS,
   type DemoStep,
@@ -35,6 +40,9 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
   const shipActive = activeStep.id === "ship";
   const collabActive = activeStep.id === "collab";
   const workspaceActive = activeStep.id === "workspace";
+  const chatActive = activeStep.id === "chat";
+  const debugActive = activeStep.id === "debug";
+  const showDebug = debugActive || shipActive;
 
   return (
     <div
@@ -83,10 +91,10 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
         </motion.div>
       </div>
 
-      <div className="grid h-[calc(100%-49px)] grid-cols-12">
+      <div className="grid h-[calc(100%-49px-33px)] grid-cols-12">
         <motion.div
           data-demo-region="workspace"
-          className="col-span-3 hidden border-r border-white/10 bg-white/[0.01] p-3 sm:block"
+          className="col-span-3 hidden border-r border-white/10 bg-white/[0.01] p-3 lg:block"
           animate={{
             backgroundColor: workspaceActive
               ? "rgba(34,211,238,0.04)"
@@ -116,11 +124,23 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
           ))}
         </motion.div>
 
-        <div className="col-span-12 flex flex-col sm:col-span-9">
-          <div className="flex-1 overflow-hidden p-4 font-mono text-[12.5px] leading-relaxed">
+        <div className="col-span-12 flex min-h-0 flex-col lg:col-span-6">
+          <div className="relative min-h-0 flex-1 overflow-hidden p-4 font-mono text-[12.5px] leading-relaxed">
             {CODE_LINES.map((line) => (
               <div key={line.n} className="flex gap-4 whitespace-pre">
-                <span className="select-none text-white/20">{line.n}</span>
+                <span className="flex w-8 select-none items-center justify-end gap-1 text-white/20">
+                  {line.n === 4 ? (
+                    <CircleDot
+                      className={cn(
+                        "h-2.5 w-2.5",
+                        debugActive ? "text-amber-400" : "text-red-400/70",
+                      )}
+                    />
+                  ) : (
+                    <span className="w-2.5" />
+                  )}
+                  {line.n}
+                </span>
                 <span>
                   {line.parts.map((p, j) => (
                     <span key={j} className={"c" in p ? p.c : undefined}>
@@ -130,6 +150,15 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
                 </span>
               </div>
             ))}
+            {debugActive ? (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute top-[4.6rem] left-16 right-4 rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-1 text-[10px] text-amber-100"
+              >
+                Paused on breakpoint · shipFeature · line 4
+              </motion.div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-5">
@@ -177,30 +206,100 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
               </div>
             </motion.div>
 
-            <motion.div
-              data-demo-region="ship"
-              animate={{
-                boxShadow: shipActive
-                  ? `0 0 0 1px ${LANDING.emerald}cc, 0 0 32px ${LANDING.emerald}55`
-                  : "0 0 0 1px rgba(255,255,255,0.06)",
-              }}
-              transition={{ duration: 0.4 }}
-              className="rounded-xl border border-white/10 bg-black/40 p-3.5 font-mono text-[11px] md:col-span-2"
-            >
-              <div className="mb-1.5 flex items-center gap-1.5 text-white/40">
-                <Terminal className="h-3 w-3" /> terminal
-              </div>
-              <div className="text-emerald-400">$ npm test</div>
-              <div className="text-white/50">
-                ✓ 12 passed ·{" "}
-                <span className="text-cyan-400">ready to commit</span>
-              </div>
-              <div className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" /> Synced in 1.8s
-              </div>
-            </motion.div>
+            {debugActive ? (
+              <motion.div
+                data-demo-region="debug"
+                animate={{
+                  boxShadow: "0 0 0 1px #f59e0bcc, 0 0 32px #f59e0b55",
+                }}
+                transition={{ duration: 0.4 }}
+                className="rounded-xl border border-amber-400/20 bg-black/40 p-3.5 font-mono text-[11px] md:col-span-2"
+              >
+                <div className="mb-1.5 flex items-center gap-1.5 text-white/40">
+                  <Bug className="h-3 w-3" /> debug
+                  <span className="ml-auto flex items-center gap-1 text-amber-400">
+                    <Play className="h-3 w-3" /> paused
+                  </span>
+                </div>
+                <div className="text-amber-300">● feature.ts:4</div>
+                <div className="text-white/50">call stack · shipFeature</div>
+                <div className="text-white/40">locals · tests: Promise</div>
+              </motion.div>
+            ) : (
+              <motion.div
+                data-demo-region="ship"
+                animate={{
+                  boxShadow: shipActive
+                    ? `0 0 0 1px ${LANDING.emerald}cc, 0 0 32px ${LANDING.emerald}55`
+                    : "0 0 0 1px rgba(255,255,255,0.06)",
+                }}
+                transition={{ duration: 0.4 }}
+                className="rounded-xl border border-white/10 bg-black/40 p-3.5 font-mono text-[11px] md:col-span-2"
+              >
+                <div className="mb-1.5 flex items-center gap-1.5 text-white/40">
+                  <Terminal className="h-3 w-3" /> terminal
+                </div>
+                <div className="text-emerald-400">$ npm test</div>
+                <div className="text-white/50">
+                  {showDebug ? (
+                    <>
+                      ✓ 12 passed ·{" "}
+                      <span className="text-cyan-400">ready to commit</span>
+                    </>
+                  ) : (
+                    "✓ Running…"
+                  )}
+                </div>
+                {showDebug ? (
+                  <div className="flex items-center gap-1 text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3" /> Synced in 1.8s
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
           </div>
         </div>
+
+        <motion.div
+          data-demo-region="chat"
+          initial={false}
+          animate={{
+            boxShadow: chatActive
+              ? `0 0 0 1px ${LANDING.cyan}cc, 0 0 36px ${LANDING.cyan}44`
+              : "none",
+            backgroundColor: chatActive
+              ? "rgba(34,211,238,0.04)"
+              : "rgba(255,255,255,0.01)",
+          }}
+          transition={{ duration: 0.4 }}
+          className="col-span-3 hidden min-h-0 flex-col border-l border-white/10 p-3 lg:flex"
+        >
+          <div className="mb-3 flex items-center gap-2 text-xs text-white/40">
+            <MessageSquare className="h-3.5 w-3.5" /> Team chat
+            <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-400">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              live
+            </span>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
+            {DEMO_CHAT_MESSAGES.map((m) => (
+              <div key={m.who} className="rounded-lg bg-white/[0.04] p-2.5">
+                <div
+                  className="mb-1 text-[10px] font-medium"
+                  style={{ color: m.color }}
+                >
+                  {m.who}
+                </div>
+                <p className="text-[11px] leading-relaxed text-white/60">
+                  {m.text}
+                </p>
+              </div>
+            ))}
+            <div className="mt-auto rounded-lg border border-white/10 bg-black/30 px-2.5 py-2 text-[10px] text-white/30">
+              Message the team…
+            </div>
+          </div>
+        </motion.div>
       </div>
 
       <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.02] px-4 py-2 text-[11px] text-white/40">
@@ -211,6 +310,11 @@ export function DemoAppMockup({ activeStep }: DemoAppMockupProps) {
           <span className="flex items-center gap-1 text-emerald-400">
             <CheckCircle2 className="h-3 w-3" /> 0 errors
           </span>
+          {debugActive ? (
+            <span className="flex items-center gap-1 text-amber-400">
+              <Bug className="h-3 w-3" /> paused
+            </span>
+          ) : null}
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">

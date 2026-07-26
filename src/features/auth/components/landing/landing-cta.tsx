@@ -78,7 +78,7 @@ export function LandingCta() {
               variant="outline"
               className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
             >
-              <Link href="/demo">
+              <Link href="/#demo">
                 <Play className="mr-2 h-4 w-4" /> Watch Demo
               </Link>
             </Button>

@@ -53,7 +53,10 @@ function radiusForRegion(region: DemoRegionId) {
     case "collab":
       return 999;
     case "workspace":
+    case "chat":
       return 10;
+    case "debug":
+      return 12;
     default:
       return 12;
   }

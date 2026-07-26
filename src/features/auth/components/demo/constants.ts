@@ -1,8 +1,10 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Bot,
+  Bug,
   Check,
   Layers,
+  MessageSquare,
   Rocket,
   Sparkles,
   Users,
@@ -15,7 +17,9 @@ export type DemoRegionId =
   | "frame"
   | "workspace"
   | "collab"
+  | "chat"
   | "ai"
+  | "debug"
   | "ship";
 
 export type DemoStep = {
@@ -46,7 +50,7 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "workspace",
     icon: Layers,
     color: LANDING.cyan,
-    title: "1 · Spin up a cloud workspace",
+    title: "Spin up a cloud workspace",
     desc: "Instant environments in the browser — zero setup. Explorer, files, Git, and terminal are ready the moment you sign in.",
     region: "workspace",
     pad: 0,
@@ -56,27 +60,47 @@ export const DEMO_STEPS: DemoStep[] = [
     id: "collab",
     icon: Users,
     color: LANDING.blue,
-    title: "2 · Build together, live",
+    title: "Build together, live",
     desc: "Invite anyone with a single link. Live cursors, presence, and shared editing mean the whole team codes in the same file at once.",
     region: "collab",
     pad: 8,
     badge: "Collaboration",
   },
   {
+    id: "chat",
+    icon: MessageSquare,
+    color: LANDING.cyan,
+    title: "Realtime team chat",
+    desc: "Talk in context — mention files, share decisions, and keep the thread next to the code so nothing gets lost in Slack.",
+    region: "chat",
+    pad: 2,
+    badge: "Chat",
+  },
+  {
     id: "ai",
     icon: Bot,
     color: LANDING.violet,
-    title: "3 · Meet Ask NovaStudio",
+    title: "Meet Ask NovaStudio",
     desc: "Ask NovaStudio reads your open files and project tree to generate code, catch bugs, write tests, and refactor — right inside the editor.",
     region: "ai",
     pad: 2,
     badge: "Ask NovaStudio",
   },
   {
+    id: "debug",
+    icon: Bug,
+    color: "#f59e0b",
+    title: "Debug without leaving the tab",
+    desc: "Set breakpoints, run scripts, and inspect output in the integrated debug panel — same surface as your editor and terminal.",
+    region: "debug",
+    pad: 2,
+    badge: "Debug",
+  },
+  {
     id: "ship",
     icon: Rocket,
     color: LANDING.emerald,
-    title: "4 · Ship from the browser",
+    title: "Ship from the browser",
     desc: "Run tests, commit, and publish without leaving the tab. Status stays visible so you always know what's live.",
     region: "ship",
     pad: 2,
@@ -87,7 +111,7 @@ export const DEMO_STEPS: DemoStep[] = [
     icon: Check,
     color: LANDING.violet,
     title: "Build the Future Together",
-    desc: "That's the core loop: create, collaborate, ask AI, ship. Ready to try it with your own project?",
+    desc: "That's the loop: create, collaborate, chat, ask AI, debug, ship. Ready to try it with your own project?",
     region: "frame",
     pad: 0,
     badge: "Get started",
@@ -119,4 +143,17 @@ export const DEMO_AVATARS = [
   { i: "JD", c: "from-emerald-500 to-teal-400" },
 ] as const;
 
-export const STEP_MS = 7000;
+export const DEMO_CHAT_MESSAGES = [
+  {
+    who: "Maya",
+    color: LANDING.violet,
+    text: "Pushing the mutex fix now — can you review @feature.ts?",
+  },
+  {
+    who: "Jordan",
+    color: LANDING.cyan,
+    text: "On it. Breakpoint on line 4 looks clean.",
+  },
+] as const;
+
+export const STEP_MS = 6500;

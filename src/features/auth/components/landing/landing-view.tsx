@@ -22,11 +22,13 @@ import { LandingWorkflow } from "./landing-workflow";
 
 export function LandingView() {
   useEffect(() => {
-    if (window.location.hash !== "#pricing") return;
+    const hash = window.location.hash;
+    if (hash !== "#pricing" && hash !== "#demo") return;
+    const targetId = hash.slice(1);
     const id = window.setTimeout(() => {
-      document.getElementById("pricing")?.scrollIntoView({
+      document.getElementById(targetId)?.scrollIntoView({
         behavior: "smooth",
-        block: "start",
+        block: targetId === "demo" ? "center" : "start",
       });
     }, 50);
     return () => window.clearTimeout(id);
