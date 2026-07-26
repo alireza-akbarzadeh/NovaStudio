@@ -10,6 +10,8 @@
 
 import type * as auth from "../auth.js";
 import type * as collab from "../collab.js";
+import type * as deploy from "../deploy.js";
+import type * as deployActions from "../deployActions.js";
 import type * as github from "../github.js";
 import type * as githubActions from "../githubActions.js";
 import type * as githubBranches from "../githubBranches.js";
@@ -25,14 +27,17 @@ import type * as githubPushMutations from "../githubPushMutations.js";
 import type * as githubRepos from "../githubRepos.js";
 import type * as lib_accessibleProjects from "../lib/accessibleProjects.js";
 import type * as lib_createNotification from "../lib/createNotification.js";
+import type * as lib_deploy from "../lib/deploy.js";
 import type * as lib_extensionIds from "../lib/extensionIds.js";
 import type * as lib_github from "../lib/github.js";
 import type * as lib_githubFetch from "../lib/githubFetch.js";
 import type * as lib_importProjectFiles from "../lib/importProjectFiles.js";
+import type * as lib_netlify from "../lib/netlify.js";
 import type * as lib_projectAccess from "../lib/projectAccess.js";
 import type * as lib_projectFiles from "../lib/projectFiles.js";
 import type * as lib_projectTemplates from "../lib/projectTemplates.js";
 import type * as lib_recordActivity from "../lib/recordActivity.js";
+import type * as lib_vercel from "../lib/vercel.js";
 import type * as presence from "../presence.js";
 import type * as projectFiles from "../projectFiles.js";
 import type * as projects from "../projects.js";
@@ -53,6 +58,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   collab: typeof collab;
+  deploy: typeof deploy;
+  deployActions: typeof deployActions;
   github: typeof github;
   githubActions: typeof githubActions;
   githubBranches: typeof githubBranches;
@@ -68,14 +75,17 @@ declare const fullApi: ApiFromModules<{
   githubRepos: typeof githubRepos;
   "lib/accessibleProjects": typeof lib_accessibleProjects;
   "lib/createNotification": typeof lib_createNotification;
+  "lib/deploy": typeof lib_deploy;
   "lib/extensionIds": typeof lib_extensionIds;
   "lib/github": typeof lib_github;
   "lib/githubFetch": typeof lib_githubFetch;
   "lib/importProjectFiles": typeof lib_importProjectFiles;
+  "lib/netlify": typeof lib_netlify;
   "lib/projectAccess": typeof lib_projectAccess;
   "lib/projectFiles": typeof lib_projectFiles;
   "lib/projectTemplates": typeof lib_projectTemplates;
   "lib/recordActivity": typeof lib_recordActivity;
+  "lib/vercel": typeof lib_vercel;
   presence: typeof presence;
   projectFiles: typeof projectFiles;
   projects: typeof projects;

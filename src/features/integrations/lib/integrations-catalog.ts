@@ -4,6 +4,7 @@ export type IntegrationId =
   | "linear"
   | "discord"
   | "vercel"
+  | "netlify"
   | "notion";
 
 export type IntegrationStatus = "connected" | "available" | "coming-soon";
@@ -58,10 +59,19 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     id: "vercel",
     name: "Vercel",
     description:
-      "Preview deploys and production promotion from the workspace publish menu.",
+      "Connect a token and deploy preview or production from the workspace Publish menu.",
     category: "Deploy",
-    status: "coming-soon",
+    status: "available",
     accent: "from-neutral-800 to-black",
+  },
+  {
+    id: "netlify",
+    name: "Netlify",
+    description:
+      "Connect a token and trigger Netlify builds for GitHub-linked projects.",
+    category: "Deploy",
+    status: "available",
+    accent: "from-[#013654] to-[#00AD9F]",
   },
   {
     id: "notion",

@@ -1,107 +1,179 @@
 "use client";
 
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "motion/react";
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
-import Image from "next/image";
+import { ArrowRight, Check, Play } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { cn } from "@/lib/utils";
 
 import { display } from "./display-font";
+import { GlowOrb } from "./glow-orb";
+import { LANDING } from "./landing-colors";
+import { LandingHeroEditor } from "./landing-hero-editor";
+import { Section } from "./landing-section";
 import { PricingLink } from "./pricing-link";
-import { WindowControls } from "./window-controls";
 
 export function LandingHero() {
   const { openProjects } = useProjectsDialog();
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+  const y = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const opacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
-    <section className="relative overflow-hidden pt-16 pb-20 md:pt-20 md:pb-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-1/2 h-[600px] w-[1200px] -translate-x-1/2 rounded-full bg-ws-accent/20 opacity-50 blur-[160px]"
-      />
+    <div id="top" ref={ref} className="relative overflow-hidden pt-32 sm:pt-40">
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#06070d]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(59,130,246,0.18),transparent)]" />
+        <GlowOrb className="top-[10%] left-[-10%]" color={LANDING.violet} size={560} />
+        <GlowOrb
+          className="top-[30%] right-[-10%]"
+          color={LANDING.blue}
+          size={560}
+          delay={3}
+        />
+        <GlowOrb
+          className="top-[55%] left-[40%]"
+          color={LANDING.cyan}
+          size={420}
+          delay={6}
+        />
+        <div className="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(255,255,255,0.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:48px_48px]" />
+      </div>
 
-      <div className="mx-auto max-w-6xl px-6 text-center">
-        <div className="animate-float">
-          <p
+      <motion.div style={{ y, opacity }} className="relative">
+        <Section className="pb-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-white/70 backdrop-blur-md"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
+            </span>
+            Ask NovaStudio — AI in your workspace
+            <ArrowRight className="h-3 w-3" />
+          </motion.div>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65 }}
             className={cn(
               display.className,
-              "mb-6 text-[clamp(2.75rem,9vw,5.75rem)] leading-[0.9] font-extrabold tracking-[-0.04em] text-white",
+              "mb-4 text-[clamp(2.5rem,8vw,4.5rem)] leading-[0.95] font-extrabold tracking-[-0.04em] text-white",
             )}
           >
             NovaStudio
-          </p>
-          <h1 className="mx-auto mb-6 max-w-5xl text-balance text-3xl font-bold tracking-tight text-white md:mb-8 md:text-6xl md:leading-[1.05]">
-            Ship code{" "}
-            <span className="text-[#8b8e96]">at the speed of</span> thought.
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-balance text-base font-medium leading-relaxed text-[#8b8e96] md:mb-12 md:text-xl">
+          </motion.p>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.05 }}
+            className="mx-auto max-w-4xl text-balance text-3xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-6xl"
+          >
+            Build Software Together.
+            <br />
+            <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent">
+              Powered by AI.
+            </span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="mx-auto mt-6 max-w-2xl text-pretty text-base text-white/55 sm:text-lg"
+          >
             The AI workspace for building software. Editor, terminal, Git, and
-            Ask NovaStudio — zero install, in the browser.
-          </p>
-          <div className="mb-12 flex flex-wrap items-center justify-center gap-3 md:mb-14">
+            Ask NovaStudio — collaborate live and ship from the browser.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.25 }}
+            className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
+          >
             <Show when="signed-out">
               <SignUpButton mode="modal" forceRedirectUrl="/projects">
-                <button
-                  type="button"
-                  className="rounded-md bg-ws-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-ws-accent-hover"
+                <Button
+                  size="lg"
+                  className="group h-12 rounded-xl bg-white px-6 text-black hover:bg-white/90"
                 >
-                  Start building
-                </button>
+                  Start Building Free
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Button>
               </SignUpButton>
               <SignInButton mode="modal" forceRedirectUrl="/projects">
-                <button
-                  type="button"
-                  className="rounded-md border border-white/10 bg-transparent px-5 py-2.5 text-[14px] text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white"
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
                 >
-                  Sign in
-                </button>
+                  <Play className="mr-2 h-4 w-4" /> Sign in
+                </Button>
               </SignInButton>
             </Show>
             <Show when="signed-in">
-              <button
-                type="button"
+              <Button
+                size="lg"
                 onClick={() => openProjects()}
-                className="rounded-md bg-ws-accent px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-ws-accent-hover"
+                className="group h-12 rounded-xl bg-white px-6 text-black hover:bg-white/90"
               >
                 Open projects
-              </button>
-              <PricingLink className="rounded-md border border-white/10 bg-transparent px-5 py-2.5 text-[14px] text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white">
-                View pricing
-              </PricingLink>
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
+              >
+                <PricingLink>View pricing</PricingLink>
+              </Button>
             </Show>
-          </div>
-        </div>
+          </motion.div>
 
-        <div
-          className="animate-float relative mx-auto max-w-6xl"
-          style={{ animationDelay: "200ms" }}
-        >
-          <div
-            aria-hidden
-            className="absolute -inset-1 rounded-2xl bg-gradient-to-b from-white/15 to-transparent opacity-10 blur-sm"
-          />
-          <div className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#0C0C0E] shadow-[0_48px_100px_-20px_rgba(0,0,0,0.8)] transition-[border-color,box-shadow] duration-500 ease-out hover:border-white/15 hover:shadow-[0_56px_110px_-20px_rgba(0,0,0,0.85)]">
-            <div className="flex items-center justify-between border-b border-white/5 bg-white/[0.03] px-4 py-3 md:px-5">
-              <WindowControls />
-              <div className="font-mono text-[10px] tracking-widest text-[#9a9a9a] uppercase opacity-60 md:text-[11px]">
-                workspace — NovaStudio
-              </div>
-              <div className="flex w-20 justify-end md:w-24">
-                <div className="size-3.5 rounded-sm bg-white/10 md:size-4" />
-              </div>
-            </div>
-            <Image
-              src="/code.png"
-              alt="NovaStudio AI workspace with code editor, terminal, and Ask NovaStudio assistant"
-              width={1919}
-              height={1076}
-              priority
-              className="h-auto w-full transition-transform duration-700 ease-out group-hover:scale-[1.01]"
-              sizes="(max-width: 1152px) 100vw, 1152px"
-            />
-          </div>
-        </div>
-      </div>
-    </section>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="mt-6 flex items-center justify-center gap-6 text-xs text-white/40"
+          >
+            <span className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> No credit card
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> Zero install
+            </span>
+            <span className="hidden items-center gap-1.5 sm:flex">
+              <Check className="h-3.5 w-3.5 text-emerald-400" /> Browser workspace
+            </span>
+          </motion.div>
+        </Section>
+
+        <Section className="pb-24">
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.9, delay: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="relative mx-auto max-w-5xl"
+          >
+            <div className="absolute -inset-x-10 -top-10 bottom-0 -z-10 rounded-[2rem] bg-gradient-to-b from-blue-500/20 via-violet-500/10 to-transparent blur-2xl" />
+            <LandingHeroEditor />
+          </motion.div>
+        </Section>
+      </motion.div>
+    </div>
   );
 }

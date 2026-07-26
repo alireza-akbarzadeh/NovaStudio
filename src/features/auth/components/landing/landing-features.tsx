@@ -1,52 +1,74 @@
+"use client";
+
+import { motion } from "motion/react";
+
 import { cn } from "@/lib/utils";
 
 import { FEATURES } from "./constants";
 import { display } from "./display-font";
+import { Section, SectionLabel } from "./landing-section";
 
 export function LandingFeatures() {
   return (
-    <section
-      id="features"
-      className="scroll-mt-24 border-t border-white/5 bg-white/[0.01] py-24"
-    >
-      <div className="mx-auto max-w-6xl px-6 md:px-8">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
-          <div className="mb-4 font-mono text-[10px] font-bold tracking-[0.25em] text-ws-accent-soft uppercase">
-            Features
-          </div>
-          <h2
-            className={cn(
-              display.className,
-              "text-3xl font-bold tracking-tight text-white md:text-5xl",
-            )}
-          >
-            Everything you need to ship in the browser.
-          </h2>
-          <p className="mt-5 text-balance text-base leading-relaxed text-[#8b8e96] md:text-lg">
-            From the first file open to the last commit — AI, IDE, Git, and
-            project hub in one workspace.
-          </p>
-        </div>
-        <div className="grid gap-px overflow-hidden rounded-2xl border border-white/5 bg-white/5 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <div
-              key={feature.id}
-              id={feature.id}
-              className="scroll-mt-24 bg-[#121316] p-8 transition-colors duration-300 ease-out hover:bg-white/[0.03] md:p-9"
-            >
-              <div className="mb-5 font-mono text-[10px] font-bold tracking-widest text-ws-accent-soft uppercase">
-                {feature.label}
-              </div>
-              <h3 className="mb-3 text-lg font-bold text-white">
-                {feature.title}
-              </h3>
-              <p className="text-[14px] leading-relaxed text-[#8b8e96]">
-                {feature.description}
-              </p>
-            </div>
-          ))}
-        </div>
+    <Section id="features" className="scroll-mt-24 py-24">
+      <div className="mb-12 text-center">
+        <SectionLabel>Features</SectionLabel>
+        <motion.h2
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className={cn(
+            display.className,
+            "mt-4 text-3xl font-semibold tracking-tight text-white sm:text-5xl",
+          )}
+        >
+          Everything you need to ship
+        </motion.h2>
+        <p className="mx-auto mt-4 max-w-xl text-white/50">
+          A complete platform built for speed, collaboration, and AI-first
+          development.
+        </p>
       </div>
-    </section>
+      <div className="grid gap-5 md:grid-cols-2">
+        {FEATURES.map((f, i) => (
+          <motion.div
+            key={f.title}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5, delay: i * 0.08 }}
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-md transition-colors hover:border-white/20 sm:p-8"
+          >
+            <div
+              className="absolute -top-20 -right-20 h-48 w-48 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-30"
+              style={{ background: f.color }}
+            />
+            <div className="relative">
+              <div
+                className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/10"
+                style={{ background: `${f.color}1a` }}
+              >
+                <f.icon className="h-5 w-5" style={{ color: f.color }} />
+              </div>
+              <h3 className="text-xl font-semibold text-white">{f.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/50">
+                {f.desc}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {f.points.map((p) => (
+                  <span
+                    key={p}
+                    className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/60"
+                  >
+                    {p}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </Section>
   );
 }

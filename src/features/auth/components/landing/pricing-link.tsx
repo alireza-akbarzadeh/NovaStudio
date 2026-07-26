@@ -1,15 +1,16 @@
-import type { ReactNode } from "react";
+import { forwardRef, type AnchorHTMLAttributes, type ReactNode } from "react";
 
-export function PricingLink({
-  className,
-  children,
-}: {
+type PricingLinkProps = {
   className?: string;
   children: ReactNode;
-}) {
-  return (
-    <a href="#pricing" className={className}>
-      {children}
-    </a>
-  );
-}
+} & Pick<AnchorHTMLAttributes<HTMLAnchorElement>, "onClick">;
+
+export const PricingLink = forwardRef<HTMLAnchorElement, PricingLinkProps>(
+  function PricingLink({ className, children, onClick }, ref) {
+    return (
+      <a ref={ref} href="#pricing" className={className} onClick={onClick}>
+        {children}
+      </a>
+    );
+  },
+);

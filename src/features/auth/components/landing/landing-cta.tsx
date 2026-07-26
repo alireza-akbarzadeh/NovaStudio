@@ -1,66 +1,90 @@
 "use client";
 
+import { motion } from "motion/react";
 import { Show, SignUpButton } from "@clerk/nextjs";
+import { ArrowRight, Play } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { useProjectsDialog } from "@/features/projects/components/projects-dialog";
 import { cn } from "@/lib/utils";
 
 import { display } from "./display-font";
+import { GlowOrb } from "./glow-orb";
+import { LANDING } from "./landing-colors";
+import { Section } from "./landing-section";
 import { PricingLink } from "./pricing-link";
 
 export function LandingCta() {
   const { openProjects } = useProjectsDialog();
 
   return (
-    <section className="py-28 md:py-40">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="relative mx-auto max-w-3xl overflow-hidden rounded-[32px] border border-white/5 bg-white/[0.02] p-10 text-center transition-[border-color,box-shadow] duration-500 ease-out hover:border-white/10 hover:shadow-[0_24px_60px_-28px_rgba(0,0,0,0.6)] md:rounded-[40px] md:p-16">
-          <div
-            aria-hidden
-            className="absolute -top-24 -left-24 size-64 rounded-full bg-ws-accent/15 blur-[100px]"
-          />
-          <h2
+    <Section className="py-24">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+        className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-500/[0.12] via-violet-500/[0.08] to-cyan-500/[0.05] p-10 text-center backdrop-blur-md sm:p-16"
+      >
+        <GlowOrb className="top-[-30%] left-[10%]" color={LANDING.violet} size={520} />
+        <GlowOrb
+          className="right-[5%] bottom-[-30%]"
+          color={LANDING.blue}
+          size={460}
+          delay={2}
+        />
+        <div className="relative">
+          <motion.h2
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
             className={cn(
               display.className,
-              "relative mb-6 text-3xl font-bold text-white md:text-4xl",
+              "text-3xl font-semibold tracking-tight text-white sm:text-5xl",
             )}
           >
-            Build for the next era.
-          </h2>
-          <p className="relative mb-10 text-balance text-base text-[#8b8e96] md:text-lg">
+            Build the Future Together
+          </motion.h2>
+          <p className="mx-auto mt-4 max-w-xl text-white/55">
             Create a free account, open a workspace, and start editing with AI,
-            Git, and terminal — then grow into what&apos;s coming next.
+            Git, and terminal — then invite your team.
           </p>
-
-          <div className="relative flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Show when="signed-out">
               <SignUpButton mode="modal" forceRedirectUrl="/projects">
-                <button
-                  type="button"
-                  className="rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-[#121316] transition-all hover:bg-zinc-200"
+                <Button
+                  size="lg"
+                  className="group h-12 rounded-xl bg-white px-6 text-black hover:bg-white/90"
                 >
-                  Create account
-                </button>
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </Button>
               </SignUpButton>
             </Show>
             <Show when="signed-in">
-              <button
-                type="button"
+              <Button
+                size="lg"
                 onClick={() => openProjects()}
-                className="rounded-xl bg-white px-8 py-3.5 text-sm font-bold text-[#121316] transition-all hover:bg-zinc-200"
+                className="group h-12 rounded-xl bg-white px-6 text-black hover:bg-white/90"
               >
                 Open projects
-              </button>
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </Button>
             </Show>
-            <PricingLink className="rounded-xl border border-white/10 px-8 py-3.5 text-sm font-medium text-[#bcbec4] transition-colors hover:border-white/20 hover:text-white">
-              View pricing
-            </PricingLink>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="h-12 rounded-xl border-white/15 bg-white/5 px-6 text-white backdrop-blur-md hover:bg-white/10"
+            >
+              <PricingLink>
+                <Play className="mr-2 h-4 w-4" /> View pricing
+              </PricingLink>
+            </Button>
           </div>
-          <p className="relative mt-8 font-mono text-[11px] tracking-[0.2em] text-[#9a9a9a]/40 uppercase">
-            Browser workspace / AI + Git + terminal
-          </p>
         </div>
-      </div>
-    </section>
+      </motion.div>
+    </Section>
   );
 }

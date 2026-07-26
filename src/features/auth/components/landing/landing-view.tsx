@@ -4,14 +4,18 @@ import { useEffect } from "react";
 
 import { PricingSection } from "@/features/billing/components/pricing-section";
 
+import { CursorGlow } from "./cursor-glow";
+import { LandingAi } from "./landing-ai";
+import { LandingCollab } from "./landing-collab";
 import { LandingCta } from "./landing-cta";
 import { LandingFaq } from "./landing-faq";
 import { LandingFeatures } from "./landing-features";
 import { LandingFooter } from "./landing-footer";
 import { LandingHero } from "./landing-hero";
+import { LandingLogoMarquee } from "./landing-logo-marquee";
 import { LandingNav } from "./landing-nav";
-import { LandingProductShowcases } from "./landing-product-showcases";
-import { LandingRoadmap } from "./landing-roadmap";
+import { LandingStats } from "./landing-stats";
+import { LandingTestimonials } from "./landing-testimonials";
 import { LandingWorkflow } from "./landing-workflow";
 
 export function LandingView() {
@@ -27,16 +31,22 @@ export function LandingView() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-[#121316] font-sans text-[#dfdfdf] selection:bg-ws-accent/30 selection:text-white">
+    <div className="relative min-h-dvh overflow-x-hidden bg-[#06070d] font-sans text-white antialiased selection:bg-ws-accent/30 selection:text-white">
+      <CursorGlow />
       <LandingNav />
-      <LandingHero />
-      <LandingFeatures />
-      <LandingProductShowcases />
-      <LandingRoadmap />
-      <LandingWorkflow />
-      <PricingSection />
-      <LandingFaq />
-      <LandingCta />
+      <main>
+        <LandingHero />
+        <LandingLogoMarquee />
+        <LandingStats />
+        <LandingFeatures />
+        <LandingAi />
+        <LandingCollab />
+        <LandingWorkflow />
+        <LandingTestimonials />
+        <PricingSection />
+        <LandingFaq />
+        <LandingCta />
+      </main>
       <LandingFooter />
     </div>
   );

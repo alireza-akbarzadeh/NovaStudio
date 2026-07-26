@@ -104,6 +104,48 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  /** Vercel / Netlify account links. Tokens are never returned to clients. */
+  deployConnections: defineTable({
+    userId: v.string(),
+    provider: v.union(v.literal("vercel"), v.literal("netlify")),
+    accessToken: v.string(),
+    accountId: v.optional(v.string()),
+    accountName: v.optional(v.string()),
+    accountSlug: v.optional(v.string()),
+    teamId: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_provider", ["userId", "provider"]),
+
+  /** Linked Vercel project / Netlify site per NovaStudio project. */
+  projectDeployTargets: defineTable({
+    projectId: v.id("projects"),
+    provider: v.union(v.literal("vercel"), v.literal("netlify")),
+    externalId: v.string(),
+    name: v.string(),
+    url: v.optional(v.string()),
+    teamId: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_provider", ["projectId", "provider"]),
+
+  deployments: defineTable({
+    projectId: v.id("projects"),
+    provider: v.union(v.literal("vercel"), v.literal("netlify")),
+    externalId: v.string(),
+    status: v.string(),
+    url: v.optional(v.string()),
+    inspectorUrl: v.optional(v.string()),
+    target: v.union(v.literal("preview"), v.literal("production")),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_project_created", ["projectId", "createdAt"]),
+
   projectFiles: defineTable({
     projectId: v.id("projects"),
     name: v.string(),
