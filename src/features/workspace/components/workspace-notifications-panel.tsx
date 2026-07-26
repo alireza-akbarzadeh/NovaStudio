@@ -40,6 +40,10 @@ const toneDot = {
   orange: "bg-orange-500",
 } as const;
 
+function isExternalHref(href: string) {
+  return /^https?:\/\//i.test(href);
+}
+
 export function WorkspaceNotificationsPanel() {
   const open = useWorkspaceStore((s) => s.notificationsPanelOpen);
   const closeNotificationsPanel = useWorkspaceStore(
@@ -222,6 +226,22 @@ export function WorkspaceNotificationsPanel() {
               );
 
               if (item.href) {
+                if (isExternalHref(item.href)) {
+                  return (
+                    <li key={item.id}>
+                      <a
+                        href={item.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={rowClass}
+                        onClick={() => void onActivate(item.id, item.read)}
+                      >
+                        {content}
+                      </a>
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={item.id}>
                     <Link

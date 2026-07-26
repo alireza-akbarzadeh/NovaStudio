@@ -13,6 +13,7 @@ import {
   MoonIcon,
   PackageIcon,
   PuzzleIcon,
+  RocketIcon,
   SearchIcon,
   SettingsIcon,
   SparklesIcon,
@@ -29,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useWorkspaceNotifications } from "@/features/projects/hooks/use-workspace";
+import { useProjectDeployments } from "@/features/deploy/hooks/use-deploy-connection";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import {
@@ -54,6 +56,8 @@ type RailButtonProps = {
   children: React.ReactNode;
   side?: "left" | "right";
   className?: string;
+  /** Overrides the active side indicator color (e.g. emerald when deploy is live). */
+  indicatorClassName?: string;
 };
 
 const LEFT_ITEMS: ActivityItem[] = [
@@ -109,6 +113,7 @@ function RailButton({
   children,
   side = "left",
   className,
+  indicatorClassName,
 }: RailButtonProps) {
   return (
     <Tooltip>
@@ -132,6 +137,7 @@ function RailButton({
               className={cn(
                 "absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-ws-accent",
                 side === "left" ? "left-0" : "right-0",
+                indicatorClassName,
               )}
             />
           ) : null}
@@ -210,7 +216,11 @@ export function WorkspaceLeftActivityBar() {
 }
 
 /** JetBrains-style right activity rail — AI, notifications, terminal, settings. */
-export function WorkspaceRightActivityBar() {
+export function WorkspaceRightActivityBar({
+  projectId,
+}: {
+  projectId?: string;
+}) {
   const isApple = useIsApplePlatform();
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const notificationsPanelOpen = useWorkspaceStore(
@@ -218,10 +228,12 @@ export function WorkspaceRightActivityBar() {
   );
   const chatPanelOpen = useWorkspaceStore((s) => s.chatPanelOpen);
   const commentsPanelOpen = useWorkspaceStore((s) => s.commentsPanelOpen);
+  const deployPanelOpen = useWorkspaceStore((s) => s.deployPanelOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
   const notifications = useWorkspaceNotifications(50);
+  const deployments = useProjectDeployments(projectId, 8);
   const { errorCount, warningCount } = useMonacoProblems();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -234,6 +246,11 @@ export function WorkspaceRightActivityBar() {
   const problemCount = errorCount + warningCount;
   const unreadCount =
     notifications?.filter((item) => !item.read).length ?? 0;
+  // Site is "live" if any recent deploy succeeded — not only the latest attempt.
+  const isDeployLive = Boolean(
+    projectId &&
+      deployments?.some((d) => d.status === "ready" && Boolean(d.url)),
+  );
 
   return (
     <ActivityRailShell label="Tool windows" side="right">
@@ -246,6 +263,38 @@ export function WorkspaceRightActivityBar() {
           side="right"
         >
           <SparklesIcon className="size-4" strokeWidth={1.75} />
+        </RailButton>
+
+        <RailButton
+          label={isDeployLive ? "Deploy · Live" : "Deploy"}
+          shortcut={formatModShortcut("mod+alt+d", isApple)}
+          active={deployPanelOpen}
+          onClick={() => runCommand("toggleDeployPanel")}
+          side="right"
+          indicatorClassName={isDeployLive ? "bg-emerald-400" : undefined}
+          className={cn(
+            isDeployLive &&
+              "text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300",
+            isDeployLive &&
+              deployPanelOpen &&
+              "bg-emerald-500/15 shadow-[inset_0_0_0_1px] shadow-emerald-500/40",
+          )}
+        >
+          <span className="relative">
+            <RocketIcon
+              className={cn(
+                "size-4",
+                isDeployLive && "animate-ws-deploy-live text-emerald-400",
+              )}
+              strokeWidth={1.75}
+            />
+            {isDeployLive ? (
+              <span
+                aria-hidden
+                className="absolute -top-0.5 -right-0.5 size-1.5 rounded-full bg-emerald-400 animate-ws-deploy-live-dot"
+              />
+            ) : null}
+          </span>
         </RailButton>
 
         <RailButton

@@ -8,6 +8,7 @@ import {
   ExternalLinkIcon,
   KeyRoundIcon,
   Loader2Icon,
+  MinusIcon,
   RocketIcon,
   Settings2Icon,
 } from "lucide-react";
@@ -17,16 +18,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { ConnectDeployDialog } from "@/features/deploy/components/connect-deploy-dialog";
 import {
@@ -52,7 +43,7 @@ import { useProject } from "@/features/projects/hooks/use-projects";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
-type WorkspaceDeployMenuProps = {
+type WorkspaceDeployPanelProps = {
   projectId: string;
 };
 
@@ -223,7 +214,9 @@ function DeployRow({
   );
 }
 
-export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
+export function WorkspaceDeployPanel({ projectId }: WorkspaceDeployPanelProps) {
+  const open = useWorkspaceStore((s) => s.deployPanelOpen);
+  const closeDeployPanel = useWorkspaceStore((s) => s.closeDeployPanel);
   const project = useProject({ projectId });
   const netlify = useDeployConnection("netlify");
   const vercel = useDeployConnection("vercel");
@@ -232,12 +225,10 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
   const { connect: connectGitHub, isConnecting: isConnectingGitHub } =
     useConnectGitHub();
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
-  const { deploy, deployingProvider, isDeploying } =
-    useDeployProject(projectId);
-  const deployments = useProjectDeployments(projectId, 6);
+  const { deploy, deployingProvider } = useDeployProject(projectId);
+  const deployments = useProjectDeployments(projectId, 12);
   const netlifyTarget = useProjectDeployTarget(projectId, "netlify");
   const refreshStatus = useRefreshDeploymentStatus();
-  const [open, setOpen] = useState(false);
   const [connectProvider, setConnectProvider] = useState<DeployProvider | null>(
     null,
   );
@@ -246,7 +237,6 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
   // Account integrations ≠ this project having a repo Netlify/Vercel can build.
   const hasLinkedRepo = Boolean(project?.githubRepoUrl);
   const latest = deployments?.[0];
-  const latestMeta = latest ? statusMeta(latest.status) : null;
   const hasLiveSite = Boolean(
     netlifyTarget?.url &&
       deployments?.some((d) => d.provider === "netlify" && d.status === "ready"),
@@ -267,9 +257,9 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
     [deployments],
   );
 
-  // Poll in-progress Netlify deploys while the popover is open (or always lightly).
+  // Poll in-progress Netlify deploys while the panel is open.
   useEffect(() => {
-    if (buildingIds.length === 0) return;
+    if (!open || buildingIds.length === 0) return;
 
     let cancelled = false;
     const tick = async () => {
@@ -289,14 +279,14 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [buildingIds, refreshStatus]);
+  }, [buildingIds, open, refreshStatus]);
 
   const onPublishProjectToGitHub = () => {
     if (!isGitHubConnected || !hasRepoScope) {
       void connectGitHub();
       return;
     }
-    setOpen(false);
+    closeDeployPanel();
     openGitInitDialog();
   };
 
@@ -332,70 +322,49 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
     }
   };
 
+  if (!open) return null;
+
   return (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Deploy"
-                className={cn(
-                  "relative size-7 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
-                  latestMeta?.label === "Live" && "text-emerald-400",
-                  latestMeta?.label === "Failed" && "text-rose-400",
-                  latestMeta?.label === "Building" && "text-sky-400",
-                )}
-              >
-                {isDeploying || refreshingId ? (
-                  <Loader2Icon
-                    className="size-3.5 animate-spin"
-                    strokeWidth={1.75}
-                  />
-                ) : (
-                  <RocketIcon className="size-3.5" strokeWidth={1.75} />
-                )}
-                {latestMeta ? (
-                  <span
-                    className={cn(
-                      "absolute top-0.5 right-0.5 size-1.5 rounded-full",
-                      latestMeta.dot,
-                    )}
-                  />
-                ) : null}
-              </Button>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent
-            side="bottom"
-            sideOffset={6}
-            className="border border-ws-border-strong bg-ws-hover px-2.5 py-1.5 text-xs text-ws-text [&_svg]:hidden"
-          >
-            Deploy
-          </TooltipContent>
-        </Tooltip>
-
-        <PopoverContent
-          align="end"
-          sideOffset={8}
-          className="w-[340px] border-ws-border bg-ws-panel p-0 text-ws-text shadow-xl"
-        >
-          <div className="border-b border-ws-border px-3.5 py-3">
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <p className="text-[13px] font-semibold tracking-tight">Deploy</p>
-                <p className="mt-0.5 text-[11px] text-ws-text-muted">
-                  Publish to Netlify or Vercel and watch build status.
-                </p>
-              </div>
-              <RocketIcon className="size-4 text-ws-accent" strokeWidth={1.75} />
-            </div>
+      <aside
+        aria-label="Deploy"
+        className="flex h-full w-[min(420px,42vw)] shrink-0 flex-col overflow-hidden rounded-[10px] border border-ws-border-subtle bg-ws-panel shadow-[0_1px_0_color-mix(in_oklab,var(--ws-text)_4%,transparent)]"
+      >
+        <header className="flex h-10 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
+          <RocketIcon
+            className={cn(
+              "size-3.5 text-ws-text-muted",
+              refreshingId && "animate-spin text-sky-400",
+              latest?.status === "ready" && "text-emerald-400",
+              (latest?.status === "error" || latest?.status === "failed") &&
+                "text-rose-400",
+              latest?.status === "building" && "text-sky-400",
+            )}
+            strokeWidth={1.75}
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-[13px] font-semibold tracking-tight text-ws-text">
+              Deploy
+            </h2>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 rounded-md text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            aria-label="Hide deploy"
+            onClick={closeDeployPanel}
+          >
+            <MinusIcon className="size-3.5" strokeWidth={1.75} />
+          </Button>
+        </header>
 
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-3 px-3.5 py-3">
+            <p className="text-[11px] leading-relaxed text-ws-text-muted">
+              Publish to Netlify or Vercel and watch build status.
+            </p>
+
             {!hasLinkedRepo ? (
               <div className="rounded-lg border border-dashed border-ws-border bg-ws-stage/50 px-3 py-3">
                 <p className="text-[12px] leading-relaxed text-ws-text-muted">
@@ -590,56 +559,54 @@ export function WorkspaceDeployMenu({ projectId }: WorkspaceDeployMenuProps) {
               )}
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center justify-between border-t border-ws-border px-3.5 py-2.5">
+        <div className="flex shrink-0 items-center justify-between border-t border-ws-border-subtle px-3 py-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            asChild
+          >
+            <Link href="/projects/integrations">
+              <Settings2Icon className="size-3.5" />
+              Manage tokens
+            </Link>
+          </Button>
+          {latest?.status === "ready" && latest.url ? (
             <Button
               type="button"
-              variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 px-2 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
-              asChild
+              className="h-7 rounded-md bg-emerald-500/15 px-2.5 text-[11px] text-emerald-400 hover:bg-emerald-500/25"
+              onClick={() => window.open(latest.url, "_blank", "noopener")}
             >
-              <Link href="/projects/integrations">
-                <Settings2Icon className="size-3.5" />
-                Manage tokens
-              </Link>
+              Open live site
+              <ExternalLinkIcon className="size-3" />
             </Button>
-            {latest?.status === "ready" && latest.url ? (
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 rounded-md bg-emerald-500/15 px-2.5 text-[11px] text-emerald-400 hover:bg-emerald-500/25"
-                onClick={() =>
-                  window.open(latest.url, "_blank", "noopener")
-                }
-              >
-                Open live site
-                <ExternalLinkIcon className="size-3" />
-              </Button>
-            ) : latest &&
-              (latest.status === "error" || latest.status === "failed") &&
-              (latest.inspectorUrl ||
-                (netlifySiteName && latest.provider === "netlify")) ? (
-              <Button
-                type="button"
-                size="sm"
-                className="h-7 rounded-md bg-rose-500/15 px-2.5 text-[11px] text-rose-400 hover:bg-rose-500/25"
-                onClick={() => {
-                  const href =
-                    latest.inspectorUrl ||
-                    (netlifySiteName
-                      ? `${netlifyDeploysUrl(netlifySiteName)}/${encodeURIComponent(latest.externalId)}`
-                      : undefined);
-                  if (href) window.open(href, "_blank", "noopener");
-                }}
-              >
-                View build logs
-                <ExternalLinkIcon className="size-3" />
-              </Button>
-            ) : null}
-          </div>
-        </PopoverContent>
-      </Popover>
+          ) : latest &&
+            (latest.status === "error" || latest.status === "failed") &&
+            (latest.inspectorUrl ||
+              (netlifySiteName && latest.provider === "netlify")) ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 rounded-md bg-rose-500/15 px-2.5 text-[11px] text-rose-400 hover:bg-rose-500/25"
+              onClick={() => {
+                const href =
+                  latest.inspectorUrl ||
+                  (netlifySiteName
+                    ? `${netlifyDeploysUrl(netlifySiteName)}/${encodeURIComponent(latest.externalId)}`
+                    : undefined);
+                if (href) window.open(href, "_blank", "noopener");
+              }}
+            >
+              View build logs
+              <ExternalLinkIcon className="size-3" />
+            </Button>
+          ) : null}
+        </div>
+      </aside>
 
       <ConnectDeployDialog
         provider={connectProvider ?? "netlify"}

@@ -7,6 +7,10 @@ import { playSoundIfEnabled } from "@/features/notifications/lib/play-sound";
 import type { NotificationSoundKind } from "@/features/notifications/lib/sound-pack";
 import { useWorkspaceNotifications } from "@/features/projects/hooks/use-workspace";
 
+function isExternalHref(href: string) {
+  return /^https?:\/\//i.test(href);
+}
+
 /**
  * Plays a sound and shows a toast when a new Convex notification arrives.
  */
@@ -29,12 +33,42 @@ export function useLiveNotificationAlerts() {
       const kind = (item.soundKind ?? "notify") as NotificationSoundKind;
       void playSoundIfEnabled(kind);
 
+      const action =
+        item.href && isExternalHref(item.href)
+          ? {
+              label: "Open",
+              onClick: () =>
+                window.open(item.href, "_blank", "noopener,noreferrer"),
+            }
+          : item.href
+            ? {
+                label: "Open",
+                onClick: () => {
+                  window.location.assign(item.href!);
+                },
+              }
+            : undefined;
+
       if (kind === "success") {
-        toast.success(item.title);
+        toast.success(item.title, {
+          description: item.body,
+          action,
+        });
       } else if (kind === "error") {
-        toast.error(item.title);
+        toast.error(item.title, {
+          description: item.body,
+          action,
+        });
       } else if (kind === "warning") {
-        toast.warning(item.title);
+        toast.warning(item.title, {
+          description: item.body,
+          action,
+        });
+      } else {
+        toast(item.title, {
+          description: item.body,
+          action,
+        });
       }
     }
   }, [notifications]);

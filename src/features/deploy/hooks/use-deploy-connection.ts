@@ -182,11 +182,11 @@ export function useDeployProject(projectId: string) {
   };
 }
 
-export function useProjectDeployments(projectId: string, limit = 8) {
+export function useProjectDeployments(projectId?: string | null, limit = 8) {
   const { isAuthenticated } = useConvexAuth();
   return useQuery(
     api.deploy.listProjectDeployments,
-    isAuthenticated
+    isAuthenticated && projectId
       ? { projectId: projectId as Id<"projects">, limit }
       : "skip",
   );

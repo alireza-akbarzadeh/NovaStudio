@@ -161,6 +161,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+u",
   },
   {
+    id: "toggleDeployPanel",
+    label: "Toggle Deploy Panel",
+    keywords: "deploy netlify vercel publish production preview rocket",
+    shortcut: "mod+alt+d",
+  },
+  {
     id: "toggleSidebar",
     label: "Toggle Sidebar",
     keywords: "explorer panel left",

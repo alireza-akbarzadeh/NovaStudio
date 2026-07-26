@@ -43,6 +43,7 @@ export type ZenSnapshot = {
   chatPanelOpen: boolean;
   commentsPanelOpen: boolean;
   notificationsPanelOpen: boolean;
+  deployPanelOpen: boolean;
 };
 
 export type TreeClipboard = {
@@ -90,6 +91,7 @@ type WorkspaceState = WorkspacePrefs & {
   notificationsPanelOpen: boolean;
   chatPanelOpen: boolean;
   commentsPanelOpen: boolean;
+  deployPanelOpen: boolean;
   /** Selected line-comment thread in the comments panel. */
   activeCommentThreadId: string | null;
   /** Draft line for creating a new comment (from glyph / command). */
@@ -155,6 +157,9 @@ type WorkspaceState = WorkspacePrefs & {
   toggleCommentsPanel: () => void;
   openCommentsPanel: () => void;
   closeCommentsPanel: () => void;
+  toggleDeployPanel: () => void;
+  openDeployPanel: () => void;
+  closeDeployPanel: () => void;
   setActiveCommentThreadId: (id: string | null) => void;
   setCommentDraftLine: (line: number | null) => void;
   openGutterContextMenu: (menu: {
@@ -337,6 +342,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   notificationsPanelOpen: false,
   chatPanelOpen: false,
   commentsPanelOpen: false,
+  deployPanelOpen: false,
   activeCommentThreadId: null,
   commentDraftLine: null,
   gutterContextMenu: null,
@@ -411,6 +417,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               chatPanelOpen: false,
               notificationsPanelOpen: false,
               commentsPanelOpen: false,
+              deployPanelOpen: false,
             }
           : {}),
       };
@@ -425,6 +432,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               chatPanelOpen: false,
               aiPanelOpen: false,
               commentsPanelOpen: false,
+              deployPanelOpen: false,
             }
           : {}),
       };
@@ -435,6 +443,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       chatPanelOpen: false,
       aiPanelOpen: false,
       commentsPanelOpen: false,
+      deployPanelOpen: false,
     }),
   closeNotificationsPanel: () => set({ notificationsPanelOpen: false }),
   toggleChatPanel: () =>
@@ -447,6 +456,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               notificationsPanelOpen: false,
               aiPanelOpen: false,
               commentsPanelOpen: false,
+              deployPanelOpen: false,
             }
           : {}),
       };
@@ -457,6 +467,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       notificationsPanelOpen: false,
       aiPanelOpen: false,
       commentsPanelOpen: false,
+      deployPanelOpen: false,
     }),
   closeChatPanel: () => set({ chatPanelOpen: false }),
   toggleCommentsPanel: () =>
@@ -469,6 +480,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
               notificationsPanelOpen: false,
               aiPanelOpen: false,
               chatPanelOpen: false,
+              deployPanelOpen: false,
             }
           : { activeCommentThreadId: null, commentDraftLine: null }),
       };
@@ -479,6 +491,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       notificationsPanelOpen: false,
       aiPanelOpen: false,
       chatPanelOpen: false,
+      deployPanelOpen: false,
     }),
   closeCommentsPanel: () =>
     set({
@@ -486,6 +499,30 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       activeCommentThreadId: null,
       commentDraftLine: null,
     }),
+  toggleDeployPanel: () =>
+    set((s) => {
+      const nextOpen = !s.deployPanelOpen;
+      return {
+        deployPanelOpen: nextOpen,
+        ...(nextOpen
+          ? {
+              notificationsPanelOpen: false,
+              aiPanelOpen: false,
+              chatPanelOpen: false,
+              commentsPanelOpen: false,
+            }
+          : {}),
+      };
+    }),
+  openDeployPanel: () =>
+    set({
+      deployPanelOpen: true,
+      notificationsPanelOpen: false,
+      aiPanelOpen: false,
+      chatPanelOpen: false,
+      commentsPanelOpen: false,
+    }),
+  closeDeployPanel: () => set({ deployPanelOpen: false }),
   setActiveCommentThreadId: (id) => set({ activeCommentThreadId: id }),
   setCommentDraftLine: (line) => set({ commentDraftLine: line }),
   openGutterContextMenu: (menu) => set({ gutterContextMenu: menu }),
@@ -712,6 +749,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           chatPanelOpen: s.chatPanelOpen,
           commentsPanelOpen: s.commentsPanelOpen,
           notificationsPanelOpen: s.notificationsPanelOpen,
+          deployPanelOpen: s.deployPanelOpen,
         },
         sidebarOpen: false,
         terminalOpen: false,
@@ -719,6 +757,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         chatPanelOpen: false,
         commentsPanelOpen: false,
         notificationsPanelOpen: false,
+        deployPanelOpen: false,
         activeCommentThreadId: null,
         commentDraftLine: null,
       };
@@ -736,6 +775,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         chatPanelOpen: snap?.chatPanelOpen ?? false,
         commentsPanelOpen: snap?.commentsPanelOpen ?? false,
         notificationsPanelOpen: snap?.notificationsPanelOpen ?? false,
+        deployPanelOpen: snap?.deployPanelOpen ?? false,
       };
     }),
   toggleZenMode: () => {

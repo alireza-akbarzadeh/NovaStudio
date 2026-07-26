@@ -22,6 +22,7 @@ export type CommandId =
   | "toggleNotifications"
   | "toggleChatPanel"
   | "toggleCommentsPanel"
+  | "toggleDeployPanel"
   | "openSettings"
   | "toggleSettings"
   | "closeSettings"
@@ -126,6 +127,12 @@ export const workspaceCommands: Command[] = [
     run: () => store().toggleCommentsPanel(),
   },
   {
+    id: "toggleDeployPanel",
+    shortcut: "mod+alt+d",
+    allowInInput: true,
+    run: () => store().toggleDeployPanel(),
+  },
+  {
     id: "openSettings",
     shortcut: "mod+,",
     allowInInput: true,
@@ -155,6 +162,7 @@ export const workspaceCommands: Command[] = [
       else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
       else if (s.chatPanelOpen) s.closeChatPanel();
       else if (s.commentsPanelOpen) s.closeCommentsPanel();
+      else if (s.deployPanelOpen) s.closeDeployPanel();
       else if (s.zenMode) s.exitZenMode();
     },
   },
@@ -427,6 +435,7 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.notificationsPanelOpen &&
       !s.chatPanelOpen &&
       !s.commentsPanelOpen &&
+      !s.deployPanelOpen &&
       !s.zenMode
     ) {
       return false;

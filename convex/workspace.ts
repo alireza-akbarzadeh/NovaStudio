@@ -358,6 +358,7 @@ export const listNotifications = query({
     return rows.map((row) => ({
       id: row._id,
       title: row.title,
+      body: row.body,
       time: formatRelativeTime(row.createdAt),
       tone: row.tone ?? "violet",
       href: row.href,

@@ -230,6 +230,8 @@
     var(--delay, 0ms);
   --animate-float: float 8s ease-in-out infinite;
   --animate-cursor-blink: cursor-blink 1s step-end infinite;
+  --animate-ws-deploy-live: ws-deploy-live 2.4s ease-in-out infinite;
+  --animate-ws-deploy-live-dot: ws-deploy-live-dot 1.8s ease-in-out infinite;
 
   @keyframes cell-ripple {
     0% {
@@ -260,6 +262,32 @@
     }
     50% {
       opacity: 0;
+    }
+  }
+
+  @keyframes ws-deploy-live {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 0 transparent);
+      transform: translateY(0);
+    }
+    50% {
+      filter: drop-shadow(0 0 7px color-mix(in oklab, #34d399 65%, transparent));
+      transform: translateY(-0.5px);
+    }
+  }
+
+  @keyframes ws-deploy-live-dot {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+      box-shadow: 0 0 0 0 color-mix(in oklab, #34d399 55%, transparent);
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.85;
+      box-shadow: 0 0 0 4px color-mix(in oklab, #34d399 0%, transparent);
     }
   }
 }
