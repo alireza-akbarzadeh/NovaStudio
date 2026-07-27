@@ -332,9 +332,10 @@ These are the biggest daily-friction gaps you called out.
 ### 25. Linear integration — ready for review
 
 - Integrations hub **Linear** card: personal API key · verifies viewer + org on connect
-- Git panel **Linear** tab: team picker · Mine / Team / Cycle filters · list · create · change state
+- Git panel **Linear** tab: team picker · Mine / Team / Cycle filters · list · create · assign · change state
+- Create task: title · assignee · Todo / In Progress / Done · optional active cycle
+- Issue detail: **Todo → In Progress → Done** shortcuts · assignee picker · full workflow state select · Link to project
 - Active **cycle** (Linear sprint) filter + optional “Add to active cycle” on create
-- Issue detail: workflow state select · Open in Linear · **Link to project** (sync target)
 - Git panel **Info** tab: compact linked-issue summary · unlink
 - **Push to GitHub** → comment on linked issue + move to In Review / In Progress when available
 - **Deploy success** → comment + move to Done / Completed when available in team workflow

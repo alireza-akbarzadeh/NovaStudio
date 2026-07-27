@@ -25,7 +25,7 @@ async function linearGraphql<T>(
   }
 
   const payload = (await response.json()) as GraphqlResponse<T>;
-  if (payload.errors?.length) {
+  if (payload.errors?.length && !payload.data) {
     throw new Error(payload.errors.map((error) => error.message).join("; "));
   }
   if (!payload.data) {
@@ -46,6 +46,7 @@ export type LinearWorkflowState = {
   name: string;
   type: string;
   color?: string;
+  position?: number;
 };
 
 export type LinearTeamSummary = {
@@ -61,6 +62,21 @@ export type LinearCycleSummary = {
   endsAt?: string | null;
 };
 
+export type LinearMember = {
+  id: string;
+  name: string;
+  displayName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+};
+
+export type LinearAssignee = {
+  id: string;
+  name: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+};
+
 export type LinearIssueListItem = {
   id: string;
   identifier: string;
@@ -68,7 +84,7 @@ export type LinearIssueListItem = {
   url: string;
   updatedAt: string;
   state?: { id: string; name: string; type: string; color?: string };
-  assignee?: { name: string } | null;
+  assignee?: LinearAssignee | null;
   cycle?: { id: string; name: string; number: number } | null;
 };
 
@@ -109,6 +125,25 @@ export function normalizeLinearIssueIdentifier(raw: string) {
   return `${match[1]}-${match[2]}`;
 }
 
+function parseLinearIssueIdentifier(raw: string): {
+  teamKey: string;
+  number: number;
+  identifier: string;
+} {
+  const identifier = normalizeLinearIssueIdentifier(raw);
+  const match = identifier.match(/^([A-Z0-9]+)-(\d+)$/);
+  if (!match) {
+    throw new Error(
+      "Use a Linear issue ID like ENG-123 (team key + number)",
+    );
+  }
+  return {
+    teamKey: match[1],
+    number: Number(match[2]),
+    identifier,
+  };
+}
+
 export async function verifyLinearApiKey(apiKey: string): Promise<{
   viewerName: string;
   organizationName?: string;
@@ -137,13 +172,21 @@ export async function fetchLinearIssueByIdentifier(
   apiKey: string,
   identifier: string,
 ): Promise<LinearIssueSummary> {
-  const normalized = normalizeLinearIssueIdentifier(identifier);
+  const { teamKey, number, identifier: normalized } =
+    parseLinearIssueIdentifier(identifier);
+  // `issueSearch` is deprecated — look up by team key + number instead.
   const data = await linearGraphql<{
-    issueSearch: { nodes: LinearIssueSummary[] };
+    issues: { nodes: LinearIssueSummary[] };
   }>(
     apiKey,
-    `query IssueSearch($query: String!) {
-      issueSearch(query: $query, first: 5) {
+    `query IssueByIdentifier($teamKey: String!, $number: Float!) {
+      issues(
+        first: 1
+        filter: {
+          team: { key: { eq: $teamKey } }
+          number: { eq: $number }
+        }
+      ) {
         nodes {
           id
           identifier
@@ -158,10 +201,10 @@ export async function fetchLinearIssueByIdentifier(
         }
       }
     }`,
-    { query: normalized },
+    { teamKey, number },
   );
 
-  const issue = data.issueSearch.nodes.find(
+  const issue = data.issues.nodes.find(
     (node) => node.identifier.toUpperCase() === normalized,
   );
   if (!issue) {
@@ -324,14 +367,76 @@ export async function listLinearWorkflowStates(
     `query TeamStates($teamId: String!) {
       team(id: $teamId) {
         states {
-          nodes { id name type color }
+          nodes { id name type color position }
         }
       }
     }`,
     { teamId },
   );
 
-  return data.team?.states.nodes ?? [];
+  const states = data.team?.states.nodes ?? [];
+  return [...states].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+}
+
+export async function listLinearTeamMembers(
+  apiKey: string,
+  teamId: string,
+): Promise<LinearMember[]> {
+  const data = await linearGraphql<{
+    team: {
+      members: { nodes: LinearMember[] };
+    } | null;
+  }>(
+    apiKey,
+    `query TeamMembers($teamId: String!) {
+      team(id: $teamId) {
+        members(first: 100) {
+          nodes {
+            id
+            name
+            displayName
+            email
+            avatarUrl
+          }
+        }
+      }
+    }`,
+    { teamId },
+  );
+
+  const members = data.team?.members.nodes ?? [];
+  return [...members].sort((a, b) =>
+    (a.displayName || a.name).localeCompare(b.displayName || b.name),
+  );
+}
+
+/** Pick a representative workflow state for Todo / Doing / Done shortcuts. */
+export function pickStateByStage(
+  states: LinearWorkflowState[],
+  stage: "todo" | "started" | "done",
+): LinearWorkflowState | null {
+  const sorted = [...states].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+
+  if (stage === "todo") {
+    return (
+      sorted.find((s) => s.type === "unstarted") ??
+      sorted.find((s) => s.type === "backlog") ??
+      sorted.find((s) => s.type === "triage") ??
+      null
+    );
+  }
+  if (stage === "started") {
+    return sorted.find((s) => s.type === "started") ?? null;
+  }
+  return (
+    sorted.find((s) => s.type === "completed") ??
+    sorted.find((s) => s.type === "canceled") ??
+    null
+  );
 }
 
 function buildIssueFilterObject(
@@ -394,7 +499,7 @@ export async function listLinearIssues(args: {
             url
             updatedAt
             state { id name type color }
-            assignee { name }
+            assignee { id name displayName avatarUrl }
             cycle { id name number }
           }
         }
@@ -417,13 +522,21 @@ export async function getLinearIssueDetail(
   apiKey: string,
   identifier: string,
 ): Promise<LinearIssueDetail> {
-  const normalized = normalizeLinearIssueIdentifier(identifier);
+  const { teamKey, number, identifier: normalized } =
+    parseLinearIssueIdentifier(identifier);
+  // `issueSearch` is deprecated — look up by team key + number instead.
   const data = await linearGraphql<{
-    issueSearch: { nodes: LinearIssueDetail[] };
+    issues: { nodes: LinearIssueDetail[] };
   }>(
     apiKey,
-    `query IssueDetail($query: String!) {
-      issueSearch(query: $query, first: 5) {
+    `query IssueDetail($teamKey: String!, $number: Float!) {
+      issues(
+        first: 1
+        filter: {
+          team: { key: { eq: $teamKey } }
+          number: { eq: $number }
+        }
+      ) {
         nodes {
           id
           identifier
@@ -433,29 +546,40 @@ export async function getLinearIssueDetail(
           createdAt
           updatedAt
           state { id name type color }
-          assignee { name }
+          assignee { id name displayName avatarUrl }
           cycle { id name number }
           team {
             id
             name
             key
             states {
-              nodes { id name type color }
+              nodes { id name type color position }
             }
           }
         }
       }
     }`,
-    { query: normalized },
+    { teamKey, number },
   );
 
-  const issue = data.issueSearch.nodes.find(
+  const issue = data.issues.nodes.find(
     (node) => node.identifier.toUpperCase() === normalized,
   );
   if (!issue) {
     throw new Error(`Linear issue ${normalized} was not found`);
   }
-  return issue;
+
+  const states = [...(issue.team.states.nodes ?? [])].sort(
+    (a, b) => (a.position ?? 0) - (b.position ?? 0),
+  );
+
+  return {
+    ...issue,
+    team: {
+      ...issue.team,
+      states: { nodes: states },
+    },
+  };
 }
 
 export async function createLinearIssue(args: {
@@ -464,6 +588,8 @@ export async function createLinearIssue(args: {
   title: string;
   description?: string;
   cycleId?: string;
+  assigneeId?: string;
+  stateId?: string;
 }): Promise<LinearIssueListItem> {
   const input: Record<string, unknown> = {
     teamId: args.teamId,
@@ -474,6 +600,12 @@ export async function createLinearIssue(args: {
   }
   if (args.cycleId) {
     input.cycleId = args.cycleId;
+  }
+  if (args.assigneeId) {
+    input.assigneeId = args.assigneeId;
+  }
+  if (args.stateId) {
+    input.stateId = args.stateId;
   }
 
   const data = await linearGraphql<{
@@ -493,7 +625,7 @@ export async function createLinearIssue(args: {
           url
           updatedAt
           state { id name type color }
-          assignee { name }
+          assignee { id name displayName avatarUrl }
           cycle { id name number }
         }
       }
@@ -505,4 +637,57 @@ export async function createLinearIssue(args: {
     throw new Error("Linear could not create the issue");
   }
   return data.issueCreate.issue;
+}
+
+export async function updateLinearIssue(args: {
+  apiKey: string;
+  issueId: string;
+  stateId?: string;
+  /** Pass null to unassign */
+  assigneeId?: string | null;
+}): Promise<{
+  state?: { id: string; name: string; type: string; color?: string };
+  assignee?: LinearAssignee | null;
+}> {
+  const input: Record<string, unknown> = {};
+  if (args.stateId) {
+    input.stateId = args.stateId;
+  }
+  if (args.assigneeId !== undefined) {
+    input.assigneeId = args.assigneeId;
+  }
+  if (Object.keys(input).length === 0) {
+    throw new Error("Nothing to update");
+  }
+
+  const data = await linearGraphql<{
+    issueUpdate: {
+      success: boolean;
+      issue?: {
+        state?: { id: string; name: string; type: string; color?: string };
+        assignee?: LinearAssignee | null;
+      };
+    };
+  }>(
+    args.apiKey,
+    `mutation IssueUpdateFields($id: String!, $input: IssueUpdateInput!) {
+      issueUpdate(id: $id, input: $input) {
+        success
+        issue {
+          state { id name type color }
+          assignee { id name displayName avatarUrl }
+        }
+      }
+    }`,
+    { id: args.issueId, input },
+  );
+
+  if (!data.issueUpdate.success) {
+    throw new Error("Linear could not update the issue");
+  }
+
+  return {
+    state: data.issueUpdate.issue?.state,
+    assignee: data.issueUpdate.issue?.assignee ?? null,
+  };
 }

@@ -11,13 +11,18 @@ import {
   getActiveLinearCycle,
   getLinearIssueDetail,
   listLinearIssues,
+  listLinearTeamMembers,
   listLinearTeams,
+  listLinearWorkflowStates,
+  pickStateByStage,
   syncLinearIssue,
+  updateLinearIssue,
   updateLinearIssueState,
   verifyLinearApiKey,
   type LinearCycleSummary,
   type LinearIssueDetail,
   type LinearIssueListItem,
+  type LinearMember,
   type LinearTeamSummary,
 } from "./lib/linear";
 
@@ -153,27 +158,50 @@ export const getIssue = action({
   },
 });
 
+export const listMembers = action({
+  args: {
+    teamId: v.string(),
+  },
+  handler: async (ctx, args): Promise<LinearMember[]> => {
+    const { connection } = await requireLinearConnection(ctx);
+    return await listLinearTeamMembers(connection.apiKey, args.teamId);
+  },
+});
+
 export const createIssue = action({
   args: {
     teamId: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
     addToActiveCycle: v.optional(v.boolean()),
+    assigneeId: v.optional(v.string()),
+    /** todo | started | done — maps to team workflow state types */
+    initialStage: v.optional(
+      v.union(v.literal("todo"), v.literal("started"), v.literal("done")),
+    ),
   },
   handler: async (ctx, args): Promise<LinearIssueListItem> => {
     const { connection } = await requireLinearConnection(ctx);
     const title = args.title.trim();
     if (!title) {
-      throw new Error("Issue title is required");
+      throw new Error("Task title is required");
     }
 
     let cycleId: string | undefined;
     if (args.addToActiveCycle) {
       const cycle = await getActiveLinearCycle(connection.apiKey, args.teamId);
-      if (!cycle) {
-        throw new Error("No active cycle for this team");
-      }
-      cycleId = cycle.id;
+      // Team may not run cycles — create the task without a cycle instead of failing.
+      cycleId = cycle?.id;
+    }
+
+    let stateId: string | undefined;
+    if (args.initialStage) {
+      const states = await listLinearWorkflowStates(
+        connection.apiKey,
+        args.teamId,
+      );
+      const stageState = pickStateByStage(states, args.initialStage);
+      stateId = stageState?.id;
     }
 
     return await createLinearIssue({
@@ -182,6 +210,8 @@ export const createIssue = action({
       title,
       description: args.description,
       cycleId,
+      assigneeId: args.assigneeId,
+      stateId,
     });
   },
 });
@@ -202,6 +232,23 @@ export const updateIssueState = action({
       args.stateId,
     );
     return { stateName: stateName ?? null };
+  },
+});
+
+export const updateIssue = action({
+  args: {
+    issueId: v.string(),
+    stateId: v.optional(v.string()),
+    assigneeId: v.optional(v.union(v.string(), v.null())),
+  },
+  handler: async (ctx, args) => {
+    const { connection } = await requireLinearConnection(ctx);
+    return await updateLinearIssue({
+      apiKey: connection.apiKey,
+      issueId: args.issueId,
+      stateId: args.stateId,
+      assigneeId: args.assigneeId,
+    });
   },
 });
 
