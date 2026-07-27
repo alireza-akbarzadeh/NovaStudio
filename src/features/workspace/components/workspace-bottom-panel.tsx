@@ -4,13 +4,16 @@ import {
   BugIcon,
   CircleAlertIcon,
   CircleXIcon,
+  GaugeIcon,
   SquareTerminalIcon,
 } from "lucide-react";
 
 import { WorkspaceDebugPanel } from "@/features/workspace/components/workspace-debug-panel";
+import { WorkspacePerformancePanel } from "@/features/workspace/components/workspace-performance-panel";
 import { WorkspaceProblemsPanel } from "@/features/workspace/components/workspace-problems-panel";
 import { WorkspaceTerminalPanel } from "@/features/workspace/components/workspace-terminal-panel";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
+import { IS_DEV } from "@/features/workspace/lib/is-dev";
 import { useDebugStore } from "@/features/workspace/store/debug-store";
 import {
   useWorkspaceStore,
@@ -25,6 +28,7 @@ type WorkspaceBottomPanelProps = {
 const TABS: { id: BottomPanelTab; label: string }[] = [
   { id: "problems", label: "Problems" },
   { id: "debug", label: "Debug" },
+  ...(IS_DEV ? [{ id: "performance" as const, label: "Performance" }] : []),
   { id: "terminal", label: "Terminal" },
 ];
 
@@ -58,6 +62,8 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
                 <SquareTerminalIcon className="size-3 opacity-70" />
               ) : tab.id === "debug" ? (
                 <BugIcon className="size-3 opacity-70" />
+              ) : tab.id === "performance" ? (
+                <GaugeIcon className="size-3 opacity-70" />
               ) : errorCount > 0 ? (
                 <CircleXIcon className="size-3 text-ws-danger-soft" />
               ) : warningCount > 0 ? (
@@ -103,6 +109,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
         {activeTab === "debug" ? (
           <div className="absolute inset-0">
             <WorkspaceDebugPanel projectId={projectId} />
+          </div>
+        ) : null}
+        {IS_DEV && activeTab === "performance" ? (
+          <div className="absolute inset-0">
+            <WorkspacePerformancePanel projectId={projectId} />
           </div>
         ) : null}
       </div>

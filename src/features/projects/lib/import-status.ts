@@ -9,6 +9,11 @@ export const IMPORT_ETA_MS = 45_000;
  */
 export const IMPORT_TIMEOUT_MS = 5 * 60 * 1000;
 
+type ImportProgressProject = Pick<
+  Doc<"projects">,
+  "importStatus" | "importStartedAt" | "importTotalFiles" | "importDoneFiles"
+>;
+
 export function formatImportDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -17,6 +22,57 @@ export function formatImportDuration(ms: number): string {
     return `${seconds}s`;
   }
   return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+}
+
+export function getImportFileProgress(
+  project: ImportProgressProject,
+): { percent: number; label: string } | null {
+  if (project.importStatus !== "importing") {
+    return null;
+  }
+
+  const total = project.importTotalFiles;
+  const done = project.importDoneFiles ?? 0;
+
+  if (typeof total === "number" && total > 0) {
+    const percent = Math.min(99, Math.round((done / total) * 100));
+    return {
+      percent,
+      label: `Importing ${done.toLocaleString()} / ${total.toLocaleString()} files…`,
+    };
+  }
+
+  return null;
+}
+
+export function getImportProgressPercent(
+  project: ImportProgressProject,
+  now = Date.now(),
+): number | null {
+  const fileProgress = getImportFileProgress(project);
+  if (fileProgress) {
+    return fileProgress.percent;
+  }
+
+  if (project.importStatus !== "importing") {
+    return null;
+  }
+
+  const startedAt = project.importStartedAt ?? now;
+  const elapsed = Math.max(0, now - startedAt);
+  return Math.min(95, Math.round((elapsed / IMPORT_TIMEOUT_MS) * 100));
+}
+
+export function getImportProgressLabel(
+  project: ImportProgressProject,
+  now = Date.now(),
+): string | null {
+  const fileProgress = getImportFileProgress(project);
+  if (fileProgress) {
+    return fileProgress.label;
+  }
+
+  return getImportStatusLabel(project, now);
 }
 
 export function isImportTimedOut(
@@ -32,11 +88,16 @@ export function isImportTimedOut(
 export function getImportStatusLabel(
   project: Pick<
     Doc<"projects">,
-    "importStatus" | "importStartedAt" | "exportStatus"
+    "importStatus" | "importStartedAt" | "exportStatus" | "importTotalFiles" | "importDoneFiles"
   >,
   now = Date.now(),
 ): string | null {
   if (project.importStatus === "importing") {
+    const fileProgress = getImportFileProgress(project);
+    if (fileProgress) {
+      return fileProgress.label;
+    }
+
     const startedAt = project.importStartedAt ?? now;
     const elapsed = Math.max(0, now - startedAt);
     if (elapsed >= IMPORT_TIMEOUT_MS) {

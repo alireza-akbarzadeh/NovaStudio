@@ -136,6 +136,16 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     keywords: "debugger breakpoints run node inspect",
     shortcut: "mod+shift+y",
   },
+  ...(process.env.NODE_ENV === "development"
+    ? ([
+        {
+          id: "showPerformance" as const,
+          label: "Toggle Performance Panel",
+          keywords: "memory heap dev debug observability stats ram monitor chart",
+          shortcut: "mod+shift+.",
+        },
+      ] satisfies PaletteCommandMeta[])
+    : []),
   {
     id: "toggleAiPanel",
     label: "Toggle AI Panel",

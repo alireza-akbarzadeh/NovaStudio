@@ -98,6 +98,21 @@ export function clearMemoryDraftsForOtherProjects(activeProjectId: string) {
   }
 }
 
+/** Dev observability — in-memory draft count and approximate bytes for a project. */
+export function getMemoryDraftStats(projectId: string) {
+  let count = 0;
+  let bytes = 0;
+  const prefix = `${projectId}:`;
+
+  for (const [key, draft] of memoryDrafts.entries()) {
+    if (!key.startsWith(prefix)) continue;
+    count++;
+    bytes += draft.content.length * 2;
+  }
+
+  return { count, bytes, cap: MAX_MEMORY_DRAFTS };
+}
+
 /**
  * Prefer a local draft when it differs from the server copy.
  *

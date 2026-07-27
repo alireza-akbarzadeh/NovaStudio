@@ -8,6 +8,8 @@ import { action } from "./_generated/server";
 import { getClerkGitHubToken, parseRepoUrl } from "./lib/github";
 import { fetchRepoFiles } from "./lib/githubFetch";
 
+const WRITE_BATCH_SIZE = 40;
+
 /** Match client `IMPORT_TIMEOUT_MS` — fail hung clones instead of running for hours. */
 const IMPORT_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -139,13 +141,29 @@ export const processCloneJob = action({
         throw new Error("No importable files found in this repository.");
       }
 
-      await ctx.runMutation(internal.githubImportMutations.importFiles, {
+      await ctx.runMutation(internal.githubImportMutations.setImportProgress, {
         projectId: args.projectId,
-        files,
+        totalFiles: files.length,
+        doneFiles: 0,
       });
+
+      for (let i = 0; i < files.length; i += WRITE_BATCH_SIZE) {
+        const batch = files.slice(i, i + WRITE_BATCH_SIZE);
+        await ctx.runMutation(internal.githubImportMutations.insertImportBatch, {
+          projectId: args.projectId,
+          files: batch,
+        });
+        await ctx.runMutation(internal.githubImportMutations.setImportProgress, {
+          projectId: args.projectId,
+          doneFiles: Math.min(i + batch.length, files.length),
+          totalFiles: files.length,
+        });
+      }
+
       await ctx.runMutation(internal.githubImportMutations.completeImport, {
         projectId: args.projectId,
         commitSha,
+        fileCount: files.length,
       });
 
       return { ok: true, fileCount: files.length };

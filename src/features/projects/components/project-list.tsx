@@ -15,7 +15,7 @@ import { useExpireStaleImports } from "@/features/projects/hooks/use-expire-stal
 import { useImportStatusLabel } from "@/features/projects/hooks/use-import-status-label";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useProjectPartial } from "@/features/projects/hooks/use-projects";
-import { IMPORT_ETA_MS } from "@/features/projects/lib/import-status";
+import { getImportProgressPercent } from "@/features/projects/lib/import-status";
 import { cn } from "@/lib/utils";
 
 interface ProjectListProps {
@@ -42,15 +42,7 @@ function ContinueCard({
     return () => window.clearInterval(id);
   }, [isImporting, project.importStartedAt]);
 
-  const progress = isImporting
-    ? Math.min(
-        95,
-        Math.round(
-          (Math.max(0, now - (project.importStartedAt ?? now)) / IMPORT_ETA_MS) *
-            100,
-        ),
-      )
-    : null;
+  const progress = isImporting ? getImportProgressPercent(project, now) : null;
 
   return (
     <div className="mb-3 px-1">
@@ -63,14 +55,14 @@ function ContinueCard({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
         onClick={() => {
-          if (isImporting || opening) return;
+          if (opening) return;
           onOpen(project);
         }}
-        disabled={isImporting || opening}
+        disabled={opening}
         className={cn(
           "group flex w-full items-center gap-3.5 rounded-sm border border-border/60 bg-background/40 px-3 py-3 text-left outline-none",
           "transition-colors duration-150",
-          isImporting || opening
+          opening
             ? "cursor-default"
             : "hover:border-ring/30 hover:bg-foreground/6 focus-visible:bg-foreground/6 focus-visible:ring-1 focus-visible:ring-ring/40",
         )}
@@ -85,8 +77,10 @@ function ContinueCard({
           <span className="mt-0.5 block truncate text-[12px] text-muted-foreground">
             {opening
               ? "Opening…"
-              : (status ??
-                `Updated ${formatDistanceToNow(project.updatedAt, { addSuffix: true })}`)}
+              : isImporting
+                ? (status ?? "Cloning from GitHub…")
+                : (status ??
+                  `Updated ${formatDistanceToNow(project.updatedAt, { addSuffix: true })}`)}
           </span>
           {progress !== null ? (
             <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-foreground/8">
@@ -102,7 +96,12 @@ function ContinueCard({
             {opening ? "Opening" : "Resume"}
             <ArrowRightIcon className="size-3.5 transition-transform duration-150 group-hover:translate-x-0.5" />
           </span>
-        ) : null}
+        ) : (
+          <span className="flex shrink-0 items-center gap-1 text-[11px] text-violet-600 dark:text-violet-300">
+            {opening ? "Opening" : "Open"}
+            <ArrowRightIcon className="size-3.5" />
+          </span>
+        )}
       </motion.button>
     </div>
   );

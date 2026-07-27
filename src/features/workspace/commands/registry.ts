@@ -18,6 +18,7 @@ export type CommandId =
   | "toggleTerminal"
   | "showProblems"
   | "showDebug"
+  | "showPerformance"
   | "toggleAiPanel"
   | "toggleNotifications"
   | "toggleChatPanel"
@@ -102,6 +103,17 @@ export const workspaceCommands: Command[] = [
     allowInInput: true,
     run: () => store().showDebugPanel(),
   },
+  ...(process.env.NODE_ENV === "development"
+    ? ([
+        {
+          id: "showPerformance" as const,
+          shortcut: "mod+shift+.",
+          aliases: ["mod+shift+>"],
+          allowInInput: true,
+          run: () => store().showPerformancePanel(),
+        },
+      ] satisfies Command[])
+    : []),
   {
     id: "toggleAiPanel",
     shortcut: "mod+l",

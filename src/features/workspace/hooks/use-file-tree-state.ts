@@ -19,7 +19,7 @@ import {
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 import {
-  collectFolderIds,
+  collectAncestorFolderIds,
   findNodeByPath,
   flattenVisibleTree,
 } from "../components/file-tree/tree-utils";
@@ -38,7 +38,11 @@ export function useFileTreeState(projectId: string) {
   const pathname = usePathname();
   const setFileTreeState = useWorkspaceStore((s) => s.setFileTreeState);
   const getFileTreeState = useWorkspaceStore((s) => s.getFileTreeState);
+  const collapseSeq = useWorkspaceStore(
+    (s) => s.fileTreeCollapseSeqByProject[projectId] ?? 0,
+  );
   const skipPersistRef = useRef(true);
+  const lastCollapseSeqRef = useRef(collapseSeq);
 
   const [collapseKey, setCollapseKey] = useState(0);
   const [openFolderIds, setOpenFolderIds] = useState<Set<Id<"projectFiles">>>(
@@ -72,6 +76,19 @@ export function useFileTreeState(projectId: string) {
       skipPersistRef.current = false;
     });
   }, [getFileTreeState, projectId]);
+
+  useEffect(() => {
+    if (collapseSeq === lastCollapseSeqRef.current) {
+      return;
+    }
+    lastCollapseSeqRef.current = collapseSeq;
+    skipPersistRef.current = true;
+    setOpenFolderIds(new Set());
+    setCollapseKey((key) => key + 1);
+    queueMicrotask(() => {
+      skipPersistRef.current = false;
+    });
+  }, [collapseSeq]);
 
   useEffect(() => {
     if (skipPersistRef.current) {
@@ -114,19 +131,11 @@ export function useFileTreeState(projectId: string) {
 
     if (isFiltering && filteredTree) {
       setOpenFolderIds(new Set(collectFolderIdsFromTree(filteredTree)));
-      return;
     }
-
-    const stored = getFileTreeState(projectId);
-    const hasStoredFolders = stored.openFolderIds.length > 0;
-
-    if (collapseKey === 0 && !hasStoredFolders) {
-      setOpenFolderIds(new Set(collectFolderIds(tree)));
-    }
-  }, [collapseKey, filteredTree, getFileTreeState, isFiltering, projectId, tree]);
+  }, [filteredTree, isFiltering, tree]);
 
   useEffect(() => {
-    if (!tree || focusedId !== null) {
+    if (!tree) {
       return;
     }
 
@@ -135,13 +144,31 @@ export function useFileTreeState(projectId: string) {
       return;
     }
 
-    const activeNode = findNodeByPath(tree, decodeURIComponent(activePath));
-    if (activeNode) {
-      setFocusedId(activeNode.id);
-      setSelectedIds(new Set([activeNode.id]));
-      setSelectionAnchorId(activeNode.id);
+    const decodedPath = decodeURIComponent(activePath);
+    const activeNode = findNodeByPath(tree, decodedPath);
+    if (!activeNode) {
+      return;
     }
-  }, [tree, pathname, focusedId]);
+
+    setFocusedId((current) => (current === activeNode.id ? current : activeNode.id));
+    setSelectedIds(new Set([activeNode.id]));
+    setSelectionAnchorId(activeNode.id);
+
+    const ancestors = collectAncestorFolderIds(tree, decodedPath);
+    if (ancestors.length > 0) {
+      setOpenFolderIds((current) => {
+        const next = new Set(current);
+        let changed = false;
+        for (const id of ancestors) {
+          if (!next.has(id)) {
+            next.add(id);
+            changed = true;
+          }
+        }
+        return changed ? next : current;
+      });
+    }
+  }, [tree, pathname]);
 
   useEffect(() => {
     if (!files) return;

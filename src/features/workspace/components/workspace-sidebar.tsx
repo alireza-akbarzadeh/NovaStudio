@@ -1,7 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
-
 import { WorkspaceActivityPanel } from "@/features/workspace/components/workspace-activity-panel";
 import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
@@ -13,23 +11,10 @@ import {
   LEFT_PANEL_LABELS,
   useWorkspaceStore,
 } from "@/features/workspace/store/workspace-store";
-import { cn } from "@/lib/utils";
 
 type WorkspaceSidebarProps = {
   projectId: string;
 };
-
-function KeepAlivePanel({
-  active,
-  children,
-}: {
-  active: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <div className={cn("h-full min-h-0", !active && "hidden")}>{children}</div>
-  );
-}
 
 export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
@@ -42,12 +27,12 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
         </p>
       </div>
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        <KeepAlivePanel active={leftPanelView === "explorer"}>
+        {leftPanelView === "explorer" ? (
           <WorkspaceExplorerPanel projectId={projectId} />
-        </KeepAlivePanel>
-        <KeepAlivePanel active={leftPanelView === "search"}>
+        ) : null}
+        {leftPanelView === "search" ? (
           <WorkspaceSearchPanel projectId={projectId} />
-        </KeepAlivePanel>
+        ) : null}
         {leftPanelView === "git" ? (
           <WorkspaceGitPanel projectId={projectId} />
         ) : null}
@@ -55,7 +40,9 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
         {leftPanelView === "dependencies" ? (
           <WorkspaceDependenciesPanel projectId={projectId} />
         ) : null}
-        {leftPanelView === "extensions" ? <WorkspaceExtensionsPanel /> : null}
+        {leftPanelView === "extensions" ? (
+          <WorkspaceExtensionsPanel />
+        ) : null}
         {leftPanelView === "activity" ? (
           <WorkspaceActivityPanel projectId={projectId} />
         ) : null}

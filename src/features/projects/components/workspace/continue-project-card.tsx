@@ -21,6 +21,8 @@ import { useTogglePin } from "@/features/projects/hooks/use-workspace";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import {
   formatImportDuration,
+  getImportProgressLabel,
+  getImportProgressPercent,
   IMPORT_ETA_MS,
   IMPORT_TIMEOUT_MS,
 } from "@/features/projects/lib/import-status";
@@ -66,12 +68,13 @@ function useImportProgress(project: WorkspaceProject) {
   const elapsed = Math.max(0, now - startedAt);
   const remainingEta = Math.max(0, IMPORT_ETA_MS - elapsed);
   const remainingTimeout = Math.max(0, IMPORT_TIMEOUT_MS - elapsed);
-  const progress = Math.min(
-    95,
-    Math.round((elapsed / IMPORT_TIMEOUT_MS) * 100),
-  );
+  const progress = getImportProgressPercent(project, now);
+  const fileLabel = getImportProgressLabel(project, now);
+
   let label: string;
-  if (remainingTimeout <= 0) {
+  if (fileLabel && project.importTotalFiles) {
+    label = fileLabel;
+  } else if (remainingTimeout <= 0) {
     label = "Import timed out — use Retry";
   } else if (remainingEta > 0) {
     label = `Cloning from GitHub… ~${formatImportDuration(remainingEta)} left`;
@@ -253,9 +256,16 @@ export function ContinueProjectCard({
 
           {isImporting ? (
             <div className="mt-4 flex justify-end">
-              <Button size="sm" className="rounded-xl" disabled>
-                <Loader2Icon className="size-3.5 animate-spin" />
-                Cloning…
+              <Button
+                size="sm"
+                className="rounded-xl"
+                disabled={isPending}
+                onClick={() => openProject(project.id)}
+              >
+                {isPending ? (
+                  <Loader2Icon className="size-3.5 animate-spin" />
+                ) : null}
+                {isPending ? "Opening…" : "Open while cloning"}
               </Button>
             </div>
           ) : null}

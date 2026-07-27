@@ -32,6 +32,8 @@ export type WorkspaceProject = {
   /** GitHub clone lifecycle — present while importing / after failure. */
   importStatus?: "importing" | "completed" | "failed";
   importStartedAt?: number;
+  importTotalFiles?: number;
+  importDoneFiles?: number;
   source?: "blank" | "github" | "template";
   githubRepoUrl?: string;
   githubBranch?: string;

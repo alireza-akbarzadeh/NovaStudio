@@ -11,7 +11,7 @@ import { getImportStatusLabel } from "@/features/projects/lib/import-status";
 export function useImportStatusLabel(
   project: Pick<
     Doc<"projects">,
-    "importStatus" | "importStartedAt" | "exportStatus"
+    "importStatus" | "importStartedAt" | "exportStatus" | "importTotalFiles" | "importDoneFiles"
   >,
 ): string | null {
   const [now, setNow] = useState(() => Date.now());

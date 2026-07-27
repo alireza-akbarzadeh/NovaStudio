@@ -19,7 +19,7 @@ export type ExplorerTab = "project" | "changes" | "quality";
 
 export type GitPanelTab = "changes" | "stashes" | "history" | "info";
 
-export type BottomPanelTab = "terminal" | "problems" | "debug";
+export type BottomPanelTab = "terminal" | "problems" | "debug" | "performance";
 
 export type EditorPanelView = "code" | "preview";
 
@@ -147,6 +147,8 @@ type WorkspaceState = WorkspacePrefs & {
   searchFolderScope: string | null;
   searchPanelMode: SearchPanelMode;
   fileTreeByProject: Record<string, FileTreeProjectState>;
+  /** Bumped when a panel requests the file tree to collapse (memory cleanup). */
+  fileTreeCollapseSeqByProject: Record<string, number>;
   /** Distraction-free layout — hides chrome and centers the editor. */
   zenMode: boolean;
   zenSnapshot: ZenSnapshot | null;
@@ -163,6 +165,7 @@ type WorkspaceState = WorkspacePrefs & {
   toggleTerminal: () => void;
   showProblemsPanel: () => void;
   showDebugPanel: () => void;
+  showPerformancePanel: () => void;
   setBottomPanelTab: (tab: BottomPanelTab) => void;
   toggleAiPanel: () => void;
   toggleNotificationsPanel: () => void;
@@ -251,6 +254,7 @@ type WorkspaceState = WorkspacePrefs & {
     patch: Partial<FileTreeProjectState>,
   ) => void;
   getFileTreeState: (projectId: string) => FileTreeProjectState;
+  collapseFileTree: (projectId: string) => void;
   openFindInFiles: (options?: {
     folderScope?: string | null;
     mode?: SearchPanelMode;
@@ -399,6 +403,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   searchFolderScope: null,
   searchPanelMode: "text",
   fileTreeByProject: {},
+  fileTreeCollapseSeqByProject: {},
   zenMode: false,
   zenSnapshot: null,
   editorPanelView: "code",
@@ -427,6 +432,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return { terminalOpen: false };
       }
       return { terminalOpen: true, bottomPanelTab: "debug" };
+    }),
+  showPerformancePanel: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "performance") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "performance" };
     }),
   setBottomPanelTab: (tab) =>
     set({ bottomPanelTab: tab, terminalOpen: true }),
@@ -768,6 +780,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const state = get().fileTreeByProject[projectId];
     return state ?? DEFAULT_FILE_TREE_STATE;
   },
+  collapseFileTree: (projectId) =>
+    set((s) => ({
+      fileTreeByProject: {
+        ...s.fileTreeByProject,
+        [projectId]: {
+          ...DEFAULT_FILE_TREE_STATE,
+          ...s.fileTreeByProject[projectId],
+          openFolderIds: [],
+        },
+      },
+      fileTreeCollapseSeqByProject: {
+        ...s.fileTreeCollapseSeqByProject,
+        [projectId]: (s.fileTreeCollapseSeqByProject[projectId] ?? 0) + 1,
+      },
+    })),
   openFindInFiles: (options) =>
     set({
       leftPanelView: "search",

@@ -516,8 +516,6 @@ function EditorSplitPane({
 const stagePaneClass =
   "h-full min-h-0 overflow-hidden rounded-[10px] border border-ws-border-subtle bg-ws-stage shadow-[0_1px_0_color-mix(in_oklab,var(--ws-text)_4%,transparent)]";
 
-const MAX_MOUNTED_FILE_TABS = 3;
-
 function EditorPrimarySurface({
   projectId,
   children,
@@ -537,13 +535,11 @@ function EditorPrimarySurface({
     fileTabs.some((tab) => tab.id === activeTab.id);
 
   useEffect(() => {
-    if (!activeTabId) return;
-    setMountedTabIds((prev) =>
-      [activeTabId, ...prev.filter((id) => id !== activeTabId)].slice(
-        0,
-        MAX_MOUNTED_FILE_TABS,
-      ),
-    );
+    if (!activeTabId) {
+      setMountedTabIds([]);
+      return;
+    }
+    setMountedTabIds([activeTabId]);
   }, [activeTabId]);
 
   const mountedTabIdSet = useMemo(

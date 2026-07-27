@@ -86,6 +86,33 @@ export function buildFlatTreeEntries(
   return entries;
 }
 
+export function collectAncestorFolderIds(
+  nodes: FileTreeNode[],
+  path: string,
+): Id<"projectFiles">[] {
+  function walk(
+    branch: FileTreeNode[],
+    ancestors: Id<"projectFiles">[],
+  ): Id<"projectFiles">[] | null {
+    for (const node of branch) {
+      if (node.path === path) {
+        return ancestors;
+      }
+      if (
+        node.kind === "folder" &&
+        node.children?.length &&
+        (path === node.path || path.startsWith(`${node.path}/`))
+      ) {
+        const found = walk(node.children, [...ancestors, node.id]);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  return walk(nodes, []) ?? [];
+}
+
 export function findNodeByPath(
   nodes: FileTreeNode[],
   path: string,

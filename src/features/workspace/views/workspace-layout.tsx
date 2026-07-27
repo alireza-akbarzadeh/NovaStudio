@@ -25,6 +25,7 @@ import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-
 import { WorkspaceCommandPalette } from "@/features/workspace/components/workspace-command-palette";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
+import { WorkspaceImportBanner } from "@/features/workspace/components/workspace-import-banner";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
 import { WorkspaceCommentsPanel } from "@/features/workspace/components/workspace-comments-panel";
 import { WorkspaceDeployPanel } from "@/features/workspace/components/workspace-deploy-panel";
@@ -44,6 +45,7 @@ import { usePendingScaffold } from "@/features/workspace/hooks/use-pending-scaff
 import { clearMemoryDraftsForOtherProjects } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceFocusSync } from "@/features/workspace/hooks/use-workspace-focus-sync";
+import { useWorkspacePanelCleanup } from "@/features/workspace/hooks/use-workspace-panel-cleanup";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
 import {
   useWorkspaceStore,
@@ -71,6 +73,7 @@ function WorkspaceLayoutInner({
   useWorkspaceShortcuts();
   useWorkspacePrefsSync();
   useWorkspaceFocusSync(projectId);
+  useWorkspacePanelCleanup(projectId);
   useEditorSettingsSync();
   useExtensionsSync();
   useEditorTabsSync(projectId);
@@ -159,6 +162,7 @@ function WorkspaceLayoutInner({
       {!zenMode ? (
         <WorkspaceToolbar projectId={projectId} projectName={projectName} />
       ) : null}
+      {!zenMode ? <WorkspaceImportBanner projectId={projectId} /> : null}
 
       <div
         className={cn(

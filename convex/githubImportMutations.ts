@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import { verifyAuth } from "./auth";
 import {
   internalMutation,
@@ -7,7 +8,7 @@ import {
   mutation,
 } from "./_generated/server";
 import { createNotification } from "./lib/createNotification";
-import { insertImportedFiles } from "./lib/importProjectFiles";
+import { insertImportedFileBatch } from "./lib/importProjectFiles";
 import { ensureOwnerMembership } from "./lib/projectAccess";
 
 export const createImportProject = internalMutation({
@@ -30,6 +31,7 @@ export const createImportProject = internalMutation({
       importStatus: "importing",
       importStartedAt: now,
       importJobToken,
+      importDoneFiles: 0,
       githubRepoUrl: args.githubRepoUrl,
       githubBranch: args.githubBranch,
       source: "github",
@@ -45,6 +47,51 @@ export const createImportProject = internalMutation({
   },
 });
 
+export const setImportProgress = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    totalFiles: v.optional(v.number()),
+    doneFiles: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project || project.importStatus !== "importing") {
+      return;
+    }
+
+    await ctx.db.patch(args.projectId, {
+      ...(args.totalFiles !== undefined
+        ? { importTotalFiles: args.totalFiles }
+        : {}),
+      ...(args.doneFiles !== undefined
+        ? { importDoneFiles: args.doneFiles }
+        : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const insertImportBatch = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    files: v.array(
+      v.object({
+        path: v.string(),
+        content: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project || project.importStatus !== "importing") {
+      return;
+    }
+
+    await insertImportedFileBatch(ctx, args.projectId, args.files);
+  },
+});
+
+/** @deprecated Prefer batched `insertImportBatch` during clone jobs. */
 export const importFiles = internalMutation({
   args: {
     projectId: v.id("projects"),
@@ -60,7 +107,7 @@ export const importFiles = internalMutation({
     if (!project || project.importStatus !== "importing") {
       return;
     }
-    await insertImportedFiles(ctx, args.projectId, args.files);
+    await insertImportedFileBatch(ctx, args.projectId, args.files);
   },
 });
 
@@ -68,6 +115,7 @@ export const completeImport = internalMutation({
   args: {
     projectId: v.id("projects"),
     commitSha: v.string(),
+    fileCount: v.number(),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get("projects", args.projectId);
@@ -79,16 +127,27 @@ export const completeImport = internalMutation({
       return;
     }
 
+    const now = Date.now();
     await ctx.db.patch(args.projectId, {
       importStatus: "completed",
       lastCommitSha: args.commitSha,
-      syncedAt: Date.now(),
-      updatedAt: Date.now(),
+      syncedAt: now,
+      updatedAt: now,
       importStartedAt: undefined,
       importJobToken: undefined,
-      importTotalFiles: undefined,
-      importDoneFiles: undefined,
+      importTotalFiles: args.fileCount,
+      importDoneFiles: args.fileCount,
+      fileContentSplit: true,
     });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.projectFiles.migrateInlineContentBatch,
+      {
+        projectId: args.projectId,
+        limit: 40,
+      },
+    );
 
     await createNotification(ctx, {
       userId: project.ownerId,
@@ -208,6 +267,8 @@ export const retryFailedImport = mutation({
       importStatus: "importing",
       importStartedAt: now,
       importJobToken,
+      importDoneFiles: 0,
+      importTotalFiles: undefined,
       updatedAt: now,
     });
 

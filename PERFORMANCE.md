@@ -72,6 +72,8 @@ On a repo near import limits (~5,000 files):
 - [x] **P2.7 Search result cap** — max 200 matches with "Show more"; worker stops early
 - [x] **P2.8 Debounced change-list diff stats** — 300 ms debounce per row
 - [x] **P2.9 Metadata migration** — chat composer/panel + dependencies panel
+- [x] **P3.12 Dev performance panel** — bottom panel **Performance** tab (dev only)
+- [x] **P3.10 Progressive clone** — batched GitHub import with live file progress; open workspace while cloning
 
 ## Backlog — P1 Memory (highest impact)
 
@@ -166,10 +168,10 @@ Do these first on large clones and long editing sessions.
 
 ### 10. Progressive clone (server)
 
-- [ ] **Status:** Not started
+- [x] **Status:** Done
 - **Problem:** Import writes all rows at once; client still loads full content into Convex cache over time.
-- **Fix:** Batch insert with progress; client metadata first (partially done on UI side).
-- **Files:** `convex/githubImport.ts`, `convex/lib/importProjectFiles.ts`
+- **Fix:** Batch insert (40 files/step) with `importTotalFiles` / `importDoneFiles` progress; workspace banner + open while cloning.
+- **Files:** `convex/githubImport.ts`, `convex/githubImportMutations.ts`, `components/workspace-import-banner.tsx`
 - **Verify:** Clone progress shows tree before all bodies stored.
 
 ### 11. Server-side search index
@@ -182,10 +184,11 @@ Do these first on large clones and long editing sessions.
 
 ### 12. Dev memory observability
 
-- [ ] **Status:** Not started
+- [x] **Status:** Done
 - **Problem:** Hard to see regressions without Chrome Task Manager.
-- **Fix:** Dev-only debug panel: file count, total content bytes, WC status, open tab count, optional `performance.memory`.
-- **Files:** extend `workspace-debug-panel.tsx` or new hook
+- **Fix:** Dev-only **Performance** bottom panel tab + command palette entry: file count, content bytes, WC status, tabs, JS heap.
+- **Files:** `components/workspace-performance-panel.tsx`, `components/workspace-performance-charts.tsx`, `hooks/use-workspace-performance-stats.ts`
+- **Open via:** bottom **Performance** tab, `⌘⇧.` shortcut, Settings search → "performance"
 - **Verify:** Numbers update after clone, tab open, WC boot.
 
 ---
@@ -201,7 +204,9 @@ Do these first on large clones and long editing sessions.
 7. ~~P2.9 — Metadata migration sweep~~ ✅  
 8. ~~P2.6 — Tree state in zustand~~ ✅  
 9. ~~P2.8 — Debounced diff stats~~ ✅  
-10. P3 items as needed  
+10. ~~P3.12 — Dev performance panel~~ ✅  
+11. ~~P3.10 — Progressive clone~~ ✅  
+12. P3.11 — Server-side search index (optional)  
 
 ---
 

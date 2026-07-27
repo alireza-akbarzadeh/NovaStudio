@@ -5,6 +5,7 @@ import {
   FileJsonIcon,
   FolderPlusIcon,
   FolderTreeIcon,
+  GaugeIcon,
   GitBranchIcon,
   KeyboardIcon,
   PanelBottomIcon,
@@ -30,7 +31,9 @@ import {
 import { runCommand } from "@/features/workspace/commands/registry";
 import { PrettierIcon } from "@/features/workspace/components/prettier-icon";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
+import { IS_DEV } from "@/features/workspace/lib/is-dev";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
+import { formatModShortcut } from "@/lib/keyboard";
 
 export function WorkspaceSettingsDialog() {
   const params = useParams<{ projectId?: string }>();
@@ -113,6 +116,25 @@ export function WorkspaceSettingsDialog() {
             <CommandShortcut>⌘N</CommandShortcut>
           </CommandItem>
         </CommandGroup>
+
+        {IS_DEV ? (
+          <>
+            <CommandSeparator />
+            <CommandGroup heading="Developer">
+              <CommandItem
+                value="performance memory heap monitor stats ram chart dev observability workspace metrics"
+                onSelect={() => {
+                  runCommand("showPerformance");
+                  closeSettings();
+                }}
+              >
+                <GaugeIcon />
+                <span>Performance Monitor</span>
+                <CommandShortcut>{formatModShortcut("mod+shift+.")}</CommandShortcut>
+              </CommandItem>
+            </CommandGroup>
+          </>
+        ) : null}
 
         <CommandSeparator />
 

@@ -487,6 +487,8 @@ export const listWorkspaceProjects = query({
         downloads: undefined,
         importStatus: project.importStatus,
         importStartedAt: project.importStartedAt,
+        importTotalFiles: project.importTotalFiles,
+        importDoneFiles: project.importDoneFiles,
         source: project.source,
         githubRepoUrl: project.githubRepoUrl,
         githubBranch: project.githubBranch,

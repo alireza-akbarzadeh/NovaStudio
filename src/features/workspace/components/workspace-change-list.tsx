@@ -136,8 +136,8 @@ export function WorkspaceChangeList({
   const setAllChangedStaged = useSetAllChangedStaged();
   const discardFileChanges = useDiscardFileChanges();
   const confirm = useConfirm();
-  const [stagedOpen, setStagedOpen] = useState(true);
-  const [unstagedOpen, setUnstagedOpen] = useState(true);
+  const [stagedOpen, setStagedOpen] = useState(false);
+  const [unstagedOpen, setUnstagedOpen] = useState(false);
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
