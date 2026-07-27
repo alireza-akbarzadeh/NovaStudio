@@ -16,6 +16,7 @@ import type * as comments from "../comments.js";
 import type * as contact from "../contact.js";
 import type * as deploy from "../deploy.js";
 import type * as deployActions from "../deployActions.js";
+import type * as emails from "../emails.js";
 import type * as github from "../github.js";
 import type * as githubActions from "../githubActions.js";
 import type * as githubBlame from "../githubBlame.js";
@@ -98,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   contact: typeof contact;
   deploy: typeof deploy;
   deployActions: typeof deployActions;
+  emails: typeof emails;
   github: typeof github;
   githubActions: typeof githubActions;
   githubBlame: typeof githubBlame;
