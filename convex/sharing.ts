@@ -19,6 +19,16 @@ import {
   sendEmail,
 } from "./lib/email";
 
+function emailFailureMessage(sent: {
+  reason: "not_configured" | "failed" | "testing_only";
+  detail?: string;
+}) {
+  if (sent.reason === "not_configured") {
+    return "Email is not configured (set RESEND_API_KEY in Convex)";
+  }
+  return sent.detail ?? "Failed to send email";
+}
+
 const inviteRoleValidator = v.union(v.literal("editor"), v.literal("viewer"));
 
 function createInviteToken() {
@@ -680,14 +690,7 @@ export const inviteByEmail = action({
         kind: "added",
         userId: clerkUser.userId,
         emailSent: sent.ok,
-        ...(sent.ok
-          ? {}
-          : {
-              emailError:
-                sent.reason === "not_configured"
-                  ? "Email is not configured (set RESEND_API_KEY in Convex)"
-                  : sent.detail ?? "Failed to send email",
-            }),
+        ...(sent.ok ? {} : { emailError: emailFailureMessage(sent) }),
       };
     }
 
@@ -716,14 +719,7 @@ export const inviteByEmail = action({
       token: created.token,
       inviteUrl,
       emailSent: sent.ok,
-      ...(sent.ok
-        ? {}
-        : {
-            emailError:
-              sent.reason === "not_configured"
-                ? "Email is not configured (set RESEND_API_KEY in Convex)"
-                : sent.detail ?? "Failed to send email",
-          }),
+      ...(sent.ok ? {} : { emailError: emailFailureMessage(sent) }),
     };
   },
 });

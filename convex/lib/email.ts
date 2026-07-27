@@ -17,7 +17,7 @@ export type SendEmailArgs = {
 
 export type SendEmailResult =
   | { ok: true; id: string }
-  | { ok: false; reason: "not_configured" | "failed"; detail?: string };
+  | { ok: false; reason: "not_configured" | "failed" | "testing_only"; detail?: string };
 
 function appOrigin() {
   const raw =
@@ -48,6 +48,43 @@ export function projectAbsoluteUrl(projectId: string) {
   return `${origin}/projects/${projectId}`;
 }
 
+/** Turn Resend API error bodies into short, user-facing copy. */
+export function formatResendError(detail?: string): string {
+  if (!detail?.trim()) return "Failed to send email";
+
+  try {
+    const parsed = JSON.parse(detail) as {
+      message?: string;
+      name?: string;
+      statusCode?: number;
+    };
+    const message = parsed.message?.trim();
+    if (message) {
+      if (/only send testing emails to your own email/i.test(message)) {
+        return "Resend is in test mode — you can only email yourself until you verify a domain at resend.com/domains, then set RESEND_FROM to that domain.";
+      }
+      if (/verify a domain/i.test(message)) {
+        return "Verify a domain at resend.com/domains, then set RESEND_FROM to an address on that domain.";
+      }
+      return message;
+    }
+  } catch {
+    // plain text body
+  }
+
+  if (/only send testing emails to your own email/i.test(detail)) {
+    return "Resend is in test mode — you can only email yourself until you verify a domain at resend.com/domains.";
+  }
+
+  return detail.length > 280 ? `${detail.slice(0, 277)}…` : detail;
+}
+
+function isResendTestingOnlyError(detail?: string) {
+  return /only send testing emails to your own email|verify a domain/i.test(
+    detail ?? "",
+  );
+}
+
 export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) {
@@ -74,7 +111,11 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
 
   if (!response.ok) {
     const detail = await response.text();
-    return { ok: false, reason: "failed", detail };
+    return {
+      ok: false,
+      reason: isResendTestingOnlyError(detail) ? "testing_only" : "failed",
+      detail: formatResendError(detail),
+    };
   }
 
   const body = (await response.json()) as { id?: string };

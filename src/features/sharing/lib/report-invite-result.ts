@@ -21,11 +21,12 @@ export async function reportInviteResult(result: InviteResult) {
   if (result.kind === "added") {
     if (result.emailSent) {
       toast.success("Member added — notification email sent");
-    } else {
-      toast.success("Member added");
-      if (result.emailError) {
-        toast.message("Email not sent", { description: result.emailError });
-      }
+      return;
+    }
+
+    toast.success("Member added");
+    if (result.emailError) {
+      toast.error("Email not sent", { description: result.emailError });
     }
     return;
   }
@@ -35,16 +36,23 @@ export async function reportInviteResult(result: InviteResult) {
     return;
   }
 
+  // Invite record exists, but Resend did not deliver — never claim email was sent.
+  let linkCopied = false;
   try {
     await copyInviteLink(result.token);
-    toast.success("Invite created — link copied (email not configured)");
-    if (result.emailError) {
-      toast.message("Email not sent", { description: result.emailError });
-    }
+    linkCopied = true;
   } catch {
-    toast.success("Invite created — copy the link from pending invites");
-    if (result.emailError) {
-      toast.message("Email not sent", { description: result.emailError });
-    }
+    linkCopied = false;
   }
+
+  toast.warning(
+    linkCopied
+      ? "Invite created — link copied (email not sent)"
+      : "Invite created — email not sent",
+    {
+      description:
+        result.emailError ??
+        "Share the invite link manually, or verify a Resend domain to email others.",
+    },
+  );
 }
