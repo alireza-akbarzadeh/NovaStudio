@@ -160,6 +160,32 @@ export function useGitBranches(projectId: string) {
           checkout: options?.checkout ?? true,
           force: options?.force,
         });
+
+        if (result.blockedByLocalChanges && !options?.force) {
+          const discard = await confirm({
+            title: "Uncommitted changes",
+            description: `Branch "${result.name}" was created on GitHub, but you have ${result.changedCount ?? 0} local change${result.changedCount === 1 ? "" : "s"}.\n\nDiscard local changes and switch to "${result.name}"?`,
+            confirmLabel: "Discard & switch",
+            cancelLabel: "Stay here",
+            tone: "danger",
+          });
+          if (discard) {
+            setIsMutating(false);
+            return checkout(result.name, { force: true });
+          }
+          toast.success(`Created branch ${result.name} on GitHub`);
+          return result;
+        }
+
+        if (result.checkoutError) {
+          toast.success(`Created branch ${result.name} on GitHub`);
+          toast.error("Could not switch to new branch", {
+            description: result.checkoutError,
+            duration: 8000,
+          });
+          return result;
+        }
+
         toast.success(
           result.checkedOut
             ? `Created and switched to ${result.name}`
@@ -200,7 +226,7 @@ export function useGitBranches(projectId: string) {
         setIsMutating(false);
       }
     },
-    [confirm, createBranchAction, projectId],
+    [checkout, confirm, createBranchAction, projectId],
   );
 
   return {

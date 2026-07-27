@@ -18,6 +18,7 @@ export type GitHubIssueSummary = {
   updatedAt: string;
   url: string;
   commentCount: number;
+  labels: Array<{ name: string; color: string }>;
 };
 
 export type GitHubIssueComment = {
@@ -41,11 +42,13 @@ export function useGitHubIssues(projectId: string) {
   const getIssueAction = useAction(api.githubIssues.getIssue);
   const createIssueAction = useAction(api.githubIssues.createIssue);
   const createCommentAction = useAction(api.githubIssues.createIssueComment);
+  const updateIssueStateAction = useAction(api.githubIssues.updateIssueState);
 
   const [isListing, setIsListing] = useState(false);
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isCommenting, setIsCommenting] = useState(false);
+  const [isUpdatingState, setIsUpdatingState] = useState(false);
 
   const listIssues = useCallback(
     async (state: IssueStateFilter = "open") => {
@@ -124,14 +127,37 @@ export function useGitHubIssues(projectId: string) {
     [createCommentAction, projectId],
   );
 
+  const updateIssueState = useCallback(
+    async (issueNumber: number, state: "open" | "closed") => {
+      setIsUpdatingState(true);
+      try {
+        const issue = await updateIssueStateAction({
+          projectId: projectId as Id<"projects">,
+          issueNumber,
+          state,
+        });
+        toast.success(state === "closed" ? "Issue closed" : "Issue reopened");
+        return issue;
+      } catch (error) {
+        toast.error(parseConvexErrorMessage(error, "Failed to update issue"));
+        throw error;
+      } finally {
+        setIsUpdatingState(false);
+      }
+    },
+    [projectId, updateIssueStateAction],
+  );
+
   return {
     listIssues,
     getIssue,
     createIssue,
     createComment,
+    updateIssueState,
     isListing,
     isLoadingDetail,
     isCreating,
     isCommenting,
+    isUpdatingState,
   };
 }

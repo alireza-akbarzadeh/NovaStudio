@@ -22,7 +22,7 @@ import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-c
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
-import { WorkspaceGitIssues } from "@/features/workspace/components/workspace-git-issues";
+import { WorkspaceGitHubHub } from "@/features/workspace/components/workspace-git-hub";
 import { WorkspaceLinearLink } from "@/features/workspace/components/workspace-linear-link";
 import { WorkspaceStashPanel } from "@/features/workspace/components/workspace-stash-panel";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
@@ -40,7 +40,7 @@ const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "changes", label: "Changes" },
   { id: "stashes", label: "Stashes" },
   { id: "history", label: "History" },
-  { id: "issues", label: "Issues" },
+  { id: "github", label: "GitHub" },
   { id: "info", label: "Info" },
 ];
 
@@ -319,8 +319,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           projectId={projectId}
           enabled={Boolean(isGitHub)}
         />
-      ) : activeTab === "issues" ? (
-        <WorkspaceGitIssues
+      ) : activeTab === "github" ? (
+        <WorkspaceGitHubHub
           projectId={projectId}
           enabled={Boolean(isGitHub)}
         />

@@ -34,6 +34,10 @@ import {
   useGitBranches,
   usePullFromGitHub,
 } from "@/features/github/hooks/use-git-sync";
+import {
+  normalizeBranchName,
+  validateBranchName,
+} from "@/features/github/lib/git-branch-name";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -116,8 +120,8 @@ export function WorkspaceBranchPicker({
   };
 
   const onCreate = async () => {
-    const name = newBranchName.trim();
-    if (!name) return;
+    const name = normalizeBranchName(newBranchName);
+    if (!name || validateBranchName(newBranchName)) return;
     try {
       await createBranch(name, { checkout: true });
       setOpen(false);
@@ -125,6 +129,17 @@ export function WorkspaceBranchPicker({
       // toast handled in hook
     }
   };
+
+  const normalizedBranchName = normalizeBranchName(newBranchName);
+  const branchNameError = newBranchName.trim()
+    ? validateBranchName(newBranchName)
+    : null;
+  const branchNamePreview =
+    newBranchName.trim() &&
+    normalizedBranchName &&
+    normalizedBranchName !== newBranchName.trim()
+      ? normalizedBranchName
+      : null;
 
   const closeAnd = (fn: () => void) => {
     setOpen(false);
@@ -203,6 +218,17 @@ export function WorkspaceBranchPicker({
               className="h-8 border-ws-border bg-ws-bg text-[12px] text-ws-text"
               disabled={isMutating}
             />
+            {branchNamePreview ? (
+              <p className="text-[10px] text-ws-text-muted">
+                Will create{" "}
+                <span className="font-mono text-ws-text-secondary">
+                  {branchNamePreview}
+                </span>
+              </p>
+            ) : null}
+            {branchNameError ? (
+              <p className="text-[10px] text-ws-danger-soft">{branchNameError}</p>
+            ) : null}
             <div className="flex items-center justify-end gap-1.5">
               <Button
                 type="button"
@@ -218,7 +244,9 @@ export function WorkspaceBranchPicker({
                 type="button"
                 size="sm"
                 className="h-7 bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
-                disabled={!newBranchName.trim() || isMutating}
+                disabled={
+                  !normalizedBranchName || Boolean(branchNameError) || isMutating
+                }
                 onClick={() => void onCreate()}
               >
                 {isMutating ? (

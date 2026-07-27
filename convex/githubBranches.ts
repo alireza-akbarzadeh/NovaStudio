@@ -9,6 +9,7 @@ import {
   getClerkGitHubToken,
   parseRepoUrl,
 } from "./lib/github";
+import { normalizeBranchName, validateBranchName } from "./lib/gitBranchName";
 import { fetchRepoFiles } from "./lib/githubFetch";
 
 export const listBranches = action({
@@ -103,7 +104,13 @@ export const createBranch = action({
   handler: async (
     ctx,
     args,
-  ): Promise<{ name: string; checkedOut: boolean }> => {
+  ): Promise<{
+    name: string;
+    checkedOut: boolean;
+    blockedByLocalChanges?: boolean;
+    changedCount?: number;
+    checkoutError?: string;
+  }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -130,14 +137,10 @@ export const createBranch = action({
       throw new Error("This project is not linked to a GitHub repository");
     }
 
-    const name = args.name.trim().replace(/^refs\/heads\//, "");
-    if (!name) {
-      throw new Error("Branch name is required");
-    }
-    if (!/^[A-Za-z0-9._/-]+$/.test(name) || name.includes("..")) {
-      throw new Error(
-        "Invalid branch name. Use letters, numbers, /, -, _, and .",
-      );
+    const name = normalizeBranchName(args.name);
+    const validationError = validateBranchName(args.name);
+    if (validationError) {
+      throw new Error(validationError);
     }
 
     const { owner, repo } = parseRepoUrl(project.githubRepoUrl);
@@ -171,26 +174,35 @@ export const createBranch = action({
     }
 
     if (changedCount > 0 && !args.force) {
-      throw new Error(
-        `Branch "${name}" was created, but you have ${changedCount} local change${changedCount === 1 ? "" : "s"}. Commit them first, or checkout with discard.`,
-      );
+      return {
+        name,
+        checkedOut: false,
+        blockedByLocalChanges: true,
+        changedCount,
+      };
     }
 
-    const { files, commitSha } = await fetchRepoFiles(
-      token,
-      owner,
-      repo,
-      name,
-    );
+    try {
+      const { files, commitSha } = await fetchRepoFiles(
+        token,
+        owner,
+        repo,
+        name,
+      );
 
-    await ctx.runMutation(internal.githubPullMutations.replaceFiles, {
-      projectId: args.projectId,
-      files,
-      commitSha,
-      githubBranch: name,
-    });
+      await ctx.runMutation(internal.githubPullMutations.replaceFiles, {
+        projectId: args.projectId,
+        files,
+        commitSha,
+        githubBranch: name,
+      });
 
-    return { name, checkedOut: true };
+      return { name, checkedOut: true };
+    } catch (error) {
+      const checkoutError =
+        error instanceof Error ? error.message : "Failed to sync branch files";
+      return { name, checkedOut: false, checkoutError };
+    }
   },
 });
 

@@ -3,21 +3,34 @@
 import { v } from "convex/values";
 import { RequestError } from "@octokit/request-error";
 
-import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
+import { formatGitHubApiError } from "./lib/github";
 import {
-  createOctokit,
-  formatGitHubApiError,
-  getClerkGitHubToken,
-  parseRepoUrl,
-} from "./lib/github";
+  mapGitHubComment,
+  mapGitHubLabel,
+  requireProjectGitHubAccess,
+} from "./lib/githubProjectAccess";
 
-function parseOwnerRepo(githubRepoUrl: string): { owner: string; repo: string } {
-  try {
-    return parseRepoUrl(githubRepoUrl);
-  } catch {
-    throw new Error("Invalid GitHub repository URL");
-  }
+function throwGitHubError(error: unknown, fallback: string): never {
+  const formatted = formatGitHubApiError(error);
+  throw new Error(formatted ?? fallback);
+}
+
+function extractLabels(
+  labels: Array<
+    | string
+    | { name?: string | null; color?: string | null }
+  >,
+) {
+  return labels
+    .filter(
+      (label): label is { name: string; color: string } =>
+        typeof label === "object" &&
+        label !== null &&
+        typeof label.name === "string" &&
+        typeof label.color === "string",
+    )
+    .map(mapGitHubLabel);
 }
 
 function mapIssueSummary(issue: {
@@ -29,6 +42,7 @@ function mapIssueSummary(issue: {
   updated_at: string;
   html_url: string;
   comments: number;
+  labels?: Array<string | { name?: string | null; color?: string | null }>;
 }) {
   return {
     number: issue.number,
@@ -40,29 +54,8 @@ function mapIssueSummary(issue: {
     updatedAt: issue.updated_at,
     url: issue.html_url,
     commentCount: issue.comments,
+    labels: extractLabels(issue.labels ?? []),
   };
-}
-
-function mapComment(comment: {
-  id: number;
-  body?: string | null;
-  user: { login: string; avatar_url: string } | null;
-  created_at: string;
-  html_url: string;
-}) {
-  return {
-    id: comment.id,
-    body: comment.body ?? "",
-    authorLogin: comment.user?.login ?? "ghost",
-    authorAvatarUrl: comment.user?.avatar_url ?? "",
-    createdAt: comment.created_at,
-    url: comment.html_url,
-  };
-}
-
-function throwGitHubError(error: unknown, fallback: string): never {
-  const formatted = formatGitHubApiError(error);
-  throw new Error(formatted ?? fallback);
 }
 
 export const listIssues = action({
@@ -74,34 +67,10 @@ export const listIssues = action({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const token = await getClerkGitHubToken(identity.subject);
-    if (!token) {
-      throw new Error("GitHub is not connected.");
-    }
-
-    const context = await ctx.runQuery(internal.githubPushMutations.getPushContext, {
-      projectId: args.projectId,
-    });
-
-    if (!context) {
-      throw new Error("Project not found");
-    }
-
-    const { project } = context;
-    if (project.ownerId !== identity.subject) {
-      throw new Error("Unauthorized access to this project");
-    }
-    if (!project.githubRepoUrl) {
-      throw new Error("This project is not linked to a GitHub repository");
-    }
-
-    const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
-    const octokit = createOctokit(token);
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
     const perPage = Math.min(Math.max(args.limit ?? 30, 1), 50);
 
     try {
@@ -132,34 +101,10 @@ export const getIssue = action({
     issueNumber: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const token = await getClerkGitHubToken(identity.subject);
-    if (!token) {
-      throw new Error("GitHub is not connected.");
-    }
-
-    const context = await ctx.runQuery(internal.githubPushMutations.getPushContext, {
-      projectId: args.projectId,
-    });
-
-    if (!context) {
-      throw new Error("Project not found");
-    }
-
-    const { project } = context;
-    if (project.ownerId !== identity.subject) {
-      throw new Error("Unauthorized access to this project");
-    }
-    if (!project.githubRepoUrl) {
-      throw new Error("This project is not linked to a GitHub repository");
-    }
-
-    const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
-    const octokit = createOctokit(token);
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
 
     try {
       const [{ data: issue }, { data: comments }] = await Promise.all([
@@ -183,7 +128,7 @@ export const getIssue = action({
       return {
         ...mapIssueSummary(issue),
         body: issue.body ?? "",
-        comments: comments.map(mapComment),
+        comments: comments.map(mapGitHubComment),
       };
     } catch (error) {
       if (error instanceof Error && !(error instanceof RequestError)) {
@@ -206,34 +151,10 @@ export const createIssue = action({
       throw new Error("Issue title is required");
     }
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const token = await getClerkGitHubToken(identity.subject);
-    if (!token) {
-      throw new Error("GitHub is not connected.");
-    }
-
-    const context = await ctx.runQuery(internal.githubPushMutations.getPushContext, {
-      projectId: args.projectId,
-    });
-
-    if (!context) {
-      throw new Error("Project not found");
-    }
-
-    const { project } = context;
-    if (project.ownerId !== identity.subject) {
-      throw new Error("Unauthorized access to this project");
-    }
-    if (!project.githubRepoUrl) {
-      throw new Error("This project is not linked to a GitHub repository");
-    }
-
-    const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
-    const octokit = createOctokit(token);
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
 
     try {
       const { data: issue } = await octokit.rest.issues.create({
@@ -265,34 +186,10 @@ export const createIssueComment = action({
       throw new Error("Comment cannot be empty");
     }
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const token = await getClerkGitHubToken(identity.subject);
-    if (!token) {
-      throw new Error("GitHub is not connected.");
-    }
-
-    const context = await ctx.runQuery(internal.githubPushMutations.getPushContext, {
-      projectId: args.projectId,
-    });
-
-    if (!context) {
-      throw new Error("Project not found");
-    }
-
-    const { project } = context;
-    if (project.ownerId !== identity.subject) {
-      throw new Error("Unauthorized access to this project");
-    }
-    if (!project.githubRepoUrl) {
-      throw new Error("This project is not linked to a GitHub repository");
-    }
-
-    const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
-    const octokit = createOctokit(token);
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
 
     try {
       const { data: comment } = await octokit.rest.issues.createComment({
@@ -302,12 +199,46 @@ export const createIssueComment = action({
         body,
       });
 
-      return mapComment(comment);
+      return mapGitHubComment(comment);
     } catch (error) {
       if (error instanceof Error && !(error instanceof RequestError)) {
         throw error;
       }
       throwGitHubError(error, "Failed to post comment");
+    }
+  },
+});
+
+export const updateIssueState = action({
+  args: {
+    projectId: v.id("projects"),
+    issueNumber: v.number(),
+    state: v.union(v.literal("open"), v.literal("closed")),
+  },
+  handler: async (ctx, args) => {
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
+
+    try {
+      const { data: issue } = await octokit.rest.issues.update({
+        owner,
+        repo,
+        issue_number: args.issueNumber,
+        state: args.state,
+      });
+
+      if (issue.pull_request) {
+        throw new Error("This number refers to a pull request, not an issue");
+      }
+
+      return mapIssueSummary(issue);
+    } catch (error) {
+      if (error instanceof Error && !(error instanceof RequestError)) {
+        throw error;
+      }
+      throwGitHubError(error, "Failed to update issue");
     }
   },
 });
