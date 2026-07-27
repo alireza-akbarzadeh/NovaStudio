@@ -8,10 +8,11 @@ export type EditorTabInput =
   | { kind: "new-project" }
   | { kind: "file"; path: string }
   | { kind: "diff"; path: string }
-  | { kind: "activity-diff"; path: string; activityId: string };
+  | { kind: "activity-diff"; path: string; activityId: string }
+  | { kind: "pull-request"; pullNumber: number };
 
 const SPECIAL_TITLES: Record<
-  Exclude<EditorTabKind, "file" | "diff" | "activity-diff">,
+  Exclude<EditorTabKind, "file" | "diff" | "activity-diff" | "pull-request">,
   string
 > = {
   welcome: "Welcome",
@@ -30,6 +31,7 @@ export function editorTabId(input: EditorTabInput): string {
   if (input.kind === "file") return `file:${input.path}`;
   if (input.kind === "diff") return `diff:${input.path}`;
   if (input.kind === "activity-diff") return `activity-diff:${input.activityId}`;
+  if (input.kind === "pull-request") return `pull-request:${input.pullNumber}`;
   return input.kind;
 }
 
@@ -42,6 +44,9 @@ export function editorTabTitle(input: EditorTabInput): string {
   }
   if (input.kind === "activity-diff") {
     return `${fileNameFromPath(input.path)} (Timeline)`;
+  }
+  if (input.kind === "pull-request") {
+    return `PR #${input.pullNumber}`;
   }
   return SPECIAL_TITLES[input.kind];
 }
@@ -62,6 +67,14 @@ export function createEditorTab(input: EditorTabInput): EditorTab {
       title: editorTabTitle(input),
       path: input.path,
       activityId: input.activityId,
+    };
+  }
+  if (input.kind === "pull-request") {
+    return {
+      id: editorTabId(input),
+      kind: input.kind,
+      title: editorTabTitle(input),
+      pullNumber: input.pullNumber,
     };
   }
   return {
@@ -89,6 +102,8 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/diff/${tab.path ?? ""}`;
     case "activity-diff":
       return `/projects/${projectId}/timeline/${tab.activityId ?? ""}`;
+    case "pull-request":
+      return `/projects/${projectId}/pull-request/${tab.pullNumber ?? ""}`;
   }
 }
 
@@ -144,6 +159,17 @@ export function editorTabFromPathname(
   }
   if (pathname === `${base}/timeline`) {
     return createEditorTab({ kind: "welcome" });
+  }
+  const pullRequestPrefix = `${base}/pull-request/`;
+  if (pathname.startsWith(pullRequestPrefix)) {
+    const pullNumberRaw = decodeURIComponent(
+      pathname.slice(pullRequestPrefix.length).split("/")[0] ?? "",
+    );
+    const pullNumber = Number.parseInt(pullNumberRaw, 10);
+    if (!Number.isFinite(pullNumber) || pullNumber < 1) {
+      return createEditorTab({ kind: "welcome" });
+    }
+    return createEditorTab({ kind: "pull-request", pullNumber });
   }
   return null;
 }

@@ -90,7 +90,8 @@ export type EditorTabKind =
   | "settings"
   | "shortcuts"
   | "user-json"
-  | "new-project";
+  | "new-project"
+  | "pull-request";
 
 export type EditorTab = {
   id: string;
@@ -99,6 +100,8 @@ export type EditorTab = {
   path?: string;
   /** Activity timeline snapshot id (for `activity-diff` tabs). */
   activityId?: string;
+  /** GitHub pull request number (for `pull-request` tabs). */
+  pullNumber?: number;
   /** Transient tab — italic; replaced by the next preview open. */
   preview?: boolean;
   /** Sticky tab — stays left; survives preview replacement. */

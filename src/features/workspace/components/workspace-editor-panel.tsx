@@ -6,6 +6,7 @@ import {
   FileIcon,
   FileJsonIcon,
   FolderPlusIcon,
+  GitPullRequestIcon,
   KeyboardIcon,
   Loader2Icon,
   MoreVerticalIcon,
@@ -64,6 +65,7 @@ import { ActivityDiffView } from "@/features/workspace/views/activity-diff-view"
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
+import { PullRequestView } from "@/features/workspace/views/pull-request-view";
 import { WorkspaceUserJsonView } from "@/features/workspace/views/workspace-user-json-view";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +87,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
       return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
     case "activity-diff":
       return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
+    case "pull-request":
+      return <GitPullRequestIcon className="size-3 shrink-0 opacity-70" />;
     case "file":
       return <FileIcon className="size-3 shrink-0 opacity-70" />;
     default:
@@ -537,6 +541,10 @@ function SplitPaneContent({
           <NewProjectForm />
         </div>
       );
+    case "pull-request":
+      return tab.pullNumber ? (
+        <PullRequestView projectId={projectId} pullNumber={tab.pullNumber} />
+      ) : null;
     case "welcome":
     default:
       return <ProjectWorkspaceHome projectId={projectId} />;

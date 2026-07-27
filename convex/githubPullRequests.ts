@@ -81,6 +81,30 @@ function mapPullRequestReview(review: {
   };
 }
 
+function mapPullRequestReviewComment(comment: {
+  id: number;
+  path: string;
+  line?: number | null;
+  original_line?: number | null;
+  side?: string | null;
+  body: string;
+  user: { login: string; avatar_url: string } | null;
+  created_at: string;
+  html_url: string;
+}) {
+  return {
+    id: comment.id,
+    path: comment.path,
+    line: comment.line ?? comment.original_line ?? 0,
+    side: comment.side ?? "RIGHT",
+    body: comment.body,
+    authorLogin: comment.user?.login ?? "ghost",
+    authorAvatarUrl: comment.user?.avatar_url ?? "",
+    createdAt: comment.created_at,
+    url: comment.html_url,
+  };
+}
+
 export const listPullRequests = action({
   args: {
     projectId: v.id("projects"),
@@ -133,6 +157,7 @@ export const getPullRequest = action({
         { data: comments },
         { data: files },
         { data: reviews },
+        { data: reviewComments },
       ] = await Promise.all([
         octokit.rest.pulls.get({
           owner,
@@ -157,11 +182,18 @@ export const getPullRequest = action({
           pull_number: args.pullNumber,
           per_page: 100,
         }),
+        octokit.rest.pulls.listReviewComments({
+          owner,
+          repo,
+          pull_number: args.pullNumber,
+          per_page: 100,
+        }),
       ]);
 
       return {
         ...mapPullRequestSummary(pr),
         body: pr.body ?? "",
+        headSha: pr.head.sha,
         mergeable: pr.mergeable,
         mergeableState: pr.mergeable_state ?? "unknown",
         additions: pr.additions,
@@ -170,6 +202,7 @@ export const getPullRequest = action({
         comments: comments.map(mapGitHubComment),
         files: files.map(mapPullRequestFile),
         reviews: reviews.map(mapPullRequestReview),
+        reviewComments: reviewComments.map(mapPullRequestReviewComment),
       };
     } catch (error) {
       if (error instanceof Error && !(error instanceof RequestError)) {
@@ -298,6 +331,62 @@ export const createPullRequestReview = action({
         throw error;
       }
       throwGitHubError(error, "Failed to submit review");
+    }
+  },
+});
+
+export const createPullRequestReviewComment = action({
+  args: {
+    projectId: v.id("projects"),
+    pullNumber: v.number(),
+    body: v.string(),
+    path: v.string(),
+    line: v.number(),
+    side: v.optional(v.union(v.literal("LEFT"), v.literal("RIGHT"))),
+    commitId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const body = args.body.trim();
+    const path = args.path.trim();
+    if (!body) throw new Error("Comment cannot be empty");
+    if (!path) throw new Error("File path is required");
+    if (!Number.isFinite(args.line) || args.line < 1) {
+      throw new Error("Line number must be at least 1");
+    }
+
+    const { octokit, owner, repo } = await requireProjectGitHubAccess(
+      ctx,
+      args.projectId,
+    );
+
+    let commitId = args.commitId?.trim();
+    if (!commitId) {
+      const { data: pr } = await octokit.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: args.pullNumber,
+      });
+      commitId = pr.head.sha;
+    }
+
+    try {
+      const { data: comment } = await octokit.rest.pulls.createReviewComment({
+        owner,
+        repo,
+        pull_number: args.pullNumber,
+        body,
+        commit_id: commitId,
+        path,
+        line: args.line,
+        side: args.side ?? "RIGHT",
+      });
+
+      return mapPullRequestReviewComment(comment);
+    } catch (error) {
+      if (error instanceof Error && !(error instanceof RequestError)) {
+        throw error;
+      }
+      throwGitHubError(error, "Failed to post review comment");
     }
   },
 });

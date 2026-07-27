@@ -34,6 +34,7 @@ type WorkspaceDiffEditorProps = {
   modified: string;
   renderSideBySide?: boolean;
   height?: number | string;
+  onModifiedLineChange?: (line: number) => void;
 };
 
 export function WorkspaceDiffEditor({
@@ -42,6 +43,7 @@ export function WorkspaceDiffEditor({
   modified,
   renderSideBySide = true,
   height = "100%",
+  onModifiedLineChange,
 }: WorkspaceDiffEditorProps) {
   const { resolvedTheme } = useTheme();
   const { enabledIds, activeThemeId } = useExtensionsState();
@@ -143,6 +145,13 @@ export function WorkspaceDiffEditor({
           Loading diff…
         </div>
       }
+      onMount={(editor) => {
+        if (!onModifiedLineChange) return;
+        const modifiedEditor = editor.getModifiedEditor();
+        modifiedEditor.onDidChangeCursorPosition((event) => {
+          onModifiedLineChange(event.position.lineNumber);
+        });
+      }}
     />
   );
 }

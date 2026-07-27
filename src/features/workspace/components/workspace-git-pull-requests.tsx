@@ -2,12 +2,10 @@
 "use client";
 
 import {
-  CheckIcon,
   GitPullRequestIcon,
   Loader2Icon,
   PlusIcon,
   RefreshCwIcon,
-  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -24,24 +22,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { useGitBranches } from "@/features/github/hooks/use-git-sync";
 import {
   useGitHubPullRequests,
-  type GitHubPullRequestDetail,
   type GitHubPullRequestSummary,
-  type PullRequestMergeMethod,
   type PullRequestStateFilter,
 } from "@/features/github/hooks/use-github-pull-requests";
-import { PullRequestFilesSection } from "@/features/github/components/pull-request-file-diff";
 import {
-  GitHubAuthorAvatar,
-  GitHubCommentList,
   GitHubDisabledPanel,
   GitHubHubErrorState,
   GitHubHubToolbar,
   GitHubLoadingRow,
-  GitHubReplyBox,
   GitHubStateFilterBar,
   formatGitHubDate,
 } from "@/features/github/components/github-hub-ui";
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { cn } from "@/lib/utils";
 
 type WorkspaceGitPullRequestsProps = {
@@ -49,10 +42,7 @@ type WorkspaceGitPullRequestsProps = {
   enabled: boolean;
 };
 
-type View =
-  | { kind: "list" }
-  | { kind: "detail"; pullNumber: number }
-  | { kind: "create" };
+type View = { kind: "list" } | { kind: "create" };
 
 function PullRequestBadge({
   state,
@@ -91,57 +81,20 @@ function PullRequestBadge({
   );
 }
 
-function ReviewStateBadge({ state }: { state: string }) {
-  const normalized = state.toUpperCase();
-  const className =
-    normalized === "APPROVED"
-      ? "bg-emerald-500/15 text-emerald-500"
-      : normalized === "CHANGES_REQUESTED"
-        ? "bg-orange-500/15 text-orange-400"
-        : "bg-ws-text-muted/15 text-ws-text-muted";
-
-  return (
-    <span
-      className={cn(
-        "rounded-full px-1.5 py-0.5 text-[9px] font-medium uppercase",
-        className,
-      )}
-    >
-      {state.replace(/_/g, " ").toLowerCase()}
-    </span>
-  );
-}
-
 export function WorkspaceGitPullRequests({
   projectId,
   enabled,
 }: WorkspaceGitPullRequestsProps) {
   const project = useProject({ projectId });
+  const { openTab } = useEditorTabs(projectId);
   const { loadBranches } = useGitBranches(projectId);
-  const {
-    listPullRequests,
-    getPullRequest,
-    createPullRequest,
-    createComment,
-    submitReview,
-    mergePullRequest,
-    isListing,
-    isLoadingDetail,
-    isCreating,
-    isCommenting,
-    isReviewing,
-    isMerging,
-  } = useGitHubPullRequests(projectId);
+  const { listPullRequests, createPullRequest, isListing, isCreating } =
+    useGitHubPullRequests(projectId);
 
   const [view, setView] = useState<View>({ kind: "list" });
   const [stateFilter, setStateFilter] = useState<PullRequestStateFilter>("open");
   const [pulls, setPulls] = useState<GitHubPullRequestSummary[] | null>(null);
-  const [detail, setDetail] = useState<GitHubPullRequestDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [replyBody, setReplyBody] = useState("");
-  const [reviewBody, setReviewBody] = useState("");
-  const [mergeMethod, setMergeMethod] =
-    useState<PullRequestMergeMethod>("merge");
 
   const [branches, setBranches] = useState<string[]>([]);
   const [newTitle, setNewTitle] = useState("");
@@ -150,6 +103,13 @@ export function WorkspaceGitPullRequests({
   const [baseBranch, setBaseBranch] = useState("main");
 
   const currentBranch = project?.githubBranch ?? "main";
+
+  const openPullRequest = useCallback(
+    (pullNumber: number) => {
+      openTab({ kind: "pull-request", pullNumber });
+    },
+    [openTab],
+  );
 
   const loadList = useCallback(async () => {
     if (!enabled) return;
@@ -164,31 +124,10 @@ export function WorkspaceGitPullRequests({
     }
   }, [enabled, listPullRequests, stateFilter]);
 
-  const loadDetail = useCallback(
-    async (pullNumber: number) => {
-      if (!enabled) return;
-      setError(null);
-      setDetail(null);
-      try {
-        setDetail(await getPullRequest(pullNumber));
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to load pull request",
-        );
-      }
-    },
-    [enabled, getPullRequest],
-  );
-
   useEffect(() => {
     if (!enabled || view.kind !== "list") return;
     loadList().catch(console.error);
   }, [enabled, loadList, view.kind]);
-
-  useEffect(() => {
-    if (!enabled || view.kind !== "detail") return;
-    loadDetail(view.pullNumber).catch(console.error);
-  }, [enabled, loadDetail, view]);
 
   useEffect(() => {
     if (!enabled || view.kind !== "create") return;
@@ -209,36 +148,8 @@ export function WorkspaceGitPullRequests({
       });
       setNewTitle("");
       setNewBody("");
-      setView({ kind: "detail", pullNumber: pr.number });
-    } catch {
-      // toast in hook
-    }
-  };
-
-  const onReview = async (event: "APPROVE" | "REQUEST_CHANGES") => {
-    if (!detail) return;
-    try {
-      const review = await submitReview(
-        detail.number,
-        event,
-        reviewBody.trim() || undefined,
-      );
-      setReviewBody("");
-      setDetail((current) =>
-        current
-          ? { ...current, reviews: [...current.reviews, review] }
-          : current,
-      );
-    } catch {
-      // toast in hook
-    }
-  };
-
-  const onMerge = async () => {
-    if (!detail) return;
-    try {
-      await mergePullRequest(detail.number, mergeMethod);
-      await loadDetail(detail.number);
+      setView({ kind: "list" });
+      openPullRequest(pr.number);
     } catch {
       // toast in hook
     }
@@ -339,245 +250,6 @@ export function WorkspaceGitPullRequests({
     );
   }
 
-  if (view.kind === "detail") {
-    const canMerge =
-      detail &&
-      detail.state === "open" &&
-      !detail.merged &&
-      detail.mergeable !== false &&
-      detail.mergeableState !== "dirty";
-
-    const canReview = detail && detail.state === "open" && !detail.merged;
-
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <GitHubHubToolbar
-          title={detail ? `PR #${detail.number}` : "Pull request"}
-          onBack={() => {
-            setView({ kind: "list" });
-            setDetail(null);
-          }}
-          onRefresh={() =>
-            void loadDetail(detail?.number ?? view.pullNumber)
-          }
-          isRefreshing={isLoadingDetail}
-          externalUrl={detail?.url}
-        />
-        <div className="min-h-0 flex-1 overflow-auto">
-          {isLoadingDetail && !detail ? (
-            <GitHubLoadingRow label="Loading pull request…" />
-          ) : error && !detail ? (
-            <GitHubHubErrorState
-              message={error}
-              onRetry={() => void loadDetail(view.pullNumber)}
-            />
-          ) : detail ? (
-            <div className="space-y-3 p-3">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <PullRequestBadge
-                    state={detail.state}
-                    draft={detail.draft}
-                    merged={detail.merged}
-                  />
-                  <span className="font-mono text-[10px] text-ws-text-muted">
-                    {detail.headBranch} → {detail.baseBranch}
-                  </span>
-                </div>
-                <h3 className="text-[13px] font-medium leading-snug text-ws-text">
-                  {detail.title}
-                </h3>
-                <div className="flex items-center gap-2 text-[10px] text-ws-text-muted">
-                  <GitHubAuthorAvatar
-                    login={detail.authorLogin}
-                    avatarUrl={detail.authorAvatarUrl}
-                  />
-                  <span>{detail.authorLogin}</span>
-                  <span>· {formatGitHubDate(detail.createdAt)}</span>
-                </div>
-                <div className="flex gap-3 text-[10px] text-ws-text-muted">
-                  <span className="text-emerald-500">+{detail.additions}</span>
-                  <span className="text-red-400">−{detail.deletions}</span>
-                  <span>{detail.changedFiles} files</span>
-                  {detail.mergeable === false ? (
-                    <span className="text-orange-400">Conflicts</span>
-                  ) : null}
-                  {detail.mergeableState &&
-                  detail.mergeableState !== "clean" &&
-                  detail.mergeableState !== "unknown" ? (
-                    <span className="capitalize">{detail.mergeableState}</span>
-                  ) : null}
-                </div>
-                {detail.body ? (
-                  <div className="rounded-md border border-ws-border/70 bg-ws-stage/30 p-2.5 text-[12px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-                    {detail.body}
-                  </div>
-                ) : null}
-              </div>
-
-              {canReview ? (
-                <div className="space-y-2 rounded-lg border border-ws-border/70 bg-ws-stage/30 p-2.5">
-                  <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
-                    Review
-                  </p>
-                  <Textarea
-                    value={reviewBody}
-                    onChange={(event) => setReviewBody(event.target.value)}
-                    placeholder="Review comment (required for Request changes)"
-                    rows={3}
-                    disabled={isReviewing}
-                    className="min-h-16 resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text"
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isReviewing || isMerging}
-                      onClick={() => void onReview("APPROVE")}
-                      className="h-7 gap-1 bg-emerald-600 text-[11px] text-white hover:bg-emerald-700"
-                    >
-                      {isReviewing ? (
-                        <Loader2Icon className="size-3.5 animate-spin" />
-                      ) : (
-                        <CheckIcon className="size-3.5" />
-                      )}
-                      Approve
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={isReviewing || isMerging}
-                      onClick={() => void onReview("REQUEST_CHANGES")}
-                      className="h-7 gap-1 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
-                    >
-                      <XIcon className="size-3.5" />
-                      Request changes
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              {canMerge ? (
-                <div className="space-y-2 rounded-lg border border-ws-border/70 bg-ws-stage/30 p-2.5">
-                  <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
-                    Merge
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Select
-                      value={mergeMethod}
-                      onValueChange={(value) =>
-                        setMergeMethod(value as PullRequestMergeMethod)
-                      }
-                    >
-                      <SelectTrigger
-                        size="sm"
-                        className="h-7 w-[180px] border-ws-border bg-ws-bg text-[11px] text-ws-text shadow-none"
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="z-[100]">
-                        <SelectItem value="merge" className="text-[11px]">
-                          Merge commit
-                        </SelectItem>
-                        <SelectItem value="squash" className="text-[11px]">
-                          Squash and merge
-                        </SelectItem>
-                        <SelectItem value="rebase" className="text-[11px]">
-                          Rebase and merge
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={isMerging || isReviewing}
-                      onClick={() => void onMerge()}
-                      className="h-7 bg-violet-600 text-[11px] text-white hover:bg-violet-700"
-                    >
-                      {isMerging ? (
-                        <>
-                          <Loader2Icon className="size-3.5 animate-spin" />
-                          Merging…
-                        </>
-                      ) : (
-                        "Merge pull request"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              ) : null}
-
-              {detail.reviews.length > 0 ? (
-                <div className="space-y-2 border-t border-ws-border-subtle pt-3">
-                  <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
-                    Reviews ({detail.reviews.length})
-                  </p>
-                  <ul className="space-y-2">
-                    {detail.reviews.map((review) => (
-                      <li
-                        key={review.id}
-                        className="rounded-md border border-ws-border/70 bg-ws-panel/50 p-2.5"
-                      >
-                        <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[10px] text-ws-text-muted">
-                          <GitHubAuthorAvatar
-                            login={review.authorLogin}
-                            avatarUrl={review.authorAvatarUrl}
-                            size={16}
-                          />
-                          <span className="font-medium text-ws-text-secondary">
-                            {review.authorLogin}
-                          </span>
-                          <ReviewStateBadge state={review.state} />
-                          <span>{formatGitHubDate(review.submittedAt)}</span>
-                        </div>
-                        {review.body ? (
-                          <p className="text-[12px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-                            {review.body}
-                          </p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              <PullRequestFilesSection
-                key={detail.number}
-                files={detail.files}
-              />
-
-              <GitHubCommentList comments={detail.comments} />
-            </div>
-          ) : null}
-        </div>
-        {detail && detail.state === "open" && !detail.merged ? (
-          <GitHubReplyBox
-            value={replyBody}
-            onChange={setReplyBody}
-            isSubmitting={isCommenting}
-            onSubmit={() => {
-              if (!replyBody.trim()) return;
-              void createComment(detail.number, replyBody.trim()).then(
-                (comment) => {
-                  setReplyBody("");
-                  setDetail((current) =>
-                    current
-                      ? {
-                          ...current,
-                          comments: [...current.comments, comment],
-                        }
-                      : current,
-                  );
-                },
-              );
-            }}
-          />
-        ) : null}
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-7 shrink-0 items-center justify-between border-b border-ws-border-subtle px-2">
@@ -637,11 +309,7 @@ export function WorkspaceGitPullRequests({
               <li key={pr.number}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setReplyBody("");
-                    setReviewBody("");
-                    setView({ kind: "detail", pullNumber: pr.number });
-                  }}
+                  onClick={() => openPullRequest(pr.number)}
                   className="flex w-full gap-2 rounded-sm px-2 py-1.5 text-left transition-colors hover:bg-ws-hover"
                 >
                   <GitPullRequestIcon
@@ -683,6 +351,9 @@ export function WorkspaceGitPullRequests({
           </ul>
         )}
       </div>
+      <p className="shrink-0 border-t border-ws-border-subtle px-3 py-2 text-[10px] text-ws-text-muted">
+        Opens in the editor for side-by-side diffs and line comments.
+      </p>
     </div>
   );
 }

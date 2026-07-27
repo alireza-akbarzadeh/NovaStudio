@@ -42,8 +42,21 @@ export type GitHubPullRequestReview = {
   url: string;
 };
 
+export type GitHubPullRequestReviewComment = {
+  id: number;
+  path: string;
+  line: number;
+  side: string;
+  body: string;
+  authorLogin: string;
+  authorAvatarUrl: string;
+  createdAt: string;
+  url: string;
+};
+
 export type GitHubPullRequestDetail = GitHubPullRequestSummary & {
   body: string;
+  headSha: string;
   mergeable: boolean | null;
   mergeableState: string;
   additions: number;
@@ -59,6 +72,7 @@ export type GitHubPullRequestDetail = GitHubPullRequestSummary & {
   }>;
   files: GitHubPullRequestFile[];
   reviews: GitHubPullRequestReview[];
+  reviewComments: GitHubPullRequestReviewComment[];
 };
 
 export type PullRequestStateFilter = "open" | "closed" | "all";
@@ -71,6 +85,9 @@ export function useGitHubPullRequests(projectId: string) {
   const createAction = useAction(api.githubPullRequests.createPullRequest);
   const commentAction = useAction(api.githubPullRequests.createPullRequestComment);
   const reviewAction = useAction(api.githubPullRequests.createPullRequestReview);
+  const reviewCommentAction = useAction(
+    api.githubPullRequests.createPullRequestReviewComment,
+  );
   const mergeAction = useAction(api.githubPullRequests.mergePullRequest);
 
   const [isListing, setIsListing] = useState(false);
@@ -78,6 +95,7 @@ export function useGitHubPullRequests(projectId: string) {
   const [isCreating, setIsCreating] = useState(false);
   const [isCommenting, setIsCommenting] = useState(false);
   const [isReviewing, setIsReviewing] = useState(false);
+  const [isReviewCommenting, setIsReviewCommenting] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
 
   const listPullRequests = useCallback(
@@ -200,6 +218,40 @@ export function useGitHubPullRequests(projectId: string) {
     [projectId, reviewAction],
   );
 
+  const createReviewComment = useCallback(
+    async (args: {
+      pullNumber: number;
+      path: string;
+      line: number;
+      body: string;
+      side?: "LEFT" | "RIGHT";
+      commitId?: string;
+    }) => {
+      setIsReviewCommenting(true);
+      try {
+        const comment = await reviewCommentAction({
+          projectId: projectId as Id<"projects">,
+          pullNumber: args.pullNumber,
+          path: args.path,
+          line: args.line,
+          body: args.body,
+          side: args.side,
+          commitId: args.commitId,
+        });
+        toast.success("Review comment posted");
+        return comment;
+      } catch (error) {
+        toast.error(
+          parseConvexErrorMessage(error, "Failed to post review comment"),
+        );
+        throw error;
+      } finally {
+        setIsReviewCommenting(false);
+      }
+    },
+    [projectId, reviewCommentAction],
+  );
+
   const mergePullRequest = useCallback(
     async (
       pullNumber: number,
@@ -232,12 +284,14 @@ export function useGitHubPullRequests(projectId: string) {
     createPullRequest,
     createComment,
     submitReview,
+    createReviewComment,
     mergePullRequest,
     isListing,
     isLoadingDetail,
     isCreating,
     isCommenting,
     isReviewing,
+    isReviewCommenting,
     isMerging,
   };
 }

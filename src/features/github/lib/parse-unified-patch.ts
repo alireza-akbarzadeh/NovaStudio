@@ -43,7 +43,11 @@ export function parseUnifiedPatch(patch: string): {
   };
 }
 
-export function diffEditorHeight(lineCount: number): number {
-  const clamped = Math.min(Math.max(lineCount, 6), 24);
-  return clamped * 18 + 24;
+export function diffEditorHeight(lineCount: number, fullPage = false): number {
+  const minLines = fullPage ? 12 : 6;
+  const maxLines = fullPage ? 48 : 24;
+  const lineHeight = fullPage ? 20 : 18;
+  const padding = fullPage ? 32 : 24;
+  const clamped = Math.min(Math.max(lineCount, minLines), maxLines);
+  return clamped * lineHeight + padding;
 }
