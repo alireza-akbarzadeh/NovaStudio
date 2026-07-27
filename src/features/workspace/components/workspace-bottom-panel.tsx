@@ -5,6 +5,7 @@ import {
   CircleAlertIcon,
   CircleXIcon,
   GaugeIcon,
+  Link2Icon,
   SquareTerminalIcon,
   TerminalIcon,
 } from "lucide-react";
@@ -14,6 +15,7 @@ import { WorkspaceDebugPanel } from "@/features/workspace/components/workspace-d
 import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 import { WorkspacePerformancePanel } from "@/features/workspace/components/workspace-performance-panel";
 import { WorkspaceProblemsPanel } from "@/features/workspace/components/workspace-problems-panel";
+import { WorkspaceReferencesPanel } from "@/features/workspace/components/workspace-references-panel";
 import { WorkspaceTerminalPanel } from "@/features/workspace/components/workspace-terminal-panel";
 import { useMonacoProblems } from "@/features/workspace/hooks/use-monaco-problems";
 import { IS_DEV } from "@/features/workspace/lib/is-dev";
@@ -30,6 +32,7 @@ type WorkspaceBottomPanelProps = {
 
 const TABS: { id: BottomPanelTab; label: string }[] = [
   { id: "problems", label: "Problems" },
+  { id: "references", label: "References" },
   { id: "debug", label: "Debug" },
   ...(IS_DEV ? [{ id: "performance" as const, label: "Performance" }] : []),
   { id: "console", label: "Console" },
@@ -39,6 +42,7 @@ const TABS: { id: BottomPanelTab; label: string }[] = [
 export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
   const activeTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const setBottomPanelTab = useWorkspaceStore((s) => s.setBottomPanelTab);
+  const symbolReferences = useWorkspaceStore((s) => s.symbolReferences);
   const previewServer = useOptionalPreviewServer();
   const { errorCount, warningCount } = useMonacoProblems();
   const problemBadge = errorCount + warningCount;
@@ -52,6 +56,7 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
   const consoleErrorCount = consoleEntries.filter((e) => e.level === "error").length;
   const consoleWarnCount = consoleEntries.filter((e) => e.level === "warn").length;
   const consoleBadge = consoleErrorCount + consoleWarnCount;
+  const referencesBadge = symbolReferences?.references.length ?? 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-ws-panel">
@@ -78,6 +83,8 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
                 <BugIcon className="size-3 opacity-70" />
               ) : tab.id === "performance" ? (
                 <GaugeIcon className="size-3 opacity-70" />
+              ) : tab.id === "references" ? (
+                <Link2Icon className="size-3 opacity-70" />
               ) : errorCount > 0 ? (
                 <CircleXIcon className="size-3 text-ws-danger-soft" />
               ) : warningCount > 0 ? (
@@ -92,6 +99,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
                   )}
                 >
                   {problemBadge}
+                </span>
+              ) : null}
+              {tab.id === "references" && referencesBadge > 0 ? (
+                <span className="rounded-full bg-ws-accent/80 px-1.5 text-[9px] text-white">
+                  {referencesBadge}
                 </span>
               ) : null}
               {tab.id === "debug" && bpCount > 0 ? (
@@ -128,6 +140,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
         {activeTab === "problems" ? (
           <div className="absolute inset-0">
             <WorkspaceProblemsPanel projectId={projectId} />
+          </div>
+        ) : null}
+        {activeTab === "references" ? (
+          <div className="absolute inset-0">
+            <WorkspaceReferencesPanel projectId={projectId} />
           </div>
         ) : null}
         {activeTab === "debug" ? (

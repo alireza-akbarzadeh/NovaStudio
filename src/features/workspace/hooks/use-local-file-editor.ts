@@ -35,6 +35,8 @@ export function useLocalFileEditor({
   onContentChange,
   definitionFiles,
   onGoToDefinition,
+  onShowReferences,
+  onRenameSymbol,
 }: CollaborativeCodeEditorProps): CollaborativeEditorViewModel {
   const updateContent = useMutation(api.projectFiles.updateContent);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -249,6 +251,8 @@ export function useLocalFileEditor({
     reconnecting: false,
     definitionFiles,
     onGoToDefinition,
+    onShowReferences,
+    onRenameSymbol,
     onChange,
     onCreateEditor,
   };

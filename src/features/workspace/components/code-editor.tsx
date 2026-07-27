@@ -24,9 +24,11 @@ import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
-  registerGoToDefinition,
+  registerSymbolRefactor,
+  type SymbolRefactorContext,
+} from "@/features/workspace/lib/monaco-symbol-refactor";
+import {
   type DefinitionTarget,
-  type GoToDefinitionContext,
 } from "@/features/workspace/lib/monaco-go-to-definition";
 import {
   configureMonacoLanguages,
@@ -114,6 +116,8 @@ type CodeEditorProps = {
   /** Project files used to resolve import / JSX go-to-definition. */
   definitionFiles?: ProjectFileEntry[];
   onGoToDefinition?: (target: DefinitionTarget) => void;
+  onShowReferences?: SymbolRefactorContext["onShowReferences"];
+  onRenameSymbol?: SymbolRefactorContext["onRenameSymbol"];
 };
 
 export function CodeEditor({
@@ -125,6 +129,8 @@ export function CodeEditor({
   onCreateEditor,
   definitionFiles,
   onGoToDefinition,
+  onShowReferences,
+  onRenameSymbol,
 }: CodeEditorProps) {
   const fileName = fileNameFromPath(filePath);
   const { resolvedTheme } = useTheme();
@@ -139,9 +145,13 @@ export function CodeEditor({
   const disposablesRef = useRef<IDisposable[]>([]);
   const definitionFilesRef = useRef(definitionFiles);
   const onGoToDefinitionRef = useRef(onGoToDefinition);
+  const onShowReferencesRef = useRef(onShowReferences);
+  const onRenameSymbolRef = useRef(onRenameSymbol);
   const filePathRef = useRef(filePath);
   definitionFilesRef.current = definitionFiles;
   onGoToDefinitionRef.current = onGoToDefinition;
+  onShowReferencesRef.current = onShowReferences;
+  onRenameSymbolRef.current = onRenameSymbol;
   filePathRef.current = filePath;
 
   const pendingReveal = useWorkspaceStore((s) => s.pendingEditorReveal);
@@ -314,18 +324,22 @@ export function CodeEditor({
 
       try {
         disposablesRef.current.push(
-          registerGoToDefinition(monaco, ed, (): GoToDefinitionContext | null => {
+          registerSymbolRefactor(monaco, ed, (): SymbolRefactorContext | null => {
             const navigate = onGoToDefinitionRef.current;
-            if (!navigate) return null;
+            const showRefs = onShowReferencesRef.current;
+            const rename = onRenameSymbolRef.current;
+            if (!navigate || !showRefs || !rename) return null;
             return {
               currentPath: filePathRef.current,
               files: definitionFilesRef.current ?? [],
               onNavigate: navigate,
+              onShowReferences: showRefs,
+              onRenameSymbol: rename,
             };
           }),
         );
       } catch (error) {
-        console.warn("[editor] go-to-definition unavailable", error);
+        console.warn("[editor] symbol refactor unavailable", error);
       }
 
       editorRef.current = ed;

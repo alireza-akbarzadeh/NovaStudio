@@ -387,6 +387,10 @@ function FileEditorContent({
   const setPendingEditorReveal = useWorkspaceStore(
     (s) => s.setPendingEditorReveal,
   );
+  const showSymbolReferences = useWorkspaceStore((s) => s.showSymbolReferences);
+  const openRenameSymbolDialog = useWorkspaceStore(
+    (s) => s.openRenameSymbolDialog,
+  );
 
   const definitionCandidates = useMemo(() => {
     const fileRows = (metadata ?? [])
@@ -470,6 +474,20 @@ function FileEditorContent({
     openTab({ kind: "file", path: target.path }, { mode: "preview" });
   };
 
+  const onShowReferences = (
+    references: import("@/features/workspace/lib/symbol-refactor").SymbolReference[],
+    symbolName: string,
+  ) => {
+    showSymbolReferences(references, symbolName);
+  };
+
+  const onRenameSymbol = (
+    references: import("@/features/workspace/lib/symbol-refactor").SymbolReference[],
+    symbolName: string,
+  ) => {
+    openRenameSymbolDialog(references, symbolName);
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <EditorViewTabs
@@ -503,6 +521,8 @@ function FileEditorContent({
             onContentChange={setContent}
             definitionFiles={definitionFiles}
             onGoToDefinition={onGoToDefinition}
+            onShowReferences={onShowReferences}
+            onRenameSymbol={onRenameSymbol}
           />
         </div>
         {previewAvailable ? (

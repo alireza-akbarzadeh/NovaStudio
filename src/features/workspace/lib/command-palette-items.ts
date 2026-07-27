@@ -95,6 +95,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+d",
   },
   {
+    id: "showEnv",
+    label: "Show Environment Variables",
+    keywords: "env dotenv .env secrets config local development production variables",
+    shortcut: "mod+alt+e",
+  },
+  {
     id: "showExtensions",
     label: "Show Extensions",
     keywords: "marketplace themes languages vue plugins install",
@@ -129,6 +135,25 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Toggle Problems",
     keywords: "errors warnings diagnostics",
     shortcut: "mod+shift+m",
+  },
+  {
+    id: "findReferences",
+    label: "Find All References",
+    keywords: "symbol usages peek references refactor",
+    shortcut: "shift+f12",
+  },
+  {
+    id: "renameSymbol",
+    label: "Rename Symbol",
+    keywords: "refactor f2 symbol identifier",
+    shortcut: "f2",
+  },
+  {
+    id: "showReferences",
+    label: "Show References Panel",
+    keywords: "symbol usages peek references bottom panel",
+    shortcut: "shift+f12",
+    hidden: true,
   },
   {
     id: "showDebug",

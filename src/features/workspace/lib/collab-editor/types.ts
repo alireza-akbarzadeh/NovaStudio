@@ -12,6 +12,14 @@ export type CollaborativeCodeEditorProps = {
     line: number;
     column: number;
   }) => void;
+  onShowReferences?: (
+    references: import("@/features/workspace/lib/symbol-refactor").SymbolReference[],
+    symbolName: string,
+  ) => void;
+  onRenameSymbol?: (
+    references: import("@/features/workspace/lib/symbol-refactor").SymbolReference[],
+    symbolName: string,
+  ) => void;
 };
 
 export type CollaborativeEditorViewModel = {
@@ -23,6 +31,8 @@ export type CollaborativeEditorViewModel = {
   reconnecting: boolean;
   definitionFiles?: CollaborativeCodeEditorProps["definitionFiles"];
   onGoToDefinition?: CollaborativeCodeEditorProps["onGoToDefinition"];
+  onShowReferences?: CollaborativeCodeEditorProps["onShowReferences"];
+  onRenameSymbol?: CollaborativeCodeEditorProps["onRenameSymbol"];
   onChange?: (next: string) => void;
   onCreateEditor: (ed: import("monaco-editor").editor.IStandaloneCodeEditor) => void;
 };

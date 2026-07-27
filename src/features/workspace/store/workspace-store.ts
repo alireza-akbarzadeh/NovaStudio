@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+import type { SymbolReference } from "@/features/workspace/lib/symbol-refactor";
+
 export type PanelSizes = {
   sidebar: number;
   terminal: number;
@@ -12,6 +14,7 @@ export type LeftPanelView =
   | "git"
   | "outline"
   | "dependencies"
+  | "env"
   | "extensions"
   | "activity";
 
@@ -22,9 +25,20 @@ export type GitPanelTab = "changes" | "stashes" | "history" | "github" | "info";
 export type BottomPanelTab =
   | "terminal"
   | "problems"
+  | "references"
   | "debug"
   | "performance"
   | "console";
+
+export type SymbolReferencesState = {
+  symbolName: string;
+  references: SymbolReference[];
+};
+
+export type RenameSymbolRequest = {
+  symbolName: string;
+  references: SymbolReference[];
+};
 
 export type EditorPanelView = "code" | "preview";
 
@@ -173,10 +187,15 @@ type WorkspaceState = WorkspacePrefs & {
   followingUserId: string | null;
   /** Inline Git blame annotations in the editor. */
   blameVisible: boolean;
+  /** Find-all-references results for the bottom References tab. */
+  symbolReferences: SymbolReferencesState | null;
+  /** Pending rename dialog (F2 / Rename Symbol). */
+  renameSymbolRequest: RenameSymbolRequest | null;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
   showProblemsPanel: () => void;
+  showReferencesPanel: () => void;
   showDebugPanel: () => void;
   showPerformancePanel: () => void;
   showConsolePanel: () => void;
@@ -278,6 +297,16 @@ type WorkspaceState = WorkspacePrefs & {
   toggleZenMode: () => void;
   toggleBlame: () => void;
   setBlameVisible: (visible: boolean) => void;
+  showSymbolReferences: (
+    references: SymbolReference[],
+    symbolName: string,
+  ) => void;
+  clearSymbolReferences: () => void;
+  openRenameSymbolDialog: (
+    references: SymbolReference[],
+    symbolName: string,
+  ) => void;
+  closeRenameSymbolDialog: () => void;
   setEditorPanelView: (view: EditorPanelView) => void;
   setPreviewUrlPath: (path: string) => void;
   setTerminalCwd: (cwd: string | null) => void;
@@ -305,6 +334,7 @@ export const LEFT_PANEL_LABELS: Record<LeftPanelView, string> = {
   git: "Git",
   outline: "Outline",
   dependencies: "Dependencies",
+  env: "Environment",
   extensions: "Extensions",
   activity: "Activity",
 };
@@ -427,6 +457,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   terminalCwd: null,
   followingUserId: null,
   blameVisible: false,
+  symbolReferences: null,
+  renameSymbolRequest: null,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () =>
@@ -442,6 +474,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return { terminalOpen: false };
       }
       return { terminalOpen: true, bottomPanelTab: "problems" };
+    }),
+  showReferencesPanel: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "references") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "references" };
     }),
   showDebugPanel: () =>
     set((s) => {
@@ -874,6 +913,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
   toggleBlame: () => set((s) => ({ blameVisible: !s.blameVisible })),
   setBlameVisible: (visible) => set({ blameVisible: visible }),
+  showSymbolReferences: (references, symbolName) =>
+    set({
+      symbolReferences: { references, symbolName },
+      terminalOpen: true,
+      bottomPanelTab: "references",
+    }),
+  clearSymbolReferences: () => set({ symbolReferences: null }),
+  openRenameSymbolDialog: (references, symbolName) =>
+    set({ renameSymbolRequest: { references, symbolName } }),
+  closeRenameSymbolDialog: () => set({ renameSymbolRequest: null }),
   setEditorPanelView: (view) => set({ editorPanelView: view }),
   setPreviewUrlPath: (path) => set({ previewUrlPath: path }),
   setTerminalCwd: (cwd) => set({ terminalCwd: cwd }),

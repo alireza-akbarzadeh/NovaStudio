@@ -13,11 +13,16 @@ import { useEditorSettingsStore } from "@/features/settings/store/editor-setting
 import { isLiveblocksConfigured } from "@/features/workspace/lib/liveblocks-configured";
 import { isApplePlatform } from "@/lib/keyboard";
 import { toast } from "sonner";
+import {
+  runFindReferences,
+  runRenameSymbol,
+} from "@/features/workspace/lib/symbol-refactor-actions";
 
 export type CommandId =
   | "toggleSidebar"
   | "toggleTerminal"
   | "showProblems"
+  | "showReferences"
   | "showDebug"
   | "showConsole"
   | "showPerformance"
@@ -42,6 +47,7 @@ export type CommandId =
   | "showCodeQuality"
   | "showOutline"
   | "showDependencies"
+  | "showEnv"
   | "showExtensions"
   | "showActivity"
   | "showGitChanges"
@@ -53,7 +59,9 @@ export type CommandId =
   | "inlineAiEdit"
   | "toggleLiveCollaboration"
   | "toggleZenMode"
-  | "toggleBlame";
+  | "toggleBlame"
+  | "findReferences"
+  | "renameSymbol";
 
 export type Command = {
   id: CommandId;
@@ -99,6 +107,11 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+m",
     allowInInput: true,
     run: () => store().showProblemsPanel(),
+  },
+  {
+    id: "showReferences",
+    allowInInput: true,
+    run: () => store().showReferencesPanel(),
   },
   {
     id: "showDebug",
@@ -269,6 +282,12 @@ export const workspaceCommands: Command[] = [
     run: () => showPanel("dependencies"),
   },
   {
+    id: "showEnv",
+    shortcut: "mod+alt+e",
+    allowInInput: true,
+    run: () => showPanel("env"),
+  },
+  {
     id: "showExtensions",
     shortcut: "mod+shift+x",
     allowInInput: true,
@@ -386,6 +405,22 @@ export const workspaceCommands: Command[] = [
           ? "Inline blame from GitHub — click an annotation to open the commit."
           : "Blame annotations hidden.",
       });
+    },
+  },
+  {
+    id: "findReferences",
+    shortcut: "shift+f12",
+    allowInInput: true,
+    run: () => {
+      void runFindReferences();
+    },
+  },
+  {
+    id: "renameSymbol",
+    shortcut: "f2",
+    allowInInput: true,
+    run: () => {
+      void runRenameSymbol();
     },
   },
 ];

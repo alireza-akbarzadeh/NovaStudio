@@ -7,6 +7,7 @@ import {
   CircleAlertIcon,
   FolderTreeIcon,
   GitBranchIcon,
+  BracesIcon,
   ListTreeIcon,
   MessageCircleIcon,
   MessageSquareIcon,
@@ -105,6 +106,12 @@ const LEFT_ITEMS: ActivityItem[] = [
     shortcut: "mod+9",
   },
   {
+    view: "env",
+    label: "Environment (.env)",
+    icon: <BracesIcon className="size-4" strokeWidth={1.75} />,
+    shortcut: "mod+alt+e",
+  },
+  {
     view: "outline",
     label: "Outline",
     icon: <ListTreeIcon className="size-4" strokeWidth={1.75} />,
@@ -197,7 +204,7 @@ function ActivityRailShell({
       <nav
         aria-label={label}
         className={cn(
-          "flex w-11 shrink-0 flex-col items-center gap-0.5 py-1.5",
+          "flex h-full min-h-0 w-11 shrink-0 flex-col items-center gap-0.5 overflow-y-auto py-1.5",
           side === "left" ? "pr-0.5" : "pl-0.5",
         )}
       >

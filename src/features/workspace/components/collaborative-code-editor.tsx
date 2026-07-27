@@ -40,6 +40,8 @@ function EditorShell({
           onChange={vm.onChange}
           definitionFiles={vm.definitionFiles}
           onGoToDefinition={vm.onGoToDefinition}
+          onShowReferences={vm.onShowReferences}
+          onRenameSymbol={vm.onRenameSymbol}
           onCreateEditor={vm.onCreateEditor}
         />
         {vm.connecting && !vm.reconnecting ? (

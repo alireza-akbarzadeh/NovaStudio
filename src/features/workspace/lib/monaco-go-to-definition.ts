@@ -179,6 +179,8 @@ const navigators = new WeakMap<
   (target: DefinitionTarget) => void
 >();
 
+const modelContexts = new Map<string, () => GoToDefinitionContext>();
+
 let openerRegistered = false;
 let definitionProvidersRegistered = false;
 
@@ -587,7 +589,28 @@ function ensureDefinitionProviders(monaco: Monaco) {
   }
 }
 
-const modelContexts = new Map<string, () => GoToDefinitionContext>();
+export function resolveSymbolDefinition(
+  monaco: Monaco,
+  model: editor.ITextModel,
+  position: Position,
+  ctx: GoToDefinitionContext,
+): DefinitionTarget | null {
+  return resolveDefinition(monaco, model, position, ctx);
+}
+
+export function locateSymbolInContent(
+  content: string,
+  symbol: string | null,
+  preferDefault: boolean,
+): { line: number; column: number } {
+  return findSymbolInContent(content, symbol, preferDefault);
+}
+
+export function listImports(source: string): ParsedImport[] {
+  return parseImports(source);
+}
+
+export type { ParsedImport };
 
 /**
  * Enable ⌘/Ctrl-click and F12 Go to Definition for project imports / JSX components.

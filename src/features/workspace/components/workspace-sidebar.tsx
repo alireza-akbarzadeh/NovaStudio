@@ -2,6 +2,7 @@
 
 import { WorkspaceActivityPanel } from "@/features/workspace/components/workspace-activity-panel";
 import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
+import { WorkspaceEnvPanel } from "@/features/workspace/components/workspace-env-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
 import { WorkspaceExtensionsPanel } from "@/features/workspace/components/workspace-extensions-panel";
 import { WorkspaceGitPanel } from "@/features/workspace/components/workspace-git-panel";
@@ -39,6 +40,9 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
         {leftPanelView === "outline" ? <WorkspaceOutlinePanel /> : null}
         {leftPanelView === "dependencies" ? (
           <WorkspaceDependenciesPanel projectId={projectId} />
+        ) : null}
+        {leftPanelView === "env" ? (
+          <WorkspaceEnvPanel projectId={projectId} />
         ) : null}
         {leftPanelView === "extensions" ? (
           <WorkspaceExtensionsPanel />

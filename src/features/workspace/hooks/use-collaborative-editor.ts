@@ -56,6 +56,8 @@ export function useCollaborativeEditor({
   onContentChange,
   definitionFiles,
   onGoToDefinition,
+  onShowReferences,
+  onRenameSymbol,
 }: CollaborativeCodeEditorProps): CollaborativeEditorViewModel {
   const room = useRoom();
   const status = useStatus();
@@ -827,6 +829,8 @@ export function useCollaborativeEditor({
     reconnecting,
     definitionFiles,
     onGoToDefinition,
+    onShowReferences,
+    onRenameSymbol,
     // Persist via onChange only when unbound (connecting / reconnect gap).
     onChange: yjsBound ? undefined : fallbackOnChange,
     onCreateEditor,

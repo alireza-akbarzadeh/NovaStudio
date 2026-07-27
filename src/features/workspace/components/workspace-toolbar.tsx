@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BracesIcon,
   FocusIcon,
   PanelBottomIcon,
   PanelLeftIcon,
@@ -117,6 +118,7 @@ export function WorkspaceToolbar({
   projectName,
 }: WorkspaceToolbarProps) {
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
+  const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const zenMode = useWorkspaceStore((s) => s.zenMode);
@@ -163,7 +165,7 @@ export function WorkspaceToolbar({
           </button>
 
           <ToolbarTooltipButton
-            label="Project"
+            label="Project sidebar"
             pressed={sidebarOpen}
             onClick={() => runCommand("toggleSidebar")}
             shortcut={
@@ -174,6 +176,21 @@ export function WorkspaceToolbar({
             }
           >
             <PanelLeftIcon className="size-3.5" strokeWidth={1.75} />
+          </ToolbarTooltipButton>
+
+          <ToolbarTooltipButton
+            label="Environment (.env)"
+            pressed={sidebarOpen && leftPanelView === "env"}
+            onClick={() => runCommand("showEnv")}
+            shortcut={
+              <>
+                <ModKey />
+                <AltKey />
+                <ShortcutKey>E</ShortcutKey>
+              </>
+            }
+          >
+            <BracesIcon className="size-3.5" strokeWidth={1.75} />
           </ToolbarTooltipButton>
 
           <ToolbarTooltipButton

@@ -25,6 +25,7 @@ import { WorkspaceBottomPanel } from "@/features/workspace/components/workspace-
 import { WorkspaceCommandPalette } from "@/features/workspace/components/workspace-command-palette";
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
+import { RenameSymbolDialog } from "@/features/workspace/components/rename-symbol-dialog";
 import { WorkspaceImportBanner } from "@/features/workspace/components/workspace-import-banner";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
 import { WorkspaceCommentsPanel } from "@/features/workspace/components/workspace-comments-panel";
@@ -298,6 +299,7 @@ function WorkspaceLayoutInner({
       <WorkspaceSettingsDialog />
       <WorkspaceCommandPalette projectId={projectId} />
       <WorkspaceGoToFileDialog projectId={projectId} />
+      <RenameSymbolDialog projectId={projectId} />
       <InitializeGitRepositoryDialog projectId={projectId} />
       <CloneFromGitHubDialog
         open={cloneFromGitHubOpen}

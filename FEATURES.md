@@ -96,6 +96,8 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 32 | **Git blame (inline annotations)** | `review` | Toggle in status bar · author + commit + age per line · click opens GitHub commit |
 | 33 | **Merge conflict resolver** | `review` | 3-way merge on pull · Base / Yours / Theirs · Accept yours/theirs/both |
+| 34 | **Find references / Rename symbol** | `review` | Shift+F12 references panel · F2 rename across project · import-aware |
+| 35 | **Environment variables panel** | `review` | Left sidebar · `.env` / `.env.local` editor · toolbar `{ }` · ⌘⌥E |
 
 ### Later / hard infrastructure
 
@@ -372,6 +374,20 @@ These are the biggest daily-friction gaps you called out.
 - Open a conflict → **Base · Yours · Theirs** side-by-side Monaco view
 - **Accept yours** · **Accept theirs** · **Accept both**
 - **Discard & pull** still available as destructive fallback
+
+### 34. Find references / Rename symbol — ready for review
+
+- **Shift+F12** or command palette → **Find All References**
+- Results in bottom **References** panel — grouped by file · click to jump
+- **F2** or **Rename Symbol** → dialog renames across all matched files
+- Respects import aliases and local bindings within the definition file set
+
+### 35. Environment variables panel — ready for review
+
+- Left activity bar **Environment** `{ }` (4th icon, after Git) · toolbar button · **⌘⌥E** / command palette
+- Edit `.env`, `.env.local`, `.env.development`, etc. as key/value rows
+- **Vercel-style bulk import** — paste entire `.env` (lines or space-separated) → auto-parse → Merge / Replace
+- Create missing env files · hide/show values · **Save** persists to Convex
 
 ### 17. Full Next/Vite host — ready for review
 
