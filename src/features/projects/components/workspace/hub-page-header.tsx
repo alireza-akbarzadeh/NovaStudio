@@ -2,9 +2,8 @@
 
 import { Manrope } from "next/font/google";
 
-import { NotificationControls } from "@/features/notifications/components/notification-controls";
 import { AppOrganizationSwitcher } from "@/features/billing/components/app-organization-switcher";
-import { AppUserButton } from "@/features/billing/components/app-user-button";
+import { NotificationControls } from "@/features/notifications/components/notification-controls";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -42,7 +41,6 @@ export function HubPageHeader({
         {actions}
         <AppOrganizationSwitcher />
         <NotificationControls />
-        <AppUserButton settingsHref="/projects/settings" />
       </div>
     </header>
   );
