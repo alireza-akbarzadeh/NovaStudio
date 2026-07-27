@@ -31,15 +31,9 @@ export function usePullFromGitHub(projectId: string) {
           force: options?.force,
           branch: options?.branch,
         });
-        if ("queued" in result && result.queued) {
-          toast.success(`Pulling ${result.branch}…`, {
-            description: "Fast sync started — usually finishes within about a minute.",
-          });
-          return result;
-        }
-        toast.success(
-          `Synced ${result.fileCount} file${result.fileCount === 1 ? "" : "s"} from ${result.branch}`,
-        );
+        toast.success(`Pulling ${result.branch}…`, {
+          description: "Fast sync started — usually finishes within about a minute.",
+        });
         return result;
       } catch (error) {
         const message = parseConvexErrorMessage(

@@ -347,9 +347,16 @@ export const listPendingAccessRequests = query({
         const name = request.requesterName ?? "Contributor";
         items.push({
           id: request._id,
+          projectId: project._id,
           name,
+          email: request.requesterEmail,
           role: request.roleLabel ?? "Developer",
+          experienceLevel: request.experienceLevel,
+          message: request.message,
+          github: request.github,
+          portfolioUrl: request.portfolioUrl,
           project: project.name,
+          createdAt: request.createdAt,
           initials: name
             .split(/\s+/)
             .map((part) => part[0] ?? "")
@@ -361,7 +368,7 @@ export const listPendingAccessRequests = query({
       }
     }
 
-    return items;
+    return items.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 

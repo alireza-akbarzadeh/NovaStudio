@@ -19,8 +19,8 @@ export type PaletteCommandMeta = {
 export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
   {
     id: "openGoToFile",
-    label: "Go to File",
-    keywords: "open file quick open search files",
+    label: "Navigate Project Files",
+    keywords: "open file quick open search files browse create shift shift",
     shortcut: "mod+p",
   },
   {
@@ -135,6 +135,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Toggle Debug",
     keywords: "debugger breakpoints run node inspect",
     shortcut: "mod+shift+y",
+  },
+  {
+    id: "showConsole",
+    label: "Toggle Console",
+    keywords: "preview logs output dev server",
+    shortcut: "mod+shift+u",
   },
   ...(process.env.NODE_ENV === "development"
     ? ([

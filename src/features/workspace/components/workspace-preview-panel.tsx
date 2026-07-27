@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChevronDownIcon,
   ExternalLinkIcon,
   GlobeIcon,
   Maximize2Icon,
@@ -33,7 +32,6 @@ import {
 } from "@/features/workspace/lib/preview-devices";
 import {
   isPreviewBridgeMessage,
-  type PreviewConsoleLevel,
 } from "@/features/workspace/lib/preview-runtime-bridge";
 import {
   isPreviewableFile,
@@ -55,13 +53,6 @@ type WorkspacePreviewPanelProps = {
   projectId: string;
   /** False when the Code tab is showing — skip esbuild work; keep HMR iframe alive. */
   active?: boolean;
-};
-
-type ConsoleEntry = {
-  id: string;
-  level: PreviewConsoleLevel;
-  message: string;
-  timestamp: number;
 };
 
 type PreviewError = {
@@ -103,6 +94,7 @@ export function WorkspacePreviewPanel({
   const previewUrlPath = useWorkspaceStore((s) => s.previewUrlPath);
   const setPreviewUrlPath = useWorkspaceStore((s) => s.setPreviewUrlPath);
   const setFollowingUserId = useWorkspaceStore((s) => s.setFollowingUserId);
+  const showConsolePanel = useWorkspaceStore((s) => s.showConsolePanel);
 
   useEffect(() => {
     if (previewUrlPath !== urlPath) {
@@ -118,8 +110,6 @@ export function WorkspacePreviewPanel({
     setPreviewUrlPath(normalized);
     setFollowingUserId(null);
   };
-  const [consoleOpen, setConsoleOpen] = useState(false);
-  const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([]);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const requestIdRef = useRef(0);
@@ -180,23 +170,13 @@ export function WorkspacePreviewPanel({
         ? device.width
         : device.height;
 
-  const displayEntries = useMemo(() => {
-    if (!useHotReload || !previewServer) return consoleEntries;
-    const fromServer: ConsoleEntry[] = previewServer.logs.map((log) => ({
-      id: log.id,
-      level: log.level,
-      message: log.message,
-      timestamp: log.timestamp,
-    }));
-    return [...fromServer, ...consoleEntries]
-      .sort((a, b) => a.timestamp - b.timestamp)
-      .slice(-200);
-  }, [consoleEntries, previewServer, useHotReload]);
-
-  const displayWarnCount = displayEntries.filter((e) => e.level === "warn")
-    .length;
+  const consoleEntries = useMemo(
+    () => [...(previewServer?.logs ?? []), ...(previewServer?.bridgeLogs ?? [])],
+    [previewServer?.bridgeLogs, previewServer?.logs],
+  );
+  const displayWarnCount = consoleEntries.filter((e) => e.level === "warn").length;
   const displayErrorCount =
-    displayEntries.filter((e) => e.level === "error").length +
+    consoleEntries.filter((e) => e.level === "error").length +
     (previewError && !errorDismissed ? 1 : 0);
 
   const iframeSrc = useMemo(() => {
@@ -397,43 +377,22 @@ export function WorkspacePreviewPanel({
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (!isPreviewBridgeMessage(event.data)) return;
+      if (event.data.type !== "runtime-error") return;
 
-      if (event.data.type === "console") {
-        const entry: ConsoleEntry = {
-          id: `${event.data.timestamp}-${event.data.level}-${Math.random().toString(36).slice(2, 7)}`,
-          level: event.data.level,
-          message: event.data.message,
-          timestamp: event.data.timestamp,
-        };
-        setConsoleEntries((prev) => [...prev.slice(-199), entry]);
-        return;
-      }
-
-      if (event.data.type === "runtime-error") {
-        const raw = event.data.stack
-          ? `${event.data.message}\n${event.data.stack}`
-          : event.data.message;
-        const rewritten = rewriteWebContainerNextError(raw, {
-          packageJson,
-          packageManager: webcontainer?.packageManager ?? "npm",
-        });
-        setPreviewError({
-          source: "runtime",
-          message: rewritten ?? event.data.message,
-          stack: rewritten ? undefined : event.data.stack,
-          kind: rewritten ? "next-webcontainer" : undefined,
-        });
-        setErrorDismissed(false);
-        setConsoleEntries((prev) => [
-          ...prev.slice(-199),
-          {
-            id: `${event.data.timestamp}-error-${Math.random().toString(36).slice(2, 7)}`,
-            level: "error",
-            message: rewritten ?? raw,
-            timestamp: event.data.timestamp,
-          },
-        ]);
-      }
+      const raw = event.data.stack
+        ? `${event.data.message}\n${event.data.stack}`
+        : event.data.message;
+      const rewritten = rewriteWebContainerNextError(raw, {
+        packageJson,
+        packageManager: webcontainer?.packageManager ?? "npm",
+      });
+      setPreviewError({
+        source: "runtime",
+        message: rewritten ?? event.data.message,
+        stack: rewritten ? undefined : event.data.stack,
+        kind: rewritten ? "next-webcontainer" : undefined,
+      });
+      setErrorDismissed(false);
     };
 
     window.addEventListener("message", onMessage);
@@ -631,14 +590,10 @@ export function WorkspacePreviewPanel({
           type="button"
           variant="ghost"
           size="icon-sm"
-          title="Toggle console"
-          aria-label="Toggle console"
-          aria-pressed={consoleOpen}
-          onClick={() => setConsoleOpen((value) => !value)}
-          className={cn(
-            "relative size-7 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
-            consoleOpen && "bg-ws-hover text-ws-text",
-          )}
+          title="Open console"
+          aria-label="Open console"
+          onClick={() => showConsolePanel()}
+          className="relative size-7 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           <TerminalIcon className="size-3.5" strokeWidth={1.75} />
           {displayErrorCount + displayWarnCount > 0 ? (
@@ -752,18 +707,6 @@ export function WorkspacePreviewPanel({
             ) : null}
           </div>
         </div>
-
-        {consoleOpen ? (
-          <PreviewConsolePanel
-            entries={displayEntries}
-            hot={useHotReload}
-            onClear={() => {
-              setConsoleEntries([]);
-              previewServer?.clearLogs();
-            }}
-            onClose={() => setConsoleOpen(false)}
-          />
-        ) : null}
       </div>
     </div>
   );
@@ -838,94 +781,6 @@ function PreviewErrorOverlay({
             Dismiss
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function PreviewConsolePanel({
-  entries,
-  hot,
-  onClear,
-  onClose,
-}: {
-  entries: ConsoleEntry[];
-  hot: boolean;
-  onClear: () => void;
-  onClose: () => void;
-}) {
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = listRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
-  }, [entries.length]);
-
-  return (
-    <div className="flex max-h-44 shrink-0 flex-col border-t border-ws-border-subtle bg-ws-panel">
-      <div className="flex h-7 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-2">
-        <ChevronDownIcon className="size-3 text-ws-text-muted" />
-        <span className="text-[11px] font-medium text-ws-text">Console</span>
-        <span className="tabular-nums text-[10px] text-ws-text-muted">
-          {entries.length}
-        </span>
-        {hot ? (
-          <span className="text-[10px] text-ws-text-muted">
-            · server + preview
-          </span>
-        ) : null}
-        <div className="ml-auto flex items-center gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClear}
-            disabled={entries.length === 0}
-            className="h-6 px-1.5 text-[10px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
-          >
-            Clear
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Close console"
-            onClick={onClose}
-            className="size-6 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
-          >
-            <XIcon className="size-3" />
-          </Button>
-        </div>
-      </div>
-      <div ref={listRef} className="min-h-0 flex-1 overflow-auto px-2 py-1">
-        {entries.length === 0 ? (
-          <p className="px-1 py-3 text-[11px] text-ws-text-muted">
-            {hot
-              ? "No console output yet. Dev server logs and preview errors appear here."
-              : "No console output yet. Logs from the preview appear here."}
-          </p>
-        ) : (
-          <ul className="space-y-0.5">
-            {entries.map((entry) => (
-              <li
-                key={entry.id}
-                className={cn(
-                  "whitespace-pre-wrap break-words font-mono text-[11px] leading-snug",
-                  entry.level === "error" && "text-ws-danger-soft",
-                  entry.level === "warn" && "text-amber-500",
-                  entry.level === "info" && "text-ws-link",
-                  entry.level === "log" && "text-ws-text-secondary",
-                )}
-              >
-                <span className="mr-1.5 text-[10px] uppercase text-ws-text-muted">
-                  {entry.level}
-                </span>
-                {entry.message}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
     </div>
   );

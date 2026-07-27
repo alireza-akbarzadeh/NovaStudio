@@ -3,6 +3,7 @@ import {
   isMonacoEditorTarget,
   requestInlineAiEdit,
 } from "@/features/workspace/lib/monaco-inline-ai-edit";
+import { isFileNavigatorEditing } from "@/features/workspace/components/file-navigator/file-navigator-edit-guard";
 import {
   useWorkspaceStore,
   type GitPanelTab,
@@ -18,6 +19,7 @@ export type CommandId =
   | "toggleTerminal"
   | "showProblems"
   | "showDebug"
+  | "showConsole"
   | "showPerformance"
   | "toggleAiPanel"
   | "toggleNotifications"
@@ -102,6 +104,12 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+y",
     allowInInput: true,
     run: () => store().showDebugPanel(),
+  },
+  {
+    id: "showConsole",
+    shortcut: "mod+shift+u",
+    allowInInput: true,
+    run: () => store().showConsolePanel(),
   },
   ...(process.env.NODE_ENV === "development"
     ? ([
@@ -438,6 +446,9 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
     if (closedInline) {
       event.preventDefault();
       return true;
+    }
+    if (s.goToFileOpen && isFileNavigatorEditing()) {
+      return false;
     }
     if (
       !s.commandPaletteOpen &&

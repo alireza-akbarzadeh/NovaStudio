@@ -32,7 +32,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "ai", label: "Toggle AI panel", keys: "⌘ L" },
       { id: "zen", label: "Toggle zen mode", keys: "⌥ ⌘ Z", description: "Hide chrome for a full-size editor" },
       { id: "notifications", label: "Toggle notifications", keys: "⌘ ⇧ N" },
-      { id: "goto", label: "Go to file", keys: "⌘ P" },
+      {
+        id: "goto",
+        label: "Navigate project files",
+        keys: "⌘ P",
+        description: "Also ⇧⇧ — search, create, rename without sidebar",
+      },
       { id: "command-palette", label: "Command palette", keys: "⌘ ⇧ P", description: "Also ⌘ K outside the editor" },
       { id: "clone", label: "Clone from GitHub", keys: "⌘ I" },
       { id: "explorer", label: "Toggle explorer", keys: "⌘ ⇧ E", description: "Also ⌘ 1" },

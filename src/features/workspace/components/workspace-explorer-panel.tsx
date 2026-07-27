@@ -8,7 +8,7 @@ import {
 import type { ReactNode } from "react";
 
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
-import { WorkspaceFileTree } from "@/features/workspace/components/workspace-file-tree";
+import { ProjectFileNavigatorTree } from "@/features/workspace/components/file-navigator";
 import { WorkspaceGitReviews } from "@/features/workspace/components/workspace-git-reviews";
 import {
   useWorkspaceStore,
@@ -69,7 +69,7 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
 
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {activeTab === "project" ? (
-          <WorkspaceFileTree projectId={projectId} />
+          <ProjectFileNavigatorTree projectId={projectId} />
         ) : null}
         {activeTab === "changes" ? (
           <div className="h-full overflow-auto">

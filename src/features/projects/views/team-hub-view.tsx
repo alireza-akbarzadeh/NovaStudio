@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { HubPageHeader } from "@/features/projects/components/workspace/hub-page-header";
+import { TeamPendingRequestsSection } from "@/features/projects/components/workspace/team-pending-requests-section";
 import { useTeamDirectory } from "@/features/projects/hooks/use-workspace";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,8 @@ export function TeamHubView() {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
+      <TeamPendingRequestsSection />
+
       <HubPageHeader
         title="Team"
         description="Everyone collaborating across your projects — invite more from a project’s sharing settings."

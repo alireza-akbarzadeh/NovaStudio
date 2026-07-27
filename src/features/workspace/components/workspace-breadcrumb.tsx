@@ -1,15 +1,15 @@
 "use client";
 
-import { ChevronRightIcon, FileCodeIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { Fragment } from "react";
 
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
-  BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { FileNavigatorBreadcrumbPicker } from "@/features/workspace/components/file-navigator";
 import { WorkspaceSwitcher } from "@/features/workspace/components/workspace-switcher";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
@@ -39,16 +39,13 @@ export function WorkspaceBreadcrumb({
                 <ChevronRightIcon />
               </BreadcrumbSeparator>
               <BreadcrumbItem className="min-w-0">
-                {isLast ? (
-                  <BreadcrumbPage className="flex max-w-45 items-center gap-1.5 truncate font-medium text-ws-text">
-                    <FileCodeIcon className="size-3 shrink-0 text-ws-accent-soft" />
-                    <span className="truncate">{segment.label}</span>
-                  </BreadcrumbPage>
-                ) : (
-                  <span className="max-w-30 truncate text-ws-text-muted transition-colors hover:text-ws-text">
-                    {segment.label}
-                  </span>
-                )}
+                <FileNavigatorBreadcrumbPicker
+                  projectId={projectId}
+                  segment={segment}
+                  segmentIndex={index}
+                  allSegments={segments}
+                  isLast={isLast}
+                />
               </BreadcrumbItem>
             </Fragment>
           );

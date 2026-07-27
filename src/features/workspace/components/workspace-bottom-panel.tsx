@@ -6,9 +6,12 @@ import {
   CircleXIcon,
   GaugeIcon,
   SquareTerminalIcon,
+  TerminalIcon,
 } from "lucide-react";
 
+import { WorkspaceConsolePanel } from "@/features/workspace/components/workspace-console-panel";
 import { WorkspaceDebugPanel } from "@/features/workspace/components/workspace-debug-panel";
+import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 import { WorkspacePerformancePanel } from "@/features/workspace/components/workspace-performance-panel";
 import { WorkspaceProblemsPanel } from "@/features/workspace/components/workspace-problems-panel";
 import { WorkspaceTerminalPanel } from "@/features/workspace/components/workspace-terminal-panel";
@@ -29,17 +32,26 @@ const TABS: { id: BottomPanelTab; label: string }[] = [
   { id: "problems", label: "Problems" },
   { id: "debug", label: "Debug" },
   ...(IS_DEV ? [{ id: "performance" as const, label: "Performance" }] : []),
+  { id: "console", label: "Console" },
   { id: "terminal", label: "Terminal" },
 ];
 
 export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
   const activeTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const setBottomPanelTab = useWorkspaceStore((s) => s.setBottomPanelTab);
+  const previewServer = useOptionalPreviewServer();
   const { errorCount, warningCount } = useMonacoProblems();
   const problemBadge = errorCount + warningCount;
   const bpCount = useDebugStore((s) =>
     Object.values(s.breakpointsByPath).reduce((n, lines) => n + lines.length, 0),
   );
+  const consoleEntries = [
+    ...(previewServer?.logs ?? []),
+    ...(previewServer?.bridgeLogs ?? []),
+  ];
+  const consoleErrorCount = consoleEntries.filter((e) => e.level === "error").length;
+  const consoleWarnCount = consoleEntries.filter((e) => e.level === "warn").length;
+  const consoleBadge = consoleErrorCount + consoleWarnCount;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-ws-panel">
@@ -60,6 +72,8 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
             >
               {tab.id === "terminal" ? (
                 <SquareTerminalIcon className="size-3 opacity-70" />
+              ) : tab.id === "console" ? (
+                <TerminalIcon className="size-3 opacity-70" />
               ) : tab.id === "debug" ? (
                 <BugIcon className="size-3 opacity-70" />
               ) : tab.id === "performance" ? (
@@ -83,6 +97,16 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
               {tab.id === "debug" && bpCount > 0 ? (
                 <span className="rounded-full bg-ws-danger-bg px-1.5 text-[9px] text-white">
                   {bpCount}
+                </span>
+              ) : null}
+              {tab.id === "console" && consoleBadge > 0 ? (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-[9px] text-white",
+                    consoleErrorCount > 0 ? "bg-ws-danger-bg" : "bg-amber-500",
+                  )}
+                >
+                  {consoleBadge}
                 </span>
               ) : null}
             </button>
@@ -114,6 +138,11 @@ export function WorkspaceBottomPanel({ projectId }: WorkspaceBottomPanelProps) {
         {IS_DEV && activeTab === "performance" ? (
           <div className="absolute inset-0">
             <WorkspacePerformancePanel projectId={projectId} />
+          </div>
+        ) : null}
+        {activeTab === "console" ? (
+          <div className="absolute inset-0">
+            <WorkspaceConsolePanel projectId={projectId} />
           </div>
         ) : null}
       </div>

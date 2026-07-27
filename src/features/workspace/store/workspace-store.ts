@@ -19,7 +19,12 @@ export type ExplorerTab = "project" | "changes" | "quality";
 
 export type GitPanelTab = "changes" | "stashes" | "history" | "info";
 
-export type BottomPanelTab = "terminal" | "problems" | "debug" | "performance";
+export type BottomPanelTab =
+  | "terminal"
+  | "problems"
+  | "debug"
+  | "performance"
+  | "console";
 
 export type EditorPanelView = "code" | "preview";
 
@@ -166,6 +171,7 @@ type WorkspaceState = WorkspacePrefs & {
   showProblemsPanel: () => void;
   showDebugPanel: () => void;
   showPerformancePanel: () => void;
+  showConsolePanel: () => void;
   setBottomPanelTab: (tab: BottomPanelTab) => void;
   toggleAiPanel: () => void;
   toggleNotificationsPanel: () => void;
@@ -439,6 +445,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return { terminalOpen: false };
       }
       return { terminalOpen: true, bottomPanelTab: "performance" };
+    }),
+  showConsolePanel: () =>
+    set((s) => {
+      if (s.terminalOpen && s.bottomPanelTab === "console") {
+        return { terminalOpen: false };
+      }
+      return { terminalOpen: true, bottomPanelTab: "console" };
     }),
   setBottomPanelTab: (tab) =>
     set({ bottomPanelTab: tab, terminalOpen: true }),

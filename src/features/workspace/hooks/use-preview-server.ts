@@ -10,7 +10,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { useProjectFile, useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
-import type { PreviewConsoleLevel } from "@/features/workspace/lib/preview-runtime-bridge";
+import {
+  isPreviewBridgeMessage,
+  type PreviewConsoleLevel,
+} from "@/features/workspace/lib/preview-runtime-bridge";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { getWebContainer } from "@/features/workspace/lib/webcontainer/boot";
 import {
@@ -48,6 +51,8 @@ export type UsePreviewServerResult = {
   error: string | null;
   commandLine: string | null;
   logs: PreviewServerLog[];
+  /** Console output forwarded from the preview iframe bridge. */
+  bridgeLogs: PreviewServerLog[];
   /** True when WC-backed hot reload is active. */
   hot: boolean;
   restart: () => void;
@@ -82,6 +87,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
   const [error, setError] = useState<string | null>(null);
   const [commandLine, setCommandLine] = useState<string | null>(null);
   const [logs, setLogs] = useState<PreviewServerLog[]>([]);
+  const [bridgeLogs, setBridgeLogs] = useState<PreviewServerLog[]>([]);
   const [restartKey, setRestartKey] = useState(0);
 
   const processRef = useRef<WebContainerProcess | null>(null);
@@ -143,7 +149,47 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     [appendLog],
   );
 
-  const clearLogs = useCallback(() => setLogs([]), []);
+  const appendBridgeLog = useCallback(
+    (level: PreviewConsoleLevel, message: string) => {
+      const trimmed = message.trim();
+      if (!trimmed) return;
+      setBridgeLogs((prev) => [
+        ...prev.slice(-(MAX_LOGS - 1)),
+        {
+          id: logId(),
+          level,
+          message: trimmed,
+          timestamp: Date.now(),
+          source: "preview" as const,
+        },
+      ]);
+    },
+    [],
+  );
+
+  const clearLogs = useCallback(() => {
+    setLogs([]);
+    setBridgeLogs([]);
+  }, []);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (!isPreviewBridgeMessage(event.data)) return;
+
+      if (event.data.type === "console") {
+        appendBridgeLog(event.data.level, event.data.message);
+        return;
+      }
+
+      const raw = event.data.stack
+        ? `${event.data.message}\n${event.data.stack}`
+        : event.data.message;
+      appendBridgeLog("error", raw);
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [appendBridgeLog]);
 
   const restart = useCallback(() => {
     setRestartKey((k) => k + 1);
@@ -436,6 +482,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     error,
     commandLine,
     logs,
+    bridgeLogs,
     hot: status === "ready" && url != null,
     restart,
     clearLogs,

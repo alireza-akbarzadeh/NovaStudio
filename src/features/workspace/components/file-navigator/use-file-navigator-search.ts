@@ -16,6 +16,7 @@ import {
   fuzzyMatchFolder,
   listFolderContents,
   suggestCreateFilePath,
+  suggestCreateFolderPath,
   type NavigatorFileEntry,
   type NavigatorFolderEntry,
 } from "./file-navigator-utils";
@@ -34,6 +35,7 @@ export type FileNavigatorSearchResult = {
   browseFolders: NavigatorFolderEntry[];
   browseFiles: NavigatorFileEntry[];
   createFilePath: string | null;
+  createFolderPath: string | null;
   fileTruncated: boolean;
   isSearching: boolean;
 };
@@ -93,8 +95,13 @@ export function useFileNavigatorSearch({
 
   const createFilePath = useMemo(() => {
     if (!enabled || !isSearching) return null;
-    return suggestCreateFilePath(trimmedQuery, metadata);
-  }, [enabled, isSearching, metadata, trimmedQuery]);
+    return suggestCreateFilePath(trimmedQuery, metadata, browsePath);
+  }, [browsePath, enabled, isSearching, metadata, trimmedQuery]);
+
+  const createFolderPath = useMemo(() => {
+    if (!enabled || !isSearching) return null;
+    return suggestCreateFolderPath(trimmedQuery, metadata, browsePath);
+  }, [browsePath, enabled, isSearching, metadata, trimmedQuery]);
 
   return {
     recentPaths,
@@ -102,6 +109,7 @@ export function useFileNavigatorSearch({
     browseFolders: isSearching ? folderSearchMatches : browseContents.folders,
     browseFiles: isSearching ? [] : browseContents.fileEntries,
     createFilePath,
+    createFolderPath,
     fileTruncated: fileSearchResult.truncated,
     isSearching,
   };

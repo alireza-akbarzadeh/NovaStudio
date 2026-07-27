@@ -59,6 +59,13 @@ These are the biggest daily-friction gaps you called out.
 | 16 | Zen / Focus mode | `done` | Hide chrome, full-size editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
 
+### Sprint E — Hub & navigation (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 21 | **Project File Navigator** | `review` | JetBrains-style dialog: search, browse, create, rename. ⌘P · ⇧⇧ |
+| 22 | **Team hub** | `review` | Members directory + pending access requests (approve / decline) |
+
 ### Later / hard infrastructure
 
 | # | Feature | Status | Notes |
@@ -238,6 +245,21 @@ These are the biggest daily-friction gaps you called out.
 - Restores the previous panel layout on exit (prefs not overwritten while zen)
 - **⌥⌘Z** / **Ctrl+Alt+Z** toggle · **Esc** exits · toolbar Focus button · command palette
 - Floating **Exit Zen** control while chrome is hidden
+
+### 21. Project File Navigator — ready for review
+
+- Reusable module at `file-navigator/`: tree wrapper, dialog, breadcrumb picker, shared search
+- **Navigate Project Files** dialog: fuzzy search, recent + open editors, folder browse
+- Create file/folder (Actions bar, typed path, Alt+A), rename (F2), move cut items into folders
+- Breadcrumb dropdowns on each folder segment for quick sibling navigation
+- Shortcuts: **⌘P** / **Ctrl+P** · **Shift Shift** (double Shift)
+
+### 22. Team hub — ready for review
+
+- Projects hub **Team** page lists collaborators across all accessible projects
+- Role badges (owner / editor / viewer) and per-project links
+- **Pending access requests** section for project owners: message, links, approve / decline
+- Sidebar widget remains for quick triage from the hub home
 
 ### 17. Full Next/Vite host — ready for review
 
