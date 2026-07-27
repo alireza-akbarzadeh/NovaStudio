@@ -11,6 +11,7 @@ export type SpawnStreamOptions = {
   cwd?: string;
   cols?: number;
   rows?: number;
+  env?: Record<string, string | number | boolean>;
   /** Called with raw output chunks (may include ANSI / `\n`). */
   onChunk?: (chunk: string) => void;
   /**
@@ -37,6 +38,7 @@ export async function spawnAndStream(
 
   const process = await wc.spawn(command, args, {
     cwd: cwd && cwd !== "." ? cwd : undefined,
+    env: options.env,
     terminal: {
       cols: options.cols ?? 80,
       rows: options.rows ?? 24,

@@ -48,6 +48,7 @@ const GIT_TABS: { id: GitPanelTab; label: string }[] = [
 export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
   const activeTab = useWorkspaceStore((s) => s.gitPanelTab);
   const setGitPanelTab = useWorkspaceStore((s) => s.setGitPanelTab);
+  const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const [commitMessage, setCommitMessage] = useState("");
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
@@ -321,6 +322,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
         <WorkspaceGitHistory
           projectId={projectId}
           enabled={Boolean(isGitHub)}
+          filePath={currentFilePath}
         />
       ) : activeTab === "github" ? (
         <WorkspaceGitHubHub

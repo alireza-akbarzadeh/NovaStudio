@@ -211,3 +211,44 @@ export async function deployVercelFromGit(args: {
     status: deployment.readyState || deployment.status || "QUEUED",
   };
 }
+
+type VercelEnvRecord = {
+  key?: string;
+  value?: string;
+  type?: string;
+  target?: string[];
+};
+
+export async function fetchVercelProjectEnv(args: {
+  token: string;
+  projectId: string;
+  teamId?: string | null;
+}): Promise<Array<{ key: string; value: string }>> {
+  const params = new URLSearchParams();
+  if (args.teamId) params.set("teamId", args.teamId);
+  const query = params.toString();
+  const response = await fetch(
+    `https://api.vercel.com/v9/projects/${encodeURIComponent(args.projectId)}/env${query ? `?${query}` : ""}`,
+    { headers: { Authorization: `Bearer ${args.token}` } },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const body = (await response.json()) as { envs?: VercelEnvRecord[] };
+  const envs = body.envs ?? [];
+  const rows: Array<{ key: string; value: string }> = [];
+  const seen = new Set<string>();
+
+  for (const env of envs) {
+    const key = env.key?.trim();
+    const value = env.value ?? "";
+    if (!key || !value.trim()) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ key, value });
+  }
+
+  return rows.sort((a, b) => a.key.localeCompare(b.key));
+}

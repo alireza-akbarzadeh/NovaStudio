@@ -36,6 +36,10 @@ import {
 } from "@/features/workspace/lib/webcontainer/package-manager";
 import { spawnAndStream } from "@/features/workspace/lib/webcontainer/spawn";
 import {
+  resolveProjectEnv,
+  type ProjectEnvFileSource,
+} from "@/features/workspace/lib/webcontainer/project-env";
+import {
   hasNodeModules,
   mountProject,
   writeProjectFile,
@@ -88,6 +92,8 @@ export type UseWebContainerResult = {
   shouldSyncTreeAfterCommand: (binary: string, args: string[]) => boolean;
   /** Write a single file into the container (for live HMR). */
   writeFile: (path: string, content: string) => Promise<void>;
+  /** Merged `.env*` vars for terminal / preview spawns. */
+  resolveProjectEnv: () => Record<string, string>;
 };
 
 export function useWebContainer(projectId: string): UseWebContainerResult {
@@ -258,6 +264,18 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     setNeedsInstall(!installed);
   }, []);
 
+  const resolveProjectEnvForSpawn = useCallback((): Record<string, string> => {
+    const fileList = filesRef.current ?? [];
+    const sources: ProjectEnvFileSource[] = fileList
+      .filter((file) => file.kind === "file")
+      .map((file) => ({
+        path: file.path,
+        content: file.content,
+        updatedAt: file.updatedAt,
+      }));
+    return resolveProjectEnv(projectId, sources);
+  }, [projectId]);
+
   const spawn = useCallback(
     async (
       command: string,
@@ -280,6 +298,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
       const normalizedArgs = normalizeNodeCliArgs(command, args);
       return spawnAndStream(wc, command, normalizedArgs, {
         cwd: options.cwd,
+        env: resolveProjectEnvForSpawn(),
         onChunk: options.onChunk,
         onStdin: options.onStdin,
         onStdinEnd: options.onStdinEnd,
@@ -288,7 +307,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
         signal: options.signal,
       });
     },
-    [ensureReady],
+    [ensureReady, resolveProjectEnvForSpawn],
   );
 
   const writeFile = useCallback(
@@ -369,6 +388,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     shouldSyncAfterCommand: isInstallLikeCommand,
     shouldSyncTreeAfterCommand: isScaffoldCommand,
     writeFile,
+    resolveProjectEnv: resolveProjectEnvForSpawn,
   };
 }
 

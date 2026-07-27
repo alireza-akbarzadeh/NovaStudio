@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useAction } from "convex/react";
@@ -28,6 +27,7 @@ type CommitItem = {
 type WorkspaceGitHistoryProps = {
   projectId: string;
   enabled: boolean;
+  filePath?: string | null;
 };
 
 function formatCommitDate(iso: string) {
@@ -43,24 +43,47 @@ function formatCommitDate(iso: string) {
   });
 }
 
+function fileNameFromPath(path: string) {
+  return path.split("/").filter(Boolean).pop() ?? path;
+}
+
 export function WorkspaceGitHistory({
   projectId,
   enabled,
+  filePath = null,
 }: WorkspaceGitHistoryProps) {
   const listCommits = useAction(api.githubHistory.listCommits);
+  const listFileCommits = useAction(api.githubHistory.listFileCommits);
+  const [scope, setScope] = useState<"repo" | "file">("repo");
   const [commits, setCommits] = useState<CommitItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const effectiveScope =
+    scope === "file" && filePath ? ("file" as const) : ("repo" as const);
+
+  useEffect(() => {
+    if (!filePath && scope === "file") {
+      setScope("repo");
+    }
+  }, [filePath, scope]);
 
   const load = useCallback(async () => {
     if (!enabled) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await listCommits({
-        projectId: projectId as Id<"projects">,
-        limit: 40,
-      });
+      const result =
+        effectiveScope === "file" && filePath
+          ? await listFileCommits({
+              projectId: projectId as Id<"projects">,
+              path: filePath,
+              limit: 40,
+            })
+          : await listCommits({
+              projectId: projectId as Id<"projects">,
+              limit: 40,
+            });
       setCommits(result);
     } catch (err) {
       setCommits(null);
@@ -68,7 +91,14 @@ export function WorkspaceGitHistory({
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, listCommits, projectId]);
+  }, [
+    enabled,
+    effectiveScope,
+    filePath,
+    listCommits,
+    listFileCommits,
+    projectId,
+  ]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -85,8 +115,36 @@ export function WorkspaceGitHistory({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-7 shrink-0 items-center justify-between border-b border-ws-border-subtle px-2">
-        <span className="text-[11px] text-ws-text-muted">Commit History</span>
+      <div className="flex h-7 shrink-0 items-center justify-between gap-2 border-b border-ws-border-subtle px-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setScope("repo")}
+            className={cn(
+              "rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+              effectiveScope === "repo"
+                ? "bg-ws-accent/15 text-ws-text"
+                : "text-ws-text-muted hover:text-ws-text",
+            )}
+          >
+            All commits
+          </button>
+          {filePath ? (
+            <button
+              type="button"
+              onClick={() => setScope("file")}
+              title={filePath}
+              className={cn(
+                "max-w-[120px] truncate rounded-sm px-1.5 py-0.5 text-[10px] font-medium transition-colors",
+                effectiveScope === "file"
+                  ? "bg-ws-accent/15 text-ws-text"
+                  : "text-ws-text-muted hover:text-ws-text",
+              )}
+            >
+              {fileNameFromPath(filePath)}
+            </button>
+          ) : null}
+        </div>
         <Button
           type="button"
           variant="ghost"
@@ -95,7 +153,7 @@ export function WorkspaceGitHistory({
           aria-label="Refresh commit history"
           disabled={isLoading}
           onClick={() => void load()}
-          className="size-5 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+          className="size-5 shrink-0 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           <RefreshCwIcon
             className={cn("size-3", isLoading && "animate-spin")}
@@ -124,7 +182,9 @@ export function WorkspaceGitHistory({
           </div>
         ) : commits && commits.length === 0 ? (
           <p className="px-3 py-4 text-[11px] text-ws-text-muted">
-            No commits found on this branch.
+            {effectiveScope === "file"
+              ? "No commits found for this file on the current branch."
+              : "No commits found on this branch."}
           </p>
         ) : (
           <ul className="space-y-0 p-1.5">

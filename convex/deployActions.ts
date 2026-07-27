@@ -10,7 +10,7 @@ import {
   type DeployProvider,
 } from "./lib/deploy";
 import { deployNetlifyFromGit, fetchNetlifyDeployStatus, verifyNetlifyToken } from "./lib/netlify";
-import { deployVercelFromGit, verifyVercelToken } from "./lib/vercel";
+import { deployVercelFromGit, fetchVercelProjectEnv, verifyVercelToken } from "./lib/vercel";
 
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
 
@@ -316,5 +316,82 @@ export const refreshDeploymentStatus = action({
       inspectorUrl: latest.inspectorUrl ?? deployment.inspectorUrl,
       errorMessage: latest.errorMessage,
     };
+  },
+});
+
+export const pullVercelEnv = action({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | {
+        ok: true;
+        variables: Array<{ key: string; value: string }>;
+        projectName: string;
+      }
+    | {
+        ok: false;
+        reason: "not_connected" | "no_target" | "provider_error";
+        message?: string;
+      }
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Sign in to sync environment variables");
+    }
+
+    await ctx.runQuery(internal.deploy.assertCanDeploy, {
+      projectId: args.projectId,
+      userId: identity.subject,
+    });
+
+    const connection = await ctx.runQuery(internal.deploy.getConnectionSecret, {
+      userId: identity.subject,
+      provider: "vercel",
+    });
+
+    if (!connection) {
+      return { ok: false, reason: "not_connected" };
+    }
+
+    const linked = await ctx.runQuery(internal.deploy.getProjectTargetInternal, {
+      projectId: args.projectId,
+      provider: "vercel",
+    });
+
+    if (!linked?.externalId) {
+      return {
+        ok: false,
+        reason: "no_target",
+        message:
+          "Deploy this project to Vercel first to link a project for env sync.",
+      };
+    }
+
+    try {
+      const variables = await fetchVercelProjectEnv({
+        token: connection.accessToken,
+        projectId: linked.externalId,
+        teamId: linked.teamId ?? connection.teamId,
+      });
+
+      return {
+        ok: true,
+        variables,
+        projectName: linked.name,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not load Vercel environment variables",
+      };
+    }
   },
 });

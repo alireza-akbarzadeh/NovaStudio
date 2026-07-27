@@ -24,6 +24,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+p",
   },
   {
+    id: "openGoToSymbol",
+    label: "Go to Symbol in Workspace",
+    keywords: "symbol function class type interface workspace search ctrl t",
+    shortcut: "mod+t",
+  },
+  {
     id: "findInFiles",
     label: "Find in Files",
     keywords: "search text workspace",

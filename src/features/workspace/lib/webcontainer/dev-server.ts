@@ -124,13 +124,14 @@ export async function spawnDevServer(
   command: DevServerCommand,
   options?: {
     onChunk?: (chunk: string) => void;
+    env?: Record<string, string | number | boolean>;
   },
 ): Promise<WebContainerProcess> {
   const process = await wc.spawn(command.binary, command.args, {
     terminal: { cols: 120, rows: 30 },
     env: {
+      ...options?.env,
       HOST: "0.0.0.0",
-      // Next.js respects this in some versions alongside --hostname.
       HOSTNAME: "0.0.0.0",
     },
   });

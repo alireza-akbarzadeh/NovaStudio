@@ -2,18 +2,23 @@
 
 import {
   ClipboardPasteIcon,
+  CloudDownloadIcon,
   EyeIcon,
   EyeOffIcon,
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
+import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useDeployConnection } from "@/features/deploy/hooks/use-deploy-connection";
 import {
   useCreateProjectFile,
   useProjectFile,
@@ -31,7 +36,7 @@ import {
   serializeEnvEntries,
 } from "@/features/workspace/lib/parse-env-file";
 import { cn } from "@/lib/utils";
-import type { Id } from "@/convex/_generated/dataModel";
+import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 
 type WorkspaceEnvPanelProps = {
   projectId: string;
@@ -70,10 +75,24 @@ function entriesToRows(
 }
 
 export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
+  const { isAuthenticated } = useConvexAuth();
   const metadata = useProjectFileMetadata(projectId);
   const createFile = useCreateProjectFile();
   const updateContent = useUpdateProjectFileContent();
+  const previewServer = useOptionalPreviewServer();
   const pasteRef = useRef<HTMLTextAreaElement>(null);
+  const pullVercelEnv = useAction(api.deployActions.pullVercelEnv);
+  const { isConnected: isVercelConnected } = useDeployConnection("vercel");
+  const vercelTarget = useQuery(
+    api.deploy.getProjectTarget,
+    isAuthenticated
+      ? {
+          projectId: projectId as Id<"projects">,
+          provider: "vercel" as const,
+        }
+      : "skip",
+  );
+  const [importingFromVercel, setImportingFromVercel] = useState(false);
 
   const envPaths = useMemo(() => {
     if (!metadata) return [];
@@ -158,8 +177,14 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       }
       setDirty(false);
       toast.success("Environment saved", {
-        description: effectivePath,
+        description: `${effectivePath} · ${valid.length} variable${valid.length === 1 ? "" : "s"}`,
       });
+      if (previewServer?.hot) {
+        previewServer.restart();
+        toast.message("Preview restarted", {
+          description: "Dev server reloaded with updated environment variables.",
+        });
+      }
     } catch (error) {
       toast.error("Save failed", {
         description:
@@ -206,6 +231,14 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       return;
     }
 
+    applyImportedEntries(imported, mode);
+    setPasteText("");
+  };
+
+  const applyImportedEntries = (
+    imported: Array<{ key: string; value: string }>,
+    mode: "merge" | "replace",
+  ) => {
     const merged =
       mode === "replace"
         ? imported.map((entry) => ({ key: entry.key, value: entry.value }))
@@ -213,13 +246,61 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
 
     setRows(entriesToRows(merged));
     setDirty(true);
-    setPasteText("");
     toast.success(`Imported ${imported.length} variable${imported.length === 1 ? "" : "s"}`, {
       description:
         mode === "merge"
           ? `Merged into ${effectivePath} — click Save to persist.`
           : `Replaced rows in ${effectivePath} — click Save to persist.`,
     });
+  };
+
+  const onImportFromVercel = async () => {
+    setImportingFromVercel(true);
+    try {
+      const result = await pullVercelEnv({
+        projectId: projectId as Id<"projects">,
+      });
+
+      if (!result.ok) {
+        if (result.reason === "not_connected") {
+          toast.error("Vercel is not connected", {
+            description: "Connect Vercel from the Deploy panel first.",
+          });
+          return;
+        }
+        if (result.reason === "no_target") {
+          toast.error("No linked Vercel project", {
+            description:
+              result.message ??
+              "Deploy this project to Vercel once, then try again.",
+          });
+          return;
+        }
+        toast.error("Vercel import failed", {
+          description: result.message ?? "Could not load environment variables.",
+        });
+        return;
+      }
+
+      if (result.variables.length === 0) {
+        toast.message("No Vercel variables found", {
+          description: `Linked project: ${result.projectName}`,
+        });
+        return;
+      }
+
+      applyImportedEntries(result.variables, "merge");
+      setImportOpen(true);
+    } catch (error) {
+      toast.error("Vercel import failed", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not load environment variables.",
+      });
+    } finally {
+      setImportingFromVercel(false);
+    }
   };
 
   const onPasteFromClipboard = async () => {
@@ -324,6 +405,32 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
               Import variables
             </p>
             <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={
+                  importingFromVercel ||
+                  !isVercelConnected ||
+                  vercelTarget === undefined
+                }
+                title={
+                  !isVercelConnected
+                    ? "Connect Vercel in the Deploy panel"
+                    : vercelTarget
+                      ? `Import from ${vercelTarget.name}`
+                      : "Deploy to Vercel first to link a project"
+                }
+                onClick={() => void onImportFromVercel()}
+                className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
+              >
+                {importingFromVercel ? (
+                  <Loader2Icon className="size-3 animate-spin" />
+                ) : (
+                  <CloudDownloadIcon className="size-3" />
+                )}
+                Vercel
+              </Button>
               <Button
                 type="button"
                 variant="ghost"

@@ -97,7 +97,21 @@ These are the biggest daily-friction gaps you called out.
 | 32 | **Git blame (inline annotations)** | `review` | Toggle in status bar · author + commit + age per line · click opens GitHub commit |
 | 33 | **Merge conflict resolver** | `review` | 3-way merge on pull · Base / Yours / Theirs · Accept yours/theirs/both |
 | 34 | **Find references / Rename symbol** | `review` | Shift+F12 references panel · F2 rename across project · import-aware |
-| 35 | **Environment variables panel** | `review` | Left sidebar · `.env` / `.env.local` editor · toolbar `{ }` · ⌘⌥E |
+| 35 | **Environment variables panel** | `review` | Left sidebar · `.env` / `.env.local` editor · toolbar `{ }` · ⌘⌥E · Vercel-style bulk paste |
+
+### Sprint J — Runtime env (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 36 | **Env vars → WebContainer runtime** | `review` | `.env*` merged into terminal + preview spawns · auto-restart preview on save |
+
+### Sprint K — Navigation & integrations (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 37 | **Go to Symbol in workspace** | `review` | ⌘T dialog · search functions/classes/types across project · jump to line |
+| 38 | **File git history** | `review` | Git → History tab · toggle all commits vs current file |
+| 39 | **Vercel env sync** | `review` | Env panel · Import from Vercel · merge into `.env*` (requires deploy link) |
 
 ### Later / hard infrastructure
 
@@ -388,6 +402,14 @@ These are the biggest daily-friction gaps you called out.
 - Edit `.env`, `.env.local`, `.env.development`, etc. as key/value rows
 - **Vercel-style bulk import** — paste entire `.env` (lines or space-separated) → auto-parse → Merge / Replace
 - Create missing env files · hide/show values · **Save** persists to Convex
+
+### 36. Env vars → WebContainer runtime — ready for review
+
+- Merges `.env`, `.env.local`, `.env.development`, etc. (later files win)
+- Injected into **terminal** spawns and **preview dev server** via WebContainer `env`
+- Preview console logs how many vars were loaded on start
+- Saving in the Environment panel **auto-restarts** a running preview (HMR server picks up new values)
+- Files still sync to the container FS so Vite/Next native dotenv also works
 
 ### 17. Full Next/Vite host — ready for review
 

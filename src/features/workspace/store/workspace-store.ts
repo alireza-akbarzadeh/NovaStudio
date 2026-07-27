@@ -145,6 +145,7 @@ type WorkspaceState = WorkspacePrefs & {
     filePath: string;
   } | null;
   goToFileOpen: boolean;
+  goToSymbolOpen: boolean;
   commandPaletteOpen: boolean;
   gitInitDialogOpen: boolean;
   cloneFromGitHubOpen: boolean;
@@ -227,6 +228,8 @@ type WorkspaceState = WorkspacePrefs & {
   toggleSettings: () => void;
   openGoToFile: () => void;
   closeGoToFile: () => void;
+  openGoToSymbol: () => void;
+  closeGoToSymbol: () => void;
   openCommandPalette: () => void;
   closeCommandPalette: () => void;
   openGitInitDialog: () => void;
@@ -419,6 +422,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   commentDraftLine: null,
   gutterContextMenu: null,
   goToFileOpen: false,
+  goToSymbolOpen: false,
   commandPaletteOpen: false,
   gitInitDialogOpen: false,
   cloneFromGitHubOpen: false,
@@ -628,12 +632,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   openSettings: () => set({ settingsOpen: true }),
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
-  openGoToFile: () => set({ goToFileOpen: true }),
+  openGoToFile: () =>
+    set({ goToFileOpen: true, goToSymbolOpen: false }),
   closeGoToFile: () => set({ goToFileOpen: false }),
+  openGoToSymbol: () =>
+    set({ goToSymbolOpen: true, goToFileOpen: false }),
+  closeGoToSymbol: () => set({ goToSymbolOpen: false }),
   openCommandPalette: () =>
     set({
       commandPaletteOpen: true,
       goToFileOpen: false,
+      goToSymbolOpen: false,
       settingsOpen: false,
     }),
   closeCommandPalette: () => set({ commandPaletteOpen: false }),

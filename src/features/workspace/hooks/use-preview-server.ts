@@ -11,6 +11,9 @@ import { useOptionalWebContainer } from "@/features/workspace/components/webcont
 import { useProjectFile, useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import {
+  isEnvFilePath,
+} from "@/features/workspace/lib/parse-env-file";
+import {
   isPreviewBridgeMessage,
   type PreviewConsoleLevel,
 } from "@/features/workspace/lib/preview-runtime-bridge";
@@ -28,6 +31,7 @@ import {
   stripAnsi,
   type DevServerCommand,
 } from "@/features/workspace/lib/webcontainer/dev-server";
+import { computeEnvSignature } from "@/features/workspace/lib/webcontainer/project-env";
 
 export type PreviewServerStatus =
   | "idle"
@@ -221,6 +225,18 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
 
   const scriptName = packageJson ? detectDevScript(packageJson) : null;
 
+  const envSignature = (() => {
+    if (!metadata) return "";
+    const envFiles = metadata
+      .filter((file) => file.kind === "file" && isEnvFilePath(file.path))
+      .map((file) => ({
+        path: file.path,
+        content: file.content,
+        updatedAt: file.updatedAt,
+      }));
+    return computeEnvSignature(projectId, envFiles);
+  })();
+
   const filesReady = metadata !== undefined;
 
   // Lifecycle: start / stop the preview server
@@ -398,8 +414,20 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
 
       try {
         appendLog("info", `Starting \`${command.commandLine}\`…`, "server");
+        const projectEnv = webcontainer?.resolveProjectEnv?.() ?? {};
+        const envCount = Object.keys(projectEnv).filter(
+          (key) => !["NODE_ENV", "HOST", "HOSTNAME"].includes(key),
+        ).length;
+        if (envCount > 0) {
+          appendLog(
+            "info",
+            `Loaded ${envCount} environment variable${envCount === 1 ? "" : "s"} from .env files`,
+            "server",
+          );
+        }
         const process = await spawnDevServer(wc, command, {
           onChunk: flushOutputLines,
+          env: projectEnv,
         });
         if (cancelled) {
           process.kill();
@@ -470,6 +498,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     ready,
     restartKey,
     scriptName,
+    envSignature,
     webcontainer,
     wcError,
     wcStatus,
