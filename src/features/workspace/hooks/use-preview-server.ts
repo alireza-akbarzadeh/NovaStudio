@@ -11,7 +11,11 @@ import { useOptionalWebContainer } from "@/features/workspace/components/webcont
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import type { PreviewConsoleLevel } from "@/features/workspace/lib/preview-runtime-bridge";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { getWebContainer } from "@/features/workspace/lib/webcontainer/boot";
+import {
+  hasNodeModules,
+} from "@/features/workspace/lib/webcontainer/sync";
 import {
   buildDevServerCommand,
   detectDevScript,
@@ -68,6 +72,8 @@ function logId(): string {
 export function usePreviewServer(projectId: string): UsePreviewServerResult {
   const webcontainer = useOptionalWebContainer();
   const files = useProjectFiles(projectId);
+  const editorPanelView = useWorkspaceStore((s) => s.editorPanelView);
+  const previewWanted = editorPanelView === "preview";
 
   const [status, setStatus] = useState<PreviewServerStatus>("idle");
   const [url, setUrl] = useState<string | null>(null);
@@ -192,6 +198,16 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     }
 
     async function start() {
+      if (!previewWanted) {
+        setStatus("idle");
+        setError(null);
+        setUrl(null);
+        setPort(null);
+        setCommandLine(null);
+        await stopProcess();
+        return;
+      }
+
       if (wcStatus === "error" || wcError) {
         setStatus("unavailable");
         setError(wcError);
@@ -200,7 +216,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
         return;
       }
 
-      if (!ready || !filesReady) {
+      if (!filesReady) {
         setStatus("idle");
         return;
       }
@@ -215,7 +231,32 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
         return;
       }
 
-      if (needsInstall) {
+      if (!webcontainer) {
+        setStatus("unavailable");
+        return;
+      }
+
+      try {
+        await webcontainer.ensureReady();
+      } catch (err) {
+        setStatus("unavailable");
+        setError(
+          err instanceof Error ? err.message : "WebContainer failed to start",
+        );
+        return;
+      }
+
+      const wcAfterBoot = getWebContainer();
+      if (!wcAfterBoot) {
+        setStatus("unavailable");
+        return;
+      }
+
+      const hasPkg = Boolean(packageJson);
+      const installed = hasPkg ? await hasNodeModules(wcAfterBoot) : true;
+      if (cancelled) return;
+
+      if (hasPkg && !installed) {
         setStatus("starting");
         setError(null);
         setUrl(null);
@@ -224,11 +265,7 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
         return;
       }
 
-      const wc = getWebContainer();
-      if (!wc) {
-        setStatus("unavailable");
-        return;
-      }
+      const wc = wcAfterBoot;
 
       const command = buildDevServerCommand(
         packageManager,
@@ -386,9 +423,11 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
     packageManager,
     projectId,
     pushPreviewMessage,
+    previewWanted,
     ready,
     restartKey,
     scriptName,
+    webcontainer,
     wcError,
     wcStatus,
   ]);

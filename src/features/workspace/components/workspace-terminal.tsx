@@ -5,6 +5,9 @@ import { Terminal } from "@xterm/xterm";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 
+import {
+  isWebContainerShellCommand,
+} from "@/features/workspace/lib/webcontainer/shell-commands";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
 import { useTerminalShell } from "@/features/workspace/hooks/use-terminal-shell";
 import type { CompleteContext } from "@/features/workspace/lib/terminal/complete";
@@ -288,6 +291,23 @@ export function WorkspaceTerminal({
       });
 
       const wc = webcontainerRef.current;
+      if (wc && isWebContainerShellCommand(command)) {
+        try {
+          if (!wc.ready) {
+            term.writeln("\r\n[novastudio] Starting WebContainer…");
+          }
+          await wc.ensureReady();
+        } catch (error) {
+          term.writeln(
+            `\r\n[novastudio] ${
+              error instanceof Error ? error.message : "WebContainer failed"
+            }`,
+          );
+          writePrompt(term, false);
+          return;
+        }
+      }
+
       if (wc?.ready) {
         handlers.runInWebContainer = async (binary, args, cwd) => {
           try {

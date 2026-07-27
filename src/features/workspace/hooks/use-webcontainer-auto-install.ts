@@ -20,7 +20,6 @@ export function useWebContainerAutoInstall(projectId: string) {
   );
   const attemptedForRef = useRef<string | null>(null);
 
-  const ready = webcontainer?.ready ?? false;
   const needsInstall = webcontainer?.needsInstall ?? false;
   const installAttempted = webcontainer?.installAttempted ?? false;
   const installCommand = webcontainer?.installCommand;
@@ -29,17 +28,25 @@ export function useWebContainerAutoInstall(projectId: string) {
 
   useEffect(() => {
     if (pendingScaffold) return;
-    if (!ready || !needsInstall || installAttempted) return;
-    if (!installCommand || !markInstallAttempted) return;
+    if (!needsInstall || installAttempted) return;
+    if (!installCommand || !markInstallAttempted || !webcontainer) return;
     if (attemptedForRef.current === projectId) return;
 
-    attemptedForRef.current = projectId;
-    markInstallAttempted();
+    void webcontainer
+      .ensureReady()
+      .then(() => {
+        if (attemptedForRef.current === projectId) return;
+        attemptedForRef.current = projectId;
+        markInstallAttempted();
 
-    toast.message("Installing dependencies", {
-      description: `Running \`${installCommand}\` in the WebContainer`,
-    });
-    requestTerminalCommand(installCommand);
+        toast.message("Installing dependencies", {
+          description: `Running \`${installCommand}\` in the WebContainer`,
+        });
+        requestTerminalCommand(installCommand);
+      })
+      .catch(() => {
+        // Boot errors surface in the terminal status banner.
+      });
   }, [
     installAttempted,
     installCommand,
@@ -47,7 +54,7 @@ export function useWebContainerAutoInstall(projectId: string) {
     needsInstall,
     pendingScaffold,
     projectId,
-    ready,
     requestTerminalCommand,
+    webcontainer,
   ]);
 }

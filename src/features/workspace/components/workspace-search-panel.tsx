@@ -13,9 +13,9 @@ import {
   useProjectFiles,
   useProjectFilesContentsLoading,
 } from "@/features/workspace/hooks/use-project-files";
+import { useProjectTextSearch } from "@/features/workspace/hooks/use-project-text-search";
 import {
   searchFilesByName,
-  searchInFiles,
   type FileNameMatch,
   type SearchMatch,
 } from "@/features/workspace/lib/search";
@@ -55,13 +55,13 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
     setQuery("");
   }, [folderScope]);
 
-  const textMatches = useMemo(() => {
-    if (mode !== "text" || !files || !query.trim()) return [];
-    return searchInFiles(files, query, {
-      caseSensitive,
-      pathPrefix: folderScope ?? undefined,
-    });
-  }, [caseSensitive, files, folderScope, mode, query]);
+  const textMatchesFromWorker = useProjectTextSearch(files, query, {
+    caseSensitive,
+    pathPrefix: folderScope ?? undefined,
+    enabled: mode === "text",
+  });
+  const textMatches = textMatchesFromWorker.matches;
+  const textSearching = textMatchesFromWorker.searching;
 
   const fileMatches = useMemo(() => {
     if (mode !== "file" || !metadata || !query.trim()) return [];
@@ -97,7 +97,9 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
   }
 
   const textSearchPending =
-    mode === "text" && query.trim().length > 0 && contentsLoading;
+    mode === "text" &&
+    query.trim().length > 0 &&
+    (contentsLoading || textSearching);
 
   return (
     <div className="flex h-full flex-col">
@@ -215,7 +217,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
         ) : textSearchPending ? (
           <div className="flex items-center gap-2 px-2 py-3 text-[11px] text-ws-text-muted">
             <Loader2Icon className="size-3.5 animate-spin" />
-            Loading file contents…
+            {contentsLoading ? "Loading file contents…" : "Searching…"}
           </div>
         ) : textMatches.length === 0 ? (
           <p className="px-2 py-3 text-[11px] text-ws-text-muted">

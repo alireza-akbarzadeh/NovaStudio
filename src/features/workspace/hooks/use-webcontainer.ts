@@ -10,9 +10,14 @@ import {
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProject } from "@/features/projects/hooks/use-projects";
+import {
+  useProjectFileMetadata,
+  useProjectFiles,
+} from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import type { PackageManager } from "@/features/workspace/lib/terminal/package-scripts";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import {
   bootWebContainer,
   getCrossOriginIsolationError,
@@ -20,6 +25,7 @@ import {
   teardownWebContainer,
 } from "@/features/workspace/lib/webcontainer/boot";
 import { syncManifestsToProject } from "@/features/workspace/lib/webcontainer/lockfile-sync";
+import { filterFilesForWebContainerMount } from "@/features/workspace/lib/webcontainer/mount-filter";
 import {
   detectPackageManager,
   installArgs,
@@ -49,6 +55,8 @@ export type UseWebContainerResult = {
   status: WebContainerStatus;
   error: string | null;
   ready: boolean;
+  /** Boot + mount the project into WebContainer (no-op when already ready). */
+  ensureReady: () => Promise<void>;
   spawn: (
     command: string,
     args: string[],
@@ -83,8 +91,17 @@ export type UseWebContainerResult = {
 };
 
 export function useWebContainer(projectId: string): UseWebContainerResult {
+  const project = useProject({ projectId });
+  const metadata = useProjectFileMetadata(projectId);
   const files = useProjectFiles(projectId);
   const writeFileAtPath = useMutation(api.projectFiles.writeFileAtPath);
+
+  const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
+  const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
+  const editorPanelView = useWorkspaceStore((s) => s.editorPanelView);
+  const terminalCommandRequest = useWorkspaceStore(
+    (s) => s.terminalCommandRequest,
+  );
 
   const [status, setStatus] = useState<WebContainerStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -94,12 +111,106 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
   const mountedProjectRef = useRef<string | null>(null);
   const lastSyncHashRef = useRef<string>("");
   const filesRef = useRef(files);
+  const bootPromiseRef = useRef<Promise<void> | null>(null);
   filesRef.current = files;
 
   const packageManager = detectPackageManager(
-    (files ?? []).map((f) => f.path),
+    (metadata ?? []).map((f) => f.path),
   );
   const installCommand = installCommandLine(packageManager);
+
+  const applyDrafts = useCallback(
+    (rows: NonNullable<typeof files>) => {
+      return rows.map((file) => {
+        if (file.kind !== "file") return file;
+        const draft = loadFileContentDraft(projectId, file.path);
+        if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+          return { ...file, content: draft.content };
+        }
+        return file;
+      });
+    },
+    [projectId],
+  );
+
+  const waitForProjectFiles = useCallback(async () => {
+    if (filesRef.current !== undefined) {
+      return filesRef.current;
+    }
+
+    await new Promise<void>((resolve) => {
+      const started = Date.now();
+      const timer = window.setInterval(() => {
+        if (filesRef.current !== undefined) {
+          window.clearInterval(timer);
+          resolve();
+          return;
+        }
+        if (Date.now() - started > 120_000) {
+          window.clearInterval(timer);
+          resolve();
+        }
+      }, 100);
+    });
+
+    if (filesRef.current === undefined) {
+      throw new Error("Project files are still loading");
+    }
+
+    return filesRef.current;
+  }, []);
+
+  const runBoot = useCallback(async () => {
+    const isolationError = getCrossOriginIsolationError();
+    if (isolationError) {
+      setStatus("error");
+      setError(isolationError);
+      throw new Error(isolationError);
+    }
+
+    const projectFiles = await waitForProjectFiles();
+    setStatus((current) => (current === "ready" ? current : "booting"));
+    setError(null);
+
+    const wc = await bootWebContainer();
+
+    if (mountedProjectRef.current !== projectId) {
+      setStatus("mounting");
+      const withDrafts = applyDrafts(projectFiles);
+      const mountable = filterFilesForWebContainerMount(withDrafts);
+      await mountProject(wc, mountable);
+      mountedProjectRef.current = projectId;
+      lastSyncHashRef.current = hashFileSnapshot(withDrafts);
+      setInstallAttempted(false);
+    }
+
+    const hasPkg = projectFiles.some(
+      (f) => f.kind === "file" && f.path === "package.json",
+    );
+    const installed = hasPkg ? await hasNodeModules(wc) : true;
+    setNeedsInstall(hasPkg && !installed);
+    setStatus("ready");
+  }, [applyDrafts, projectId, waitForProjectFiles]);
+
+  const ensureReady = useCallback(async () => {
+    if (status === "ready") return;
+    if (status === "error") {
+      throw new Error(error ?? "WebContainer failed to start");
+    }
+
+    if (!bootPromiseRef.current) {
+      bootPromiseRef.current = runBoot().catch((err) => {
+        bootPromiseRef.current = null;
+        setStatus("error");
+        setError(
+          err instanceof Error ? err.message : "Failed to boot WebContainer",
+        );
+        throw err;
+      });
+    }
+
+    await bootPromiseRef.current;
+  }, [error, runBoot, status]);
 
   const syncManifests = useCallback(async () => {
     const wc = getWebContainer();
@@ -156,6 +267,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
         signal?: AbortSignal;
       },
     ) => {
+      await ensureReady();
       const wc = getWebContainer();
       if (!wc) {
         throw new Error("WebContainer is not ready");
@@ -171,103 +283,49 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
         signal: options.signal,
       });
     },
-    [],
+    [ensureReady],
   );
 
-  const writeFile = useCallback(async (path: string, content: string) => {
-    const wc = getWebContainer();
-    if (!wc) return;
-    try {
-      await writeProjectFile(wc, path, content);
-    } catch {
-      // Best-effort; install or teardown may race.
-    }
-  }, []);
-
-  // Boot + mount when project files are available
-  useEffect(() => {
-    let cancelled = false;
-
-    async function setup() {
-      if (files === undefined) return;
-
-      const isolationError = getCrossOriginIsolationError();
-      if (isolationError) {
-        setStatus("error");
-        setError(isolationError);
-        return;
-      }
-
-      setStatus((s) => (s === "ready" ? s : "booting"));
-      setError(null);
-
+  const writeFile = useCallback(
+    async (path: string, content: string) => {
       try {
-        const wc = await bootWebContainer();
-        if (cancelled) return;
-
-        // Remount when switching projects
-        if (mountedProjectRef.current !== projectId) {
-          setStatus("mounting");
-          const withDrafts = files.map((file) => {
-            if (file.kind !== "file") return file;
-            const draft = loadFileContentDraft(projectId, file.path);
-            if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
-              return { ...file, content: draft.content };
-            }
-            return file;
-          });
-          await mountProject(wc, withDrafts);
-          if (cancelled) return;
-          mountedProjectRef.current = projectId;
-          lastSyncHashRef.current = hashFileSnapshot(withDrafts);
-          setInstallAttempted(false);
-        }
-
-        const hasPkg = files.some(
-          (f) => f.kind === "file" && f.path === "package.json",
-        );
-        const installed = hasPkg ? await hasNodeModules(wc) : true;
-        if (cancelled) return;
-        setNeedsInstall(hasPkg && !installed);
-        setStatus("ready");
-      } catch (err) {
-        if (cancelled) return;
-        setStatus("error");
-        setError(
-          err instanceof Error ? err.message : "Failed to boot WebContainer",
-        );
+        await ensureReady();
+        const wc = getWebContainer();
+        if (!wc) return;
+        await writeProjectFile(wc, path, content);
+      } catch {
+        // Best-effort; install or teardown may race.
       }
-    }
+    },
+    [ensureReady],
+  );
 
-    void setup();
+  const wantsBoot =
+    (terminalOpen && bottomPanelTab === "terminal") ||
+    editorPanelView === "preview" ||
+    Boolean(terminalCommandRequest) ||
+    Boolean(project?.pendingScaffoldCommand);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [files, projectId]);
+  useEffect(() => {
+    if (!wantsBoot || status === "ready" || status === "error") return;
+    void ensureReady().catch(() => {
+      // Error state is set inside ensureReady / runBoot.
+    });
+  }, [ensureReady, status, wantsBoot]);
 
-  // Tear down when leaving the workspace (projectId unmount of provider)
   useEffect(() => {
     return () => {
       mountedProjectRef.current = null;
+      bootPromiseRef.current = null;
       void teardownWebContainer();
     };
   }, [projectId]);
 
-  // Incremental sync: push Convex / draft updates into WC
   useEffect(() => {
     if (status !== "ready" || files === undefined) return;
     if (mountedProjectRef.current !== projectId) return;
 
-    const withDrafts = files.map((file) => {
-      if (file.kind !== "file") return file;
-      const draft = loadFileContentDraft(projectId, file.path);
-      if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
-        return { ...file, content: draft.content };
-      }
-      return file;
-    });
-
+    const withDrafts = applyDrafts(files);
     const hash = hashFileSnapshot(withDrafts);
     if (hash === lastSyncHashRef.current) return;
     lastSyncHashRef.current = hash;
@@ -290,12 +348,13 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     return () => {
       cancelled = true;
     };
-  }, [files, projectId, status]);
+  }, [applyDrafts, files, projectId, status]);
 
   return {
     status,
     error,
     ready: status === "ready",
+    ensureReady,
     spawn,
     installCommand,
     packageManager,
@@ -314,7 +373,6 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
 function hashFileSnapshot(
   files: { path: string; kind: string; content?: string; updatedAt?: number }[],
 ): string {
-  // Lightweight change detector — path + length + updatedAt
   return files
     .filter((f) => f.kind === "file")
     .map(

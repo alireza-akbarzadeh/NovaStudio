@@ -23,29 +23,37 @@ export function usePendingScaffold(projectId: string) {
   );
   const attemptedRef = useRef<string | null>(null);
 
-  const ready = webcontainer?.ready ?? false;
   const command = project?.pendingScaffoldCommand;
 
   useEffect(() => {
-    if (!command || !ready) return;
+    if (!command || !webcontainer) return;
     if (attemptedRef.current === projectId) return;
-    attemptedRef.current = projectId;
 
-    toast.message("Scaffolding project", {
-      description: `Running \`${command}\` in the terminal`,
-      duration: 6_000,
-    });
-    requestTerminalCommand(command);
-    void clearPendingScaffold({
-      projectId: projectId as Id<"projects">,
-    }).catch(() => {
-      attemptedRef.current = null;
-    });
+    void webcontainer
+      .ensureReady()
+      .then(() => {
+        if (attemptedRef.current === projectId) return;
+        attemptedRef.current = projectId;
+
+        toast.message("Scaffolding project", {
+          description: `Running \`${command}\` in the terminal`,
+          duration: 6_000,
+        });
+        requestTerminalCommand(command);
+        void clearPendingScaffold({
+          projectId: projectId as Id<"projects">,
+        }).catch(() => {
+          attemptedRef.current = null;
+        });
+      })
+      .catch(() => {
+        // Boot errors surface in the terminal status banner.
+      });
   }, [
     clearPendingScaffold,
     command,
     projectId,
-    ready,
     requestTerminalCommand,
+    webcontainer,
   ]);
 }
