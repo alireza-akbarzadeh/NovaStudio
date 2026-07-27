@@ -12,7 +12,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 type WorkspaceGoToFileDialogProps = {
@@ -24,7 +24,7 @@ export function WorkspaceGoToFileDialog({
 }: WorkspaceGoToFileDialogProps) {
   const open = useWorkspaceStore((s) => s.goToFileOpen);
   const closeGoToFile = useWorkspaceStore((s) => s.closeGoToFile);
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
   const { openTab } = useEditorTabs(projectId);
 
   const filePaths = useMemo(

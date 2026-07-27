@@ -48,6 +48,9 @@ import {
   resolveSeedContent,
 } from "@/features/workspace/lib/file-content-drafts";
 import type { DefinitionTarget } from "@/features/workspace/lib/monaco-go-to-definition";
+import {
+  selectDefinitionFiles,
+} from "@/features/workspace/lib/resolve-import-path";
 import { filePathToBreadcrumb } from "@/features/workspace/lib/sample-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { useLockedFilesStore } from "@/features/workspace/store/locked-files-store";
@@ -380,13 +383,16 @@ function FileEditorContent({
   );
   const definitionFiles = useMemo(
     () =>
-      (projectFiles ?? [])
-        .filter((file) => file.kind === "file")
-        .map((file) => ({
-          path: file.path,
-          content: file.content ?? "",
-        })),
-    [projectFiles],
+      selectDefinitionFiles(
+        filePath,
+        (projectFiles ?? [])
+          .filter((file) => file.kind === "file")
+          .map((file) => ({
+            path: file.path,
+            content: file.content ?? "",
+          })),
+      ),
+    [filePath, projectFiles],
   );
   const projectPaths = definitionFiles.map((file) => file.path);
   const packageJsonContent = useMemo(() => {

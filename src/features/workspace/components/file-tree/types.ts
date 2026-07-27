@@ -107,4 +107,6 @@ export type FileTreeItemProps = {
   ) => void;
   parentId?: Id<"projectFiles">;
   highlightQuery?: string;
+  /** When true, render only this row (used by virtualized file tree). */
+  flat?: boolean;
 };

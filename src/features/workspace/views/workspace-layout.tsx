@@ -34,6 +34,7 @@ import { WorkspaceSettingsDialog } from "@/features/workspace/components/workspa
 import { WorkspaceSidebar } from "@/features/workspace/components/workspace-sidebar";
 import { WorkspaceStatusBar } from "@/features/workspace/components/workspace-status-bar";
 import { WorkspaceToolbar } from "@/features/workspace/components/workspace-toolbar";
+import { ProjectFilesProvider } from "@/features/workspace/components/project-files-provider";
 import { WebContainerProvider } from "@/features/workspace/components/webcontainer-provider";
 import { PreviewServerProvider } from "@/features/workspace/components/preview-server-provider";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
@@ -302,10 +303,12 @@ function WorkspaceLayoutInner({
 
 export function WorkspaceLayout(props: WorkspaceLayoutProps) {
   return (
-    <WebContainerProvider projectId={props.projectId}>
-      <PreviewServerProvider projectId={props.projectId}>
-        <WorkspaceLayoutInner {...props} />
-      </PreviewServerProvider>
-    </WebContainerProvider>
+    <ProjectFilesProvider projectId={props.projectId}>
+      <WebContainerProvider projectId={props.projectId}>
+        <PreviewServerProvider projectId={props.projectId}>
+          <WorkspaceLayoutInner {...props} />
+        </PreviewServerProvider>
+      </WebContainerProvider>
+    </ProjectFilesProvider>
   );
 }

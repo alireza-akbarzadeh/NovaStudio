@@ -17,9 +17,9 @@ import { TerminalLineEditor } from "@/features/workspace/lib/terminal/line-edito
 import { getPackageScripts } from "@/features/workspace/lib/terminal/package-scripts";
 import { writeShellPrompt } from "@/features/workspace/lib/terminal/prompt";
 import {
-  TERMINAL_THEME_DARK,
-  TERMINAL_THEME_LIGHT,
-} from "@/features/workspace/lib/terminal/themes";
+  getSessionPanelBackground,
+  getSessionTerminalTheme,
+} from "@/features/workspace/lib/terminal/session-colors";
 import type { ShellHandlers } from "@/features/workspace/lib/terminal/types";
 import {
   CLEAR_SCREEN,
@@ -33,8 +33,14 @@ type WorkspaceTerminalProps = {
   projectId: string;
   /** Stable id for this terminal instance (multi-terminal). */
   sessionId?: string;
+  /** Display name shown on the session tab. */
+  sessionName?: string;
+  /** Palette index for per-session tab + background colors. */
+  colorIndex?: number;
   /** Only the active session consumes cwd / command requests. */
   active?: boolean;
+  /** App theme from parent — avoids stale theme on hidden sessions. */
+  isDark?: boolean;
 };
 
 function statusBannerLine(
@@ -58,7 +64,10 @@ function statusBannerLine(
 export function WorkspaceTerminal({
   projectId,
   sessionId = "default",
+  sessionName,
+  colorIndex = 0,
   active = true,
+  isDark: isDarkProp,
 }: WorkspaceTerminalProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
@@ -77,8 +86,10 @@ export function WorkspaceTerminal({
     () => true,
     () => false,
   );
-  const isDark = !mounted || (resolvedTheme ?? "dark") === "dark";
+  const isDark = isDarkProp ?? (!mounted || (resolvedTheme ?? "dark") === "dark");
   const isDarkRef = useRef(isDark);
+  const colorIndexRef = useRef(colorIndex);
+  colorIndexRef.current = colorIndex;
 
   const { projectName, branch, dirty, getContext, createHandlers, filesRef } =
     useTerminalShell(projectId);
@@ -181,6 +192,11 @@ export function WorkspaceTerminal({
     const fontFamily = resolveTerminalFontFamily();
     const letterSpacing = resolveTerminalLetterSpacing();
 
+    const sessionTheme = getSessionTerminalTheme(
+      colorIndexRef.current,
+      isDarkRef.current,
+    );
+
     const term = new Terminal({
       // Blinking + per-keystroke paints reads as flashy; steady bar feels calmer.
       cursorBlink: false,
@@ -191,7 +207,7 @@ export function WorkspaceTerminal({
       fontWeight: "400",
       lineHeight: 1.2,
       letterSpacing,
-      theme: isDarkRef.current ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT,
+      theme: sessionTheme,
       scrollback: 5000,
       allowTransparency: false,
     });
@@ -377,7 +393,8 @@ export function WorkspaceTerminal({
     editorRef.current = editor;
 
     const wc = webcontainerRef.current;
-    term.writeln("NovaStudio workspace terminal");
+    const label = sessionName?.trim() || "NovaStudio workspace terminal";
+    term.writeln(label);
     term.writeln(
       "Type 'help' for commands. Tab completes · paste with Ctrl+V · → accepts suggestion · ↑↓ history",
     );
@@ -429,14 +446,21 @@ export function WorkspaceTerminal({
   useEffect(() => {
     const term = terminalRef.current;
     if (!term) return;
-    term.options.theme = isDark ? TERMINAL_THEME_DARK : TERMINAL_THEME_LIGHT;
-  }, [isDark]);
+    term.options.theme = getSessionTerminalTheme(colorIndex, isDark);
+  }, [colorIndex, isDark]);
+
+  const panelBackground = getSessionPanelBackground(colorIndex, isDark);
 
   return (
-    <div className="flex h-full flex-col bg-ws-panel" data-terminal-session={sessionId}>
+    <div
+      className="flex h-full flex-col"
+      style={{ backgroundColor: panelBackground }}
+      data-terminal-session={sessionId}
+    >
       <div
         ref={containerRef}
-        className="min-h-0 flex-1 overflow-hidden bg-ws-panel p-2 font-terminal [&_.xterm]:h-full [&_.xterm-viewport]:bg-transparent! [&_.xterm-screen]:h-full"
+        className="min-h-0 flex-1 overflow-hidden p-2 font-terminal [&_.xterm]:h-full [&_.xterm-viewport]:bg-transparent! [&_.xterm-screen]:h-full"
+        style={{ backgroundColor: panelBackground }}
       />
     </div>
   );

@@ -66,6 +66,7 @@ export function FileTreeItem({
   onItemDrop,
   parentId,
   highlightQuery = "",
+  flat = false,
 }: FileTreeItemProps) {
   const isPendingChild = pendingCreate?.parentId === node.id;
   const isFolder = node.kind === "folder";
@@ -274,7 +275,7 @@ export function FileTreeItem({
         <FileTreeMenuContent {...item.menuProps} menuType="context" />
       </ContextMenu>
 
-      {isFolder && open ? (
+      {isFolder && open && !flat ? (
         <FileTreeItemChildren
           node={node}
           depth={depth}

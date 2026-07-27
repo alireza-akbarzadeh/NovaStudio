@@ -67,19 +67,24 @@ export function WorkspaceExplorerPanel({ projectId }: WorkspaceExplorerPanelProp
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {activeTab === "project" ? (
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div className={cn("h-full", activeTab !== "project" && "hidden")}>
           <WorkspaceFileTree projectId={projectId} />
-        ) : activeTab === "changes" ? (
-          <div className="h-full overflow-auto">
-            <WorkspaceChangeList
-              projectId={projectId}
-              emptyMessage="No local changes since last GitHub sync"
-            />
-          </div>
-        ) : (
+        </div>
+        <div
+          className={cn(
+            "h-full overflow-auto",
+            activeTab !== "changes" && "hidden",
+          )}
+        >
+          <WorkspaceChangeList
+            projectId={projectId}
+            emptyMessage="No local changes since last GitHub sync"
+          />
+        </div>
+        <div className={cn("h-full", activeTab !== "quality" && "hidden")}>
           <WorkspaceGitReviews projectId={projectId} enabled />
-        )}
+        </div>
       </div>
     </div>
   );

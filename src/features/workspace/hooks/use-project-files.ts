@@ -1,9 +1,10 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 
 import { useProject } from "@/features/projects/hooks/use-projects";
+import { ProjectFilesContext } from "@/features/workspace/context/project-files-context";
 
 function asProjectId(projectId: string): Id<"projects"> {
   return projectId as Id<"projects">;
@@ -25,6 +26,20 @@ export type ProjectFileRow = {
   syncedContent?: string;
 };
 
+type FileContentPageRow = {
+  path: string;
+  content?: string;
+  syncedContent?: string;
+};
+
+function useProjectFilesContext(projectId: string) {
+  const ctx = useContext(ProjectFilesContext);
+  if (ctx && ctx.projectId === projectId) {
+    return ctx;
+  }
+  return null;
+}
+
 /** Ensures legacy inline file bodies are migrated off projectFiles. */
 export function useEnsureFileContentSplit(projectId: string) {
   const project = useProject({ projectId });
@@ -41,14 +56,14 @@ export function useEnsureFileContentSplit(projectId: string) {
   return project?.fileContentSplit === true;
 }
 
-function useProjectFileMetadata(projectId: string, enabled: boolean) {
+export function useProjectFileMetadataQuery(projectId: string, enabled: boolean) {
   return useQuery(
     api.projectFiles.listByProject,
     enabled ? { projectId: asProjectId(projectId) } : "skip",
   );
 }
 
-function useProjectFileContentsPages(projectId: string, enabled: boolean) {
+export function useProjectFileContentsPages(projectId: string, enabled: boolean) {
   const { results, status, loadMore, isLoading } = usePaginatedQuery(
     api.projectFiles.listFileContentsPage,
     enabled ? { projectId: asProjectId(projectId) } : "skip",
@@ -66,39 +81,89 @@ function useProjectFileContentsPages(projectId: string, enabled: boolean) {
   };
 }
 
-export function useProjectFiles(projectId: string) {
+export function mergeProjectFiles(
+  metadata: ProjectFileRow[] | undefined,
+  contents: FileContentPageRow[],
+  contentsReady: boolean,
+): ProjectFileRow[] | undefined {
+  if (metadata === undefined) {
+    return undefined;
+  }
+  if (!contentsReady) {
+    return undefined;
+  }
+
+  const byPath = new Map(
+    contents.map((row) => [
+      row.path,
+      { content: row.content, syncedContent: row.syncedContent },
+    ]),
+  );
+
+  return metadata.map((file) => {
+    if (file.kind !== "file") {
+      return file;
+    }
+    const body = byPath.get(file.path);
+    return {
+      ...file,
+      content: body?.content,
+      syncedContent: body?.syncedContent,
+    } satisfies ProjectFileRow;
+  });
+}
+
+/** Metadata only — does not wait for file bodies to paginate in. */
+export function useProjectFileMetadata(projectId: string) {
+  const ctx = useProjectFilesContext(projectId);
   const splitReady = useEnsureFileContentSplit(projectId);
-  const metadata = useProjectFileMetadata(projectId, splitReady);
+  const metadata = useProjectFileMetadataQuery(projectId, splitReady && !ctx);
+
+  if (ctx) {
+    return ctx.metadata;
+  }
+
+  if (!splitReady || metadata === undefined) {
+    return undefined;
+  }
+
+  return metadata as ProjectFileRow[];
+}
+
+export function useProjectFilesContentsLoading(projectId: string) {
+  const ctx = useProjectFilesContext(projectId);
+  const splitReady = useEnsureFileContentSplit(projectId);
+  const metadata = useProjectFileMetadataQuery(projectId, splitReady && !ctx);
+  const { ready: contentsReady } = useProjectFileContentsPages(
+    projectId,
+    splitReady && !ctx,
+  );
+
+  if (ctx) {
+    return ctx.contentsLoading;
+  }
+
+  return splitReady && metadata !== undefined && !contentsReady;
+}
+
+export function useProjectFiles(projectId: string) {
+  const ctx = useProjectFilesContext(projectId);
+  const splitReady = useEnsureFileContentSplit(projectId);
+  const metadata = useProjectFileMetadataQuery(projectId, splitReady && !ctx);
   const { results: contents, ready: contentsReady } =
-    useProjectFileContentsPages(projectId, splitReady);
+    useProjectFileContentsPages(projectId, splitReady && !ctx);
 
-  return useMemo(() => {
-    if (!splitReady || metadata === undefined) {
-      return undefined;
-    }
-    if (!contentsReady) {
-      return undefined;
-    }
+  const standaloneFiles = useMemo(
+    () =>
+      mergeProjectFiles(
+        metadata as ProjectFileRow[] | undefined,
+        contents,
+        contentsReady,
+      ),
+    [metadata, contents, contentsReady],
+  );
 
-    const byPath = new Map(
-      contents.map((row) => [
-        row.path,
-        { content: row.content, syncedContent: row.syncedContent },
-      ]),
-    );
-
-    return metadata.map((file) => {
-      if (file.kind !== "file") {
-        return file as ProjectFileRow;
-      }
-      const body = byPath.get(file.path);
-      return {
-        ...file,
-        content: body?.content,
-        syncedContent: body?.syncedContent,
-      } satisfies ProjectFileRow;
-    });
-  }, [splitReady, metadata, contents, contentsReady]);
+  return ctx ? ctx.files : standaloneFiles;
 }
 
 export function useProjectFile(projectId: string, path: string) {

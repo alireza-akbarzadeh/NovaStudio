@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { WorkspaceActivityPanel } from "@/features/workspace/components/workspace-activity-panel";
 import { WorkspaceDependenciesPanel } from "@/features/workspace/components/workspace-dependencies-panel";
 import { WorkspaceExplorerPanel } from "@/features/workspace/components/workspace-explorer-panel";
@@ -11,10 +13,23 @@ import {
   LEFT_PANEL_LABELS,
   useWorkspaceStore,
 } from "@/features/workspace/store/workspace-store";
+import { cn } from "@/lib/utils";
 
 type WorkspaceSidebarProps = {
   projectId: string;
 };
+
+function KeepAlivePanel({
+  active,
+  children,
+}: {
+  active: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn("h-full min-h-0", !active && "hidden")}>{children}</div>
+  );
+}
 
 export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
@@ -26,13 +41,13 @@ export function WorkspaceSidebar({ projectId }: WorkspaceSidebarProps) {
           {LEFT_PANEL_LABELS[leftPanelView]}
         </p>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        {leftPanelView === "explorer" ? (
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <KeepAlivePanel active={leftPanelView === "explorer"}>
           <WorkspaceExplorerPanel projectId={projectId} />
-        ) : null}
-        {leftPanelView === "search" ? (
+        </KeepAlivePanel>
+        <KeepAlivePanel active={leftPanelView === "search"}>
           <WorkspaceSearchPanel projectId={projectId} />
-        ) : null}
+        </KeepAlivePanel>
         {leftPanelView === "git" ? (
           <WorkspaceGitPanel projectId={projectId} />
         ) : null}

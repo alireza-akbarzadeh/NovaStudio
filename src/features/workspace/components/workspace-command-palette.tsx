@@ -24,7 +24,7 @@ import {
   type CommandId,
 } from "@/features/workspace/commands/registry";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { visiblePaletteCommands } from "@/features/workspace/lib/command-palette-items";
 import {
   loadRecentFilePaths,
@@ -54,7 +54,7 @@ export function WorkspaceCommandPalette({
   const open = useWorkspaceStore((s) => s.commandPaletteOpen);
   const closeCommandPalette = useWorkspaceStore((s) => s.closeCommandPalette);
   const editorTabs = useWorkspaceStore((s) => s.editorTabs);
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
   const { openTab } = useEditorTabs(projectId);
   const [recentPaths, setRecentPaths] = useState<string[]>([]);
 

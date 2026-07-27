@@ -8,7 +8,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { HighlightedText } from "@/features/workspace/components/highlighted-text";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import {
+  useProjectFileMetadata,
+  useProjectFiles,
+  useProjectFilesContentsLoading,
+} from "@/features/workspace/hooks/use-project-files";
 import {
   searchFilesByName,
   searchInFiles,
@@ -31,7 +35,9 @@ const SEARCH_TABS: { id: SearchPanelMode; label: string }[] = [
 ];
 
 export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
+  const metadata = useProjectFileMetadata(projectId);
   const files = useProjectFiles(projectId);
+  const contentsLoading = useProjectFilesContentsLoading(projectId);
   const { openTab } = useEditorTabs(projectId);
   const mode = useWorkspaceStore((s) => s.searchPanelMode);
   const setSearchPanelMode = useWorkspaceStore((s) => s.setSearchPanelMode);
@@ -58,9 +64,9 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
   }, [caseSensitive, files, folderScope, mode, query]);
 
   const fileMatches = useMemo(() => {
-    if (mode !== "file" || !files || !query.trim()) return [];
-    return searchFilesByName(files, query);
-  }, [files, mode, query]);
+    if (mode !== "file" || !metadata || !query.trim()) return [];
+    return searchFilesByName(metadata, query);
+  }, [metadata, mode, query]);
 
   const grouped = useMemo(
     () => groupMatchesByFile(textMatches),
@@ -81,7 +87,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
     openTab({ kind: "file", path: match.path }, { mode: "preview" });
   };
 
-  if (files === undefined) {
+  if (metadata === undefined) {
     return (
       <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
         <Loader2Icon className="size-3.5 animate-spin" />
@@ -89,6 +95,9 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
       </div>
     );
   }
+
+  const textSearchPending =
+    mode === "text" && query.trim().length > 0 && contentsLoading;
 
   return (
     <div className="flex h-full flex-col">
@@ -203,6 +212,11 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
               </ul>
             </div>
           )
+        ) : textSearchPending ? (
+          <div className="flex items-center gap-2 px-2 py-3 text-[11px] text-ws-text-muted">
+            <Loader2Icon className="size-3.5 animate-spin" />
+            Loading file contents…
+          </div>
         ) : textMatches.length === 0 ? (
           <p className="px-2 py-3 text-[11px] text-ws-text-muted">
             No matches found

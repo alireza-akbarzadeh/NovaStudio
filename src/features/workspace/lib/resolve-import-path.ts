@@ -85,3 +85,79 @@ export function buildFileContentMap(
   }
   return map;
 }
+
+const DEFINITION_FILE_CAP = 250;
+
+const ROOT_CONFIG_FILES = ["package.json", "tsconfig.json", "jsconfig.json"];
+
+const IMPORT_SPECIFIER_RE =
+  /(?:import|export)\s+(?:[\s\S]*?\sfrom\s+)?['"]([^'"]+)['"]/g;
+
+/** Bounded subset of project files for Monaco go-to-definition (memory). */
+export function selectDefinitionFiles(
+  currentPath: string,
+  files: ProjectFileEntry[],
+): ProjectFileEntry[] {
+  if (files.length <= DEFINITION_FILE_CAP) {
+    return files;
+  }
+
+  const paths = files.map((file) => file.path);
+  const byPath = new Map(files.map((file) => [file.path, file]));
+  const selected = new Set<string>();
+
+  const tryAdd = (path: string) => {
+    if (selected.size >= DEFINITION_FILE_CAP || !byPath.has(path)) return;
+    selected.add(path);
+  };
+
+  tryAdd(currentPath);
+
+  const currentDir = dirnamePath(currentPath);
+  if (currentDir) {
+    for (const path of paths) {
+      if (dirnamePath(path) === currentDir) {
+        tryAdd(path);
+      }
+    }
+  }
+
+  const current = byPath.get(currentPath);
+  if (current?.content) {
+    for (const match of current.content.matchAll(IMPORT_SPECIFIER_RE)) {
+      const resolved = resolveImportPath(currentPath, match[1], paths);
+      if (!resolved) continue;
+      tryAdd(resolved);
+      const resolvedDir = dirnamePath(resolved);
+      if (resolvedDir) {
+        for (const path of paths) {
+          if (dirnamePath(path) === resolvedDir) {
+            tryAdd(path);
+          }
+        }
+      }
+    }
+  }
+
+  let dir = currentDir;
+  while (dir && selected.size < DEFINITION_FILE_CAP) {
+    for (const path of paths) {
+      if (path === dir || path.startsWith(`${dir}/`)) {
+        tryAdd(path);
+      }
+    }
+    const parent = dirnamePath(dir);
+    if (!parent || parent === dir) break;
+    dir = parent;
+  }
+
+  for (const config of ROOT_CONFIG_FILES) {
+    tryAdd(config);
+  }
+
+  return Array.from(selected, (path) => ({
+    path,
+    content: byPath.get(path)?.content ?? "",
+  }));
+}
+

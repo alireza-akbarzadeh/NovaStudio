@@ -141,6 +141,78 @@ export function WorkspaceChangeList({
     return map;
   }, [changedFiles, projectFiles, projectId]);
 
+  const staged = useMemo(
+    () => (changedFiles ?? []).filter((file) => file.staged),
+    [changedFiles],
+  );
+  const unstaged = useMemo(
+    () => (changedFiles ?? []).filter((file) => !file.staged),
+    [changedFiles],
+  );
+  const stagedPaths = useMemo(
+    () => staged.map((file) => file.path),
+    [staged],
+  );
+  const unstagedPaths = useMemo(
+    () => unstaged.map((file) => file.path),
+    [unstaged],
+  );
+
+  const selectChange = useCallback(
+    (
+      path: string,
+      sectionPaths: string[],
+      modifiers: { shiftKey?: boolean; modKey?: boolean },
+    ) => {
+      const next = computePathSelection(
+        path,
+        sectionPaths,
+        selectedPaths,
+        selectionAnchor,
+        modifiers,
+      );
+      setSelectedPaths(next.selected);
+      setSelectionAnchor(next.anchor);
+    },
+    [selectedPaths, selectionAnchor],
+  );
+
+  const stagePaths = useCallback(
+    async (paths: string[], stagedValue: boolean) => {
+      setBusyPath(paths[0] ?? "__batch__");
+      try {
+        for (const path of paths) {
+          await setFileStaged({
+            projectId: projectId as Id<"projects">,
+            path,
+            staged: stagedValue,
+          });
+        }
+        setSelectedPaths(new Set());
+        setSelectionAnchor(null);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Action failed");
+      } finally {
+        setBusyPath(null);
+      }
+    },
+    [projectId, setFileStaged],
+  );
+
+  const runAction = useCallback(
+    async (path: string, action: () => Promise<unknown>) => {
+      setBusyPath(path);
+      try {
+        await action();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Action failed");
+      } finally {
+        setBusyPath(null);
+      }
+    },
+    [],
+  );
+
   if (project === undefined || changedFiles === undefined) {
     return (
       <div className="flex items-center gap-2 px-3 py-4 text-[11px] text-ws-text-muted">
@@ -246,64 +318,6 @@ export function WorkspaceChangeList({
       </div>
     );
   }
-
-  const staged = changedFiles.filter((file) => file.staged);
-  const unstaged = changedFiles.filter((file) => !file.staged);
-
-  const selectChange = useCallback(
-    (
-      path: string,
-      sectionPaths: string[],
-      modifiers: { shiftKey?: boolean; modKey?: boolean },
-    ) => {
-      const next = computePathSelection(
-        path,
-        sectionPaths,
-        selectedPaths,
-        selectionAnchor,
-        modifiers,
-      );
-      setSelectedPaths(next.selected);
-      setSelectionAnchor(next.anchor);
-    },
-    [selectedPaths, selectionAnchor],
-  );
-
-  const stagePaths = useCallback(
-    async (paths: string[], stagedValue: boolean) => {
-      setBusyPath(paths[0] ?? "__batch__");
-      try {
-        for (const path of paths) {
-          await setFileStaged({
-            projectId: projectId as Id<"projects">,
-            path,
-            staged: stagedValue,
-          });
-        }
-        setSelectedPaths(new Set());
-        setSelectionAnchor(null);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Action failed");
-      } finally {
-        setBusyPath(null);
-      }
-    },
-    [projectId, setFileStaged],
-  );
-
-  const runAction = async (path: string, action: () => Promise<unknown>) => {
-    setBusyPath(path);
-    try {
-      await action();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Action failed");
-    } finally {
-      setBusyPath(null);
-    }
-  };
-
-  const stagedPaths = staged.map((file) => file.path);
-  const unstagedPaths = unstaged.map((file) => file.path);
 
   return (
     <div className="flex flex-col gap-1 p-1.5">

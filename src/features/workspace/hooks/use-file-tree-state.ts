@@ -8,7 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import {
-  useProjectFiles,
+  useProjectFileMetadata,
   useSeedProjectFiles,
 } from "@/features/workspace/hooks/use-project-files";
 import { buildFileTree } from "@/features/workspace/lib/file-tree";
@@ -29,7 +29,7 @@ import {
 } from "../lib/file-tree-selection";
 
 export function useFileTreeState(projectId: string) {
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
   const project = useProject({ projectId });
   const access = useProjectAccess(projectId);
   const canEdit = access?.canEdit ?? false;

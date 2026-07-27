@@ -1,9 +1,21 @@
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { FileTreeNode } from "@/features/workspace/lib/file-tree";
 
-import type { VisibleTreeItem } from "./types";
+import type { PendingCreate, VisibleTreeItem } from "./types";
 
 export const CHAT_ATTACH_FILE_CAP = 20;
+
+export type FlatTreeEntry =
+  | { type: "node"; item: VisibleTreeItem }
+  | {
+      type: "pending-create";
+      parentId?: Id<"projectFiles">;
+      depth: number;
+    };
+
+export const FILE_TREE_ROW_HEIGHT = 26;
+
+export const FILE_TREE_VIRTUALIZE_THRESHOLD = 60;
 
 export function collectFolderIds(nodes: FileTreeNode[]): Id<"projectFiles">[] {
   const ids: Id<"projectFiles">[] = [];
@@ -40,6 +52,38 @@ export function flattenVisibleTree(
   }
 
   return items;
+}
+
+/** Flat visible rows plus inline pending-create slots for virtual scrolling. */
+export function buildFlatTreeEntries(
+  nodes: FileTreeNode[],
+  openFolderIds: Set<Id<"projectFiles">>,
+  pendingCreate: PendingCreate | null,
+): FlatTreeEntry[] {
+  const flat = flattenVisibleTree(nodes, openFolderIds);
+  const entries: FlatTreeEntry[] = [];
+
+  for (const item of flat) {
+    entries.push({ type: "node", item });
+    if (
+      pendingCreate &&
+      item.node.kind === "folder" &&
+      openFolderIds.has(item.node.id) &&
+      pendingCreate.parentId === item.node.id
+    ) {
+      entries.push({
+        type: "pending-create",
+        parentId: item.node.id,
+        depth: item.depth + 1,
+      });
+    }
+  }
+
+  if (pendingCreate && pendingCreate.parentId === undefined) {
+    entries.push({ type: "pending-create", parentId: undefined, depth: 0 });
+  }
+
+  return entries;
 }
 
 export function findNodeByPath(
