@@ -1,19 +1,27 @@
 "use client";
 
 import {
+  ChevronDownIcon,
   ClipboardPasteIcon,
   CloudDownloadIcon,
+  CloudUploadIcon,
   EyeIcon,
   EyeOffIcon,
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
+import Image from "next/image";
 import { useAction, useConvexAuth, useQuery } from "convex/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
@@ -62,6 +70,19 @@ type DeployEnvPullResult =
       message?: string;
     };
 
+type DeployEnvPushResult =
+  | {
+      ok: true;
+      pushed: number;
+      failed: Array<{ key: string; message: string }>;
+      projectName: string;
+    }
+  | {
+      ok: false;
+      reason: "not_connected" | "no_target" | "provider_error";
+      message?: string;
+    };
+
 function rowsFromContent(content: string, filePath: string): EnvRow[] {
   return parseEnvBulk(content, filePath).map((entry, index) => ({
     key: entry.key,
@@ -86,6 +107,133 @@ function entriesToRows(
   }));
 }
 
+type DeploySyncCardProps = {
+  provider: "Vercel" | "Netlify";
+  logoSrc: string;
+  logoClassName?: string;
+  isConnected: boolean;
+  target: { name: string } | null | undefined;
+  targetLoading: boolean;
+  pulling: boolean;
+  pushing: boolean;
+  canPush: boolean;
+  pushCount: number;
+  onPull: () => void;
+  onPush: () => void;
+};
+
+function DeploySyncCard({
+  provider,
+  logoSrc,
+  logoClassName,
+  isConnected,
+  target,
+  targetLoading,
+  pulling,
+  pushing,
+  canPush,
+  pushCount,
+  onPull,
+  onPush,
+}: DeploySyncCardProps) {
+  const linked = Boolean(target);
+  const pullDisabled = pulling || !isConnected || targetLoading || !linked;
+  const pushDisabled =
+    pushing || !canPush || !isConnected || targetLoading || !linked;
+
+  const status = !isConnected
+    ? "Connect in Deploy panel"
+    : targetLoading
+      ? "Checking project link…"
+      : linked
+        ? `Linked · ${target?.name}`
+        : "Deploy once to link";
+
+  const pullTitle = !isConnected
+    ? `Connect ${provider} first`
+    : !linked
+      ? `Deploy to ${provider} to enable pull`
+      : `Pull variables from ${target?.name}`;
+
+  const pushTitle = !isConnected
+    ? `Connect ${provider} first`
+    : !linked
+      ? `Deploy to ${provider} to enable push`
+      : !canPush
+        ? "Add variables in the editor first"
+        : `Push ${pushCount} variable${pushCount === 1 ? "" : "s"} to ${target?.name}`;
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-ws-border-subtle bg-ws-bg/40 px-2 py-1.5">
+      <Image
+        src={logoSrc}
+        alt=""
+        width={16}
+        height={16}
+        className={cn("size-4 shrink-0", logoClassName)}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-medium leading-none text-ws-text">
+          {provider}
+        </p>
+        <p
+          className={cn(
+            "mt-0.5 truncate text-[10px]",
+            linked && isConnected
+              ? "text-ws-text-muted"
+              : "text-ws-text-muted/80",
+          )}
+          title={status}
+        >
+          {status}
+        </p>
+      </div>
+      <div className="inline-flex shrink-0 overflow-hidden rounded-md border border-ws-border-subtle">
+        <button
+          type="button"
+          disabled={pullDisabled}
+          onClick={onPull}
+          title={pullTitle}
+          aria-label={`Pull from ${provider}`}
+          className={cn(
+            "inline-flex h-6 items-center gap-1 px-2 text-[10px] transition-colors",
+            pullDisabled
+              ? "cursor-not-allowed text-ws-text-muted/50"
+              : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+          )}
+        >
+          {pulling ? (
+            <Loader2Icon className="size-3 animate-spin" />
+          ) : (
+            <CloudDownloadIcon className="size-3" />
+          )}
+          Pull
+        </button>
+        <button
+          type="button"
+          disabled={pushDisabled}
+          onClick={onPush}
+          title={pushTitle}
+          aria-label={`Push to ${provider}`}
+          className={cn(
+            "inline-flex h-6 items-center gap-1 border-l border-ws-border-subtle px-2 text-[10px] transition-colors",
+            pushDisabled
+              ? "cursor-not-allowed text-ws-text-muted/50"
+              : "text-ws-text-muted hover:bg-ws-hover hover:text-ws-text",
+          )}
+        >
+          {pushing ? (
+            <Loader2Icon className="size-3 animate-spin" />
+          ) : (
+            <CloudUploadIcon className="size-3" />
+          )}
+          Push
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
   const { isAuthenticated } = useConvexAuth();
   const metadata = useProjectFileMetadata(projectId);
@@ -95,6 +243,8 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
   const pasteRef = useRef<HTMLTextAreaElement>(null);
   const pullVercelEnv = useAction(api.deployActions.pullVercelEnv);
   const pullNetlifyEnv = useAction(api.deployActions.pullNetlifyEnv);
+  const pushVercelEnv = useAction(api.deployActions.pushVercelEnv);
+  const pushNetlifyEnv = useAction(api.deployActions.pushNetlifyEnv);
   const { isConnected: isVercelConnected } = useDeployConnection("vercel");
   const { isConnected: isNetlifyConnected } = useDeployConnection("netlify");
   const vercelTarget = useQuery(
@@ -117,6 +267,8 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
   );
   const [importingFromVercel, setImportingFromVercel] = useState(false);
   const [importingFromNetlify, setImportingFromNetlify] = useState(false);
+  const [pushingToVercel, setPushingToVercel] = useState(false);
+  const [pushingToNetlify, setPushingToNetlify] = useState(false);
 
   const envPaths = useMemo(() => {
     if (!metadata) return [];
@@ -134,7 +286,7 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
   const [creating, setCreating] = useState(false);
   const [hiddenValues, setHiddenValues] = useState<Set<string>>(new Set());
   const [pasteText, setPasteText] = useState("");
-  const [importOpen, setImportOpen] = useState(true);
+  const [pasteOpen, setPasteOpen] = useState(false);
   const effectivePath = envPaths.includes(selectedPath)
     ? selectedPath
     : (envPaths[0] ?? ".env.local");
@@ -316,7 +468,7 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       }
 
       applyImportedEntries(result.variables, "merge");
-      setImportOpen(true);
+      setPasteOpen(false);
     } catch (error) {
       toast.error(`${provider} import failed`, {
         description:
@@ -349,6 +501,121 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       setImportingFromNetlify,
     );
 
+  const collectPushVariables = () => {
+    const entries = rowsToEntries(rows);
+    if (entries.length === 0) {
+      toast.error("No variables to push", {
+        description: "Add at least one key/value pair first.",
+      });
+      return null;
+    }
+
+    const seen = new Set<string>();
+    for (const row of entries) {
+      if (seen.has(row.key)) {
+        toast.error("Duplicate key", { description: row.key });
+        return null;
+      }
+      seen.add(row.key);
+    }
+
+    return entries;
+  };
+
+  const onPushToDeployProvider = async (
+    provider: "Vercel" | "Netlify",
+    push: (
+      variables: Array<{ key: string; value: string }>,
+    ) => Promise<DeployEnvPushResult>,
+    setLoading: (loading: boolean) => void,
+  ) => {
+    const variables = collectPushVariables();
+    if (!variables) return;
+
+    setLoading(true);
+    try {
+      const result = await push(variables);
+
+      if (!result.ok) {
+        if (result.reason === "not_connected") {
+          toast.error(`${provider} is not connected`, {
+            description: `Connect ${provider} from the Deploy panel first.`,
+          });
+          return;
+        }
+        if (result.reason === "no_target") {
+          toast.error(`No linked ${provider} project`, {
+            description:
+              result.message ??
+              `Deploy this project to ${provider} once, then try again.`,
+          });
+          return;
+        }
+        toast.error(`${provider} push failed`, {
+          description:
+            result.message?.slice(0, 240) ??
+            "Could not push environment variables.",
+        });
+        return;
+      }
+
+      if (result.pushed === 0 && result.failed.length === 0) {
+        toast.message(`Nothing to push to ${provider}`);
+        return;
+      }
+
+      if (result.failed.length === 0) {
+        toast.success(`Pushed ${result.pushed} variable${result.pushed === 1 ? "" : "s"} to ${provider}`, {
+          description: `${result.projectName} · redeploy for changes to take effect`,
+        });
+        return;
+      }
+
+      toast.warning(
+        `Pushed ${result.pushed} variable${result.pushed === 1 ? "" : "s"} to ${provider}`,
+        {
+          description:
+            result.failed[0]?.message?.slice(0, 240) ??
+            `${result.failed.length} failed`,
+        },
+      );
+    } catch (error) {
+      toast.error(`${provider} push failed`, {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not push environment variables.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onPushToVercel = () =>
+    void onPushToDeployProvider(
+      "Vercel",
+      (variables) =>
+        pushVercelEnv({
+          projectId: projectId as Id<"projects">,
+          variables,
+        }),
+      setPushingToVercel,
+    );
+
+  const onPushToNetlify = () =>
+    void onPushToDeployProvider(
+      "Netlify",
+      (variables) =>
+        pushNetlifyEnv({
+          projectId: projectId as Id<"projects">,
+          variables,
+        }),
+      setPushingToNetlify,
+    );
+
+  const pushEntriesCount = rowsToEntries(rows).length;
+  const canPushEnv = pushEntriesCount > 0;
+
   const onPasteFromClipboard = async () => {
     try {
       const text = await navigator.clipboard.readText();
@@ -357,7 +624,7 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
         return;
       }
       setPasteText(text);
-      setImportOpen(true);
+      setPasteOpen(true);
       pasteRef.current?.focus();
     } catch {
       toast.error("Could not read clipboard", {
@@ -445,99 +712,80 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <section className="border-b border-ws-border-subtle p-2">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-medium text-ws-text">
-              Import variables
+        <section className="space-y-2 border-b border-ws-border-subtle p-2">
+          <div>
+            <p className="text-[11px] font-medium text-ws-text">Deploy sync</p>
+            <p className="mt-0.5 text-[10px] leading-relaxed text-ws-text-muted">
+              Pull remote variables into the editor, or push your current list
+              back. Redeploy after pushing for production.
             </p>
+          </div>
+
+          <div className="space-y-1.5">
+            <DeploySyncCard
+              provider="Vercel"
+              logoSrc="/vercel.svg"
+              logoClassName="dark:invert"
+              isConnected={isVercelConnected}
+              target={vercelTarget}
+              targetLoading={vercelTarget === undefined}
+              pulling={importingFromVercel}
+              pushing={pushingToVercel}
+              canPush={canPushEnv}
+              pushCount={pushEntriesCount}
+              onPull={onImportFromVercel}
+              onPush={onPushToVercel}
+            />
+            <DeploySyncCard
+              provider="Netlify"
+              logoSrc="/netlify.svg"
+              isConnected={isNetlifyConnected}
+              target={netlifyTarget}
+              targetLoading={netlifyTarget === undefined}
+              pulling={importingFromNetlify}
+              pushing={pushingToNetlify}
+              canPush={canPushEnv}
+              pushCount={pushEntriesCount}
+              onPull={onImportFromNetlify}
+              onPush={onPushToNetlify}
+            />
+          </div>
+
+          <Collapsible open={pasteOpen} onOpenChange={setPasteOpen}>
             <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={
-                  importingFromVercel ||
-                  !isVercelConnected ||
-                  vercelTarget === undefined
-                }
-                title={
-                  !isVercelConnected
-                    ? "Connect Vercel in the Deploy panel"
-                    : vercelTarget
-                      ? `Import from ${vercelTarget.name}`
-                      : "Deploy to Vercel first to link a project"
-                }
-                onClick={onImportFromVercel}
-                className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
-              >
-                {importingFromVercel ? (
-                  <Loader2Icon className="size-3 animate-spin" />
-                ) : (
-                  <CloudDownloadIcon className="size-3" />
-                )}
-                Vercel
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={
-                  importingFromNetlify ||
-                  !isNetlifyConnected ||
-                  netlifyTarget === undefined
-                }
-                title={
-                  !isNetlifyConnected
-                    ? "Connect Netlify in the Deploy panel"
-                    : netlifyTarget
-                      ? `Import from ${netlifyTarget.name}`
-                      : "Deploy to Netlify first to link a site"
-                }
-                onClick={onImportFromNetlify}
-                className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
-              >
-                {importingFromNetlify ? (
-                  <Loader2Icon className="size-3 animate-spin" />
-                ) : (
-                  <CloudDownloadIcon className="size-3" />
-                )}
-                Netlify
-              </Button>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex min-w-0 flex-1 items-center gap-1 rounded-md px-1 py-1 text-left text-[10px] font-medium text-ws-text-muted transition-colors hover:bg-ws-hover hover:text-ws-text"
+                >
+                  <ChevronDownIcon
+                    className={cn(
+                      "size-3 shrink-0 transition-transform",
+                      pasteOpen && "rotate-180",
+                    )}
+                  />
+                  Paste <code className="text-ws-text">.env</code> file
+                </button>
+              </CollapsibleTrigger>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => void onPasteFromClipboard()}
-                className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
+                className="h-6 shrink-0 gap-1 px-1.5 text-[10px] text-ws-text-muted"
               >
                 <ClipboardPasteIcon className="size-3" />
-                Paste
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setImportOpen((open) => !open)}
-                className="h-6 px-1.5 text-[10px] text-ws-text-muted"
-              >
-                {importOpen ? "Hide" : "Show"}
+                Clipboard
               </Button>
             </div>
-          </div>
-          {importOpen ? (
-            <>
-              <p className="mb-1.5 text-[10px] leading-relaxed text-ws-text-muted">
-                Paste your entire{" "}
-                <code className="text-ws-text">.env</code> file — like Vercel.
-                Works with one variable per line or space-separated on one line.
-              </p>
+            <CollapsibleContent className="pt-1.5">
               <Textarea
                 ref={pasteRef}
                 value={pasteText}
                 onChange={(event) => setPasteText(event.target.value)}
                 placeholder={`NEXT_PUBLIC_API_URL=https://example.com\nCLERK_SECRET_KEY=sk_test_...\n# comments are ignored`}
-                rows={5}
-                className="min-h-[88px] resize-y border-ws-border-subtle bg-ws-bg font-mono text-[11px] leading-relaxed text-ws-text"
+                rows={4}
+                className="min-h-22 resize-y border-ws-border-subtle bg-ws-bg font-mono text-[11px] leading-relaxed text-ws-text"
                 aria-label="Paste .env contents"
               />
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -546,7 +794,11 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
                     {parsedPreviewCount} variable
                     {parsedPreviewCount === 1 ? "" : "s"} detected
                   </span>
-                ) : null}
+                ) : (
+                  <span className="text-[10px] text-ws-text-muted">
+                    One per line or space-separated
+                  </span>
+                )}
                 <Button
                   type="button"
                   size="sm"
@@ -567,15 +819,16 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
                   Replace all
                 </Button>
               </div>
-            </>
-          ) : null}
+            </CollapsibleContent>
+          </Collapsible>
         </section>
 
         <div className="p-2">
           {rows.length === 0 ? (
             <p className="px-1 py-3 text-[11px] text-ws-text-muted">
-              No variables yet. Paste a <code className="text-ws-text">.env</code>{" "}
-              above or add keys manually.
+              No variables yet. Pull from a deploy provider, paste a{" "}
+              <code className="text-ws-text">.env</code> file, or add keys
+              manually.
             </p>
           ) : (
             <ul className="space-y-1">

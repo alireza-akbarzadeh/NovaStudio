@@ -38,3 +38,8 @@ export function githubImportUrl(
   }
   return `https://vercel.com/new/clone?repository-url=${encodeURIComponent(githubUrl)}`;
 }
+
+/** Keys exposed to the browser should stay plain on deploy providers. */
+export function isPublicEnvKey(key: string): boolean {
+  return /^(NEXT_PUBLIC_|VITE_|PUBLIC_|EXPO_PUBLIC_)/.test(key);
+}

@@ -111,7 +111,7 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 37 | **Go to Symbol in workspace** | `review` | ⌘T dialog · search functions/classes/types across project · jump to line |
 | 38 | **File git history** | `review` | Git → History tab · toggle all commits vs current file |
-| 39 | **Deploy env sync** | `review` | Env panel · Import from Vercel or Netlify · merge into `.env*` (requires deploy link) |
+| 39 | **Deploy env sync** | `review` | Env panel · Pull/Push Vercel or Netlify · merge into `.env*` (requires deploy link) |
 
 ### Later / hard infrastructure
 

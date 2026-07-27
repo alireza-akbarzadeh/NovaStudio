@@ -1,4 +1,4 @@
-import { sanitizeDeployName } from "./deploy";
+import { sanitizeDeployName, isPublicEnvKey } from "./deploy";
 
 type VercelUser = {
   id?: string;
@@ -251,4 +251,51 @@ export async function fetchVercelProjectEnv(args: {
   }
 
   return rows.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+export async function pushVercelProjectEnv(args: {
+  token: string;
+  projectId: string;
+  teamId?: string | null;
+  variables: Array<{ key: string; value: string }>;
+}): Promise<{ pushed: number; failed: Array<{ key: string; message: string }> }> {
+  const params = new URLSearchParams({ upsert: "true" });
+  if (args.teamId) params.set("teamId", args.teamId);
+
+  let pushed = 0;
+  const failed: Array<{ key: string; message: string }> = [];
+
+  for (const variable of args.variables) {
+    const key = variable.key.trim();
+    if (!key) continue;
+
+    const response = await fetch(
+      `https://api.vercel.com/v10/projects/${encodeURIComponent(args.projectId)}/env?${params.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${args.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          key,
+          value: variable.value,
+          type: isPublicEnvKey(key) ? "plain" : "encrypted",
+          target: ["production", "preview", "development"],
+        }),
+      },
+    );
+
+    if (response.ok) {
+      pushed += 1;
+      continue;
+    }
+
+    failed.push({
+      key,
+      message: (await response.text()) || "Failed to push variable",
+    });
+  }
+
+  return { pushed, failed };
 }

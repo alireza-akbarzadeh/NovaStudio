@@ -9,8 +9,8 @@ import {
   normalizeGitHubRepo,
   type DeployProvider,
 } from "./lib/deploy";
-import { deployNetlifyFromGit, fetchNetlifyDeployStatus, fetchNetlifySiteEnv, verifyNetlifyToken } from "./lib/netlify";
-import { deployVercelFromGit, fetchVercelProjectEnv, verifyVercelToken } from "./lib/vercel";
+import { deployNetlifyFromGit, fetchNetlifyDeployStatus, fetchNetlifySiteEnv, pushNetlifySiteEnv, verifyNetlifyToken } from "./lib/netlify";
+import { deployVercelFromGit, fetchVercelProjectEnv, pushVercelProjectEnv, verifyVercelToken } from "./lib/vercel";
 
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
 
@@ -467,6 +467,205 @@ export const pullNetlifyEnv = action({
           error instanceof Error
             ? error.message
             : "Could not load Netlify environment variables",
+      };
+    }
+  },
+});
+
+const envVariableValidator = v.array(
+  v.object({
+    key: v.string(),
+    value: v.string(),
+  }),
+);
+
+export const pushVercelEnv = action({
+  args: {
+    projectId: v.id("projects"),
+    variables: envVariableValidator,
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | {
+        ok: true;
+        pushed: number;
+        failed: Array<{ key: string; message: string }>;
+        projectName: string;
+      }
+    | {
+        ok: false;
+        reason: "not_connected" | "no_target" | "provider_error";
+        message?: string;
+      }
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Sign in to sync environment variables");
+    }
+
+    await ctx.runQuery(internal.deploy.assertCanDeploy, {
+      projectId: args.projectId,
+      userId: identity.subject,
+    });
+
+    const connection = await ctx.runQuery(internal.deploy.getConnectionSecret, {
+      userId: identity.subject,
+      provider: "vercel",
+    });
+
+    if (!connection) {
+      return { ok: false, reason: "not_connected" };
+    }
+
+    const linked = await ctx.runQuery(internal.deploy.getProjectTargetInternal, {
+      projectId: args.projectId,
+      provider: "vercel",
+    });
+
+    if (!linked?.externalId) {
+      return {
+        ok: false,
+        reason: "no_target",
+        message:
+          "Deploy this project to Vercel first to link a project for env sync.",
+      };
+    }
+
+    const variables = args.variables
+      .map((row) => ({ key: row.key.trim(), value: row.value }))
+      .filter((row) => row.key.length > 0);
+
+    if (variables.length === 0) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        message: "Add at least one environment variable with a key.",
+      };
+    }
+
+    try {
+      const result = await pushVercelProjectEnv({
+        token: connection.accessToken,
+        projectId: linked.externalId,
+        teamId: linked.teamId ?? connection.teamId,
+        variables,
+      });
+
+      return {
+        ok: true,
+        ...result,
+        projectName: linked.name,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not push Vercel environment variables",
+      };
+    }
+  },
+});
+
+export const pushNetlifyEnv = action({
+  args: {
+    projectId: v.id("projects"),
+    variables: envVariableValidator,
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<
+    | {
+        ok: true;
+        pushed: number;
+        failed: Array<{ key: string; message: string }>;
+        projectName: string;
+      }
+    | {
+        ok: false;
+        reason: "not_connected" | "no_target" | "provider_error";
+        message?: string;
+      }
+  > => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Sign in to sync environment variables");
+    }
+
+    await ctx.runQuery(internal.deploy.assertCanDeploy, {
+      projectId: args.projectId,
+      userId: identity.subject,
+    });
+
+    const connection = await ctx.runQuery(internal.deploy.getConnectionSecret, {
+      userId: identity.subject,
+      provider: "netlify",
+    });
+
+    if (!connection) {
+      return { ok: false, reason: "not_connected" };
+    }
+
+    const linked = await ctx.runQuery(internal.deploy.getProjectTargetInternal, {
+      projectId: args.projectId,
+      provider: "netlify",
+    });
+
+    if (!linked?.externalId) {
+      return {
+        ok: false,
+        reason: "no_target",
+        message:
+          "Deploy this project to Netlify first to link a site for env sync.",
+      };
+    }
+
+    const variables = args.variables
+      .map((row) => ({ key: row.key.trim(), value: row.value }))
+      .filter((row) => row.key.length > 0);
+
+    if (variables.length === 0) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        message: "Add at least one environment variable with a key.",
+      };
+    }
+
+    try {
+      const result = await pushNetlifySiteEnv({
+        token: connection.accessToken,
+        accountId: connection.accountId,
+        siteId: linked.externalId,
+        variables,
+      });
+
+      if (result.pushed === 0 && result.failed.length > 0) {
+        return {
+          ok: false,
+          reason: "provider_error",
+          message: result.failed[0]?.message ?? "Netlify rejected all variables",
+        };
+      }
+
+      return {
+        ok: true,
+        ...result,
+        projectName: linked.name,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: "provider_error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Could not push Netlify environment variables",
       };
     }
   },

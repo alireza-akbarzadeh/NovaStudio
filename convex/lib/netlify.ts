@@ -1,4 +1,4 @@
-import { sanitizeDeployName } from "./deploy";
+import { sanitizeDeployName, isPublicEnvKey } from "./deploy";
 
 type NetlifyUser = {
   id?: string;
@@ -14,6 +14,7 @@ type NetlifySite = {
   url?: string;
   ssl_url?: string;
   admin_url?: string;
+  account_id?: string;
   account_slug?: string;
 };
 
@@ -73,6 +74,39 @@ async function listNetlifySites(token: string): Promise<NetlifySite[]> {
     throw new Error(await response.text());
   }
   return (await response.json()) as NetlifySite[];
+}
+
+export async function fetchNetlifySite(args: {
+  token: string;
+  siteId: string;
+}): Promise<NetlifySite> {
+  const response = await fetch(
+    `https://api.netlify.com/api/v1/sites/${encodeURIComponent(args.siteId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        Accept: "application/json",
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return (await response.json()) as NetlifySite;
+}
+
+async function parseNetlifyError(response: Response): Promise<string> {
+  const text = await response.text();
+  if (!text) return `Netlify API error (${response.status})`;
+  try {
+    const body = JSON.parse(text) as { message?: string; code?: number };
+    if (body.message) {
+      return body.code ? `${body.message} (${body.code})` : body.message;
+    }
+  } catch {
+    // keep raw text
+  }
+  return text;
 }
 
 async function createNetlifySite(args: {
@@ -367,4 +401,188 @@ export async function fetchNetlifySiteEnv(args: {
   }
 
   return rows.sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function netlifyEnvPayload(key: string, value: string) {
+  return {
+    key,
+    scopes: ["builds", "functions", "runtime"],
+    values: [
+      { value, context: "production" },
+      { value, context: "deploy-preview" },
+    ],
+    is_secret: !isPublicEnvKey(key),
+  };
+}
+
+async function createNetlifyEnvVar(args: {
+  token: string;
+  accountId: string;
+  siteId: string;
+  key: string;
+  value: string;
+}): Promise<void> {
+  const payload = netlifyEnvPayload(args.key, args.value);
+  const url = `https://api.netlify.com/api/v1/accounts/${encodeURIComponent(args.accountId)}/env?site_id=${encodeURIComponent(args.siteId)}`;
+  const headers = {
+    Authorization: `Bearer ${args.token}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  let response = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify([payload]),
+  });
+
+  if (!response.ok) {
+    // Some Netlify accounts expect a single object body instead of an array.
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+  }
+
+  if (!response.ok) {
+    // Free-tier accounts may reject explicit scopes — retry minimal payload.
+    const minimal = {
+      key: args.key,
+      values: [{ value: args.value, context: "production" }],
+      is_secret: !isPublicEnvKey(args.key),
+    };
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify([minimal]),
+    });
+  }
+
+  if (!response.ok) {
+    throw new Error(await parseNetlifyError(response));
+  }
+}
+
+async function updateNetlifyEnvVar(args: {
+  token: string;
+  accountId: string;
+  siteId: string;
+  key: string;
+  value: string;
+}): Promise<void> {
+  const response = await fetch(
+    `https://api.netlify.com/api/v1/accounts/${encodeURIComponent(args.accountId)}/env/${encodeURIComponent(args.key)}?site_id=${encodeURIComponent(args.siteId)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(netlifyEnvPayload(args.key, args.value)),
+    },
+  );
+
+  if (response.ok) return;
+
+  const putError = await parseNetlifyError(response);
+
+  // Fallback: set production value via PATCH (more reliable on some accounts).
+  const patchResponse = await fetch(
+    `https://api.netlify.com/api/v1/accounts/${encodeURIComponent(args.accountId)}/env/${encodeURIComponent(args.key)}?site_id=${encodeURIComponent(args.siteId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        context: "production",
+        value: args.value,
+      }),
+    },
+  );
+
+  if (patchResponse.ok) return;
+
+  throw new Error(
+    `${putError} · PATCH fallback: ${await parseNetlifyError(patchResponse)}`,
+  );
+}
+
+export async function pushNetlifySiteEnv(args: {
+  token: string;
+  accountId?: string | null;
+  siteId: string;
+  variables: Array<{ key: string; value: string }>;
+}): Promise<{ pushed: number; failed: Array<{ key: string; message: string }> }> {
+  const site = await fetchNetlifySite({
+    token: args.token,
+    siteId: args.siteId,
+  });
+  const accountId = site.account_id?.trim() || args.accountId?.trim() || "";
+  if (!accountId) {
+    throw new Error(
+      "Could not resolve Netlify account id for this site. Reconnect Netlify and try again.",
+    );
+  }
+
+  const listResponse = await fetch(
+    `https://api.netlify.com/api/v1/sites/${encodeURIComponent(args.siteId)}/env`,
+    {
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!listResponse.ok) {
+    throw new Error(await parseNetlifyError(listResponse));
+  }
+
+  const existing = (await listResponse.json()) as NetlifyEnvVar[];
+  const existingKeys = new Set(
+    existing.map((env) => env.key?.trim()).filter(Boolean) as string[],
+  );
+
+  let pushed = 0;
+  const failed: Array<{ key: string; message: string }> = [];
+
+  for (const variable of args.variables) {
+    const key = variable.key.trim();
+    if (!key) continue;
+
+    try {
+      if (existingKeys.has(key)) {
+        await updateNetlifyEnvVar({
+          token: args.token,
+          accountId,
+          siteId: args.siteId,
+          key,
+          value: variable.value,
+        });
+      } else {
+        await createNetlifyEnvVar({
+          token: args.token,
+          accountId,
+          siteId: args.siteId,
+          key,
+          value: variable.value,
+        });
+        existingKeys.add(key);
+      }
+      pushed += 1;
+    } catch (error) {
+      failed.push({
+        key,
+        message:
+          error instanceof Error ? error.message : "Failed to push variable",
+      });
+    }
+  }
+
+  return { pushed, failed };
 }
