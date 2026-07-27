@@ -4,6 +4,7 @@ import {
   CircleAlertIcon,
   CircleXIcon,
   GitBranchIcon,
+  HistoryIcon,
   Loader2Icon,
   LockIcon,
   LockOpenIcon,
@@ -115,6 +116,8 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
       : false,
   );
   const { errorCount, warningCount } = useMonacoProblems();
+  const blameVisible = useWorkspaceStore((s) => s.blameVisible);
+  const toggleBlame = useWorkspaceStore((s) => s.toggleBlame);
 
   useEffect(() => {
     hydrateLocks();
@@ -245,6 +248,20 @@ export function WorkspaceStatusBar({ projectId }: WorkspaceStatusBarProps) {
             <StatusChip title="Line ending">LF</StatusChip>
             <StatusChip title="Encoding">UTF-8</StatusChip>
             <StatusChip title="Indentation">{tabSize} spaces</StatusChip>
+            {isGitHub ? (
+              <StatusChip
+                title={
+                  blameVisible
+                    ? "Git blame on — click to hide (⌃⌘⇧B)"
+                    : "Show Git blame annotations (⌃⌘⇧B)"
+                }
+                onClick={toggleBlame}
+                active={blameVisible}
+              >
+                <HistoryIcon className="size-3 shrink-0" />
+                <span>Blame</span>
+              </StatusChip>
+            ) : null}
             <StatusChip
               title={
                 permissionReadOnly

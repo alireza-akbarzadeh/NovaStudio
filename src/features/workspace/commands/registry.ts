@@ -52,7 +52,8 @@ export type CommandId =
   | "saveAllFiles"
   | "inlineAiEdit"
   | "toggleLiveCollaboration"
-  | "toggleZenMode";
+  | "toggleZenMode"
+  | "toggleBlame";
 
 export type Command = {
   id: CommandId;
@@ -369,6 +370,21 @@ export const workspaceCommands: Command[] = [
         description: next
           ? `Chrome hidden — press Esc or ${chord} to exit.`
           : "Workspace chrome restored.",
+      });
+    },
+  },
+  {
+    id: "toggleBlame",
+    shortcut: "mod+shift+alt+b",
+    allowInInput: true,
+    run: () => {
+      const s = store();
+      const next = !s.blameVisible;
+      s.toggleBlame();
+      toast.message(next ? "Git blame on" : "Git blame off", {
+        description: next
+          ? "Inline blame from GitHub — click an annotation to open the commit."
+          : "Blame annotations hidden.",
       });
     },
   },

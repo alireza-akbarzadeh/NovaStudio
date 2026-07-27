@@ -9,10 +9,14 @@ export type EditorTabInput =
   | { kind: "file"; path: string }
   | { kind: "diff"; path: string }
   | { kind: "activity-diff"; path: string; activityId: string }
-  | { kind: "pull-request"; pullNumber: number };
+  | { kind: "pull-request"; pullNumber: number }
+  | { kind: "merge-conflict"; path: string; conflictId: string };
 
 const SPECIAL_TITLES: Record<
-  Exclude<EditorTabKind, "file" | "diff" | "activity-diff" | "pull-request">,
+  Exclude<
+    EditorTabKind,
+    "file" | "diff" | "activity-diff" | "pull-request" | "merge-conflict"
+  >,
   string
 > = {
   welcome: "Welcome",
@@ -32,6 +36,7 @@ export function editorTabId(input: EditorTabInput): string {
   if (input.kind === "diff") return `diff:${input.path}`;
   if (input.kind === "activity-diff") return `activity-diff:${input.activityId}`;
   if (input.kind === "pull-request") return `pull-request:${input.pullNumber}`;
+  if (input.kind === "merge-conflict") return `merge-conflict:${input.conflictId}`;
   return input.kind;
 }
 
@@ -47,6 +52,9 @@ export function editorTabTitle(input: EditorTabInput): string {
   }
   if (input.kind === "pull-request") {
     return `PR #${input.pullNumber}`;
+  }
+  if (input.kind === "merge-conflict") {
+    return `${fileNameFromPath(input.path)} (Conflict)`;
   }
   return SPECIAL_TITLES[input.kind];
 }
@@ -77,6 +85,15 @@ export function createEditorTab(input: EditorTabInput): EditorTab {
       pullNumber: input.pullNumber,
     };
   }
+  if (input.kind === "merge-conflict") {
+    return {
+      id: editorTabId(input),
+      kind: input.kind,
+      title: editorTabTitle(input),
+      path: input.path,
+      conflictId: input.conflictId,
+    };
+  }
   return {
     id: editorTabId(input),
     kind: input.kind,
@@ -104,6 +121,8 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/timeline/${tab.activityId ?? ""}`;
     case "pull-request":
       return `/projects/${projectId}/pull-request/${tab.pullNumber ?? ""}`;
+    case "merge-conflict":
+      return `/projects/${projectId}/merge/${tab.conflictId ?? ""}`;
   }
 }
 
@@ -170,6 +189,16 @@ export function editorTabFromPathname(
       return createEditorTab({ kind: "welcome" });
     }
     return createEditorTab({ kind: "pull-request", pullNumber });
+  }
+  const mergePrefix = `${base}/merge/`;
+  if (pathname.startsWith(mergePrefix)) {
+    const conflictId = decodeURIComponent(pathname.slice(mergePrefix.length));
+    if (!conflictId) return createEditorTab({ kind: "welcome" });
+    return createEditorTab({
+      kind: "merge-conflict",
+      path: "…",
+      conflictId,
+    });
   }
   return null;
 }

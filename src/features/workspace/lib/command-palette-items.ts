@@ -195,6 +195,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+alt+z",
   },
   {
+    id: "toggleBlame",
+    label: "Toggle Git Blame",
+    keywords: "annotate blame author commit line history github",
+    shortcut: "mod+shift+alt+b",
+  },
+  {
     id: "openSettings",
     label: "Open Settings",
     keywords: "preferences config",

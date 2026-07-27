@@ -91,7 +91,8 @@ export type EditorTabKind =
   | "shortcuts"
   | "user-json"
   | "new-project"
-  | "pull-request";
+  | "pull-request"
+  | "merge-conflict";
 
 export type EditorTab = {
   id: string;
@@ -102,6 +103,8 @@ export type EditorTab = {
   activityId?: string;
   /** GitHub pull request number (for `pull-request` tabs). */
   pullNumber?: number;
+  /** Merge conflict row id (for `merge-conflict` tabs). */
+  conflictId?: string;
   /** Transient tab — italic; replaced by the next preview open. */
   preview?: boolean;
   /** Sticky tab — stays left; survives preview replacement. */
@@ -168,6 +171,8 @@ type WorkspaceState = WorkspacePrefs & {
   terminalCwd: string | null;
   /** User id currently being followed (null = not following). */
   followingUserId: string | null;
+  /** Inline Git blame annotations in the editor. */
+  blameVisible: boolean;
 
   toggleSidebar: () => void;
   toggleTerminal: () => void;
@@ -271,6 +276,8 @@ type WorkspaceState = WorkspacePrefs & {
   enterZenMode: () => void;
   exitZenMode: () => void;
   toggleZenMode: () => void;
+  toggleBlame: () => void;
+  setBlameVisible: (visible: boolean) => void;
   setEditorPanelView: (view: EditorPanelView) => void;
   setPreviewUrlPath: (path: string) => void;
   setTerminalCwd: (cwd: string | null) => void;
@@ -419,6 +426,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   previewUrlPath: "/",
   terminalCwd: null,
   followingUserId: null,
+  blameVisible: false,
 
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   toggleTerminal: () =>
@@ -864,6 +872,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     if (s.zenMode) s.exitZenMode();
     else s.enterZenMode();
   },
+  toggleBlame: () => set((s) => ({ blameVisible: !s.blameVisible })),
+  setBlameVisible: (visible) => set({ blameVisible: visible }),
   setEditorPanelView: (view) => set({ editorPanelView: view }),
   setPreviewUrlPath: (path) => set({ previewUrlPath: path }),
   setTerminalCwd: (cwd) => set({ terminalCwd: cwd }),

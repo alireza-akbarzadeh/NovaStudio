@@ -90,6 +90,13 @@ These are the biggest daily-friction gaps you called out.
 | 30 | **GitHub Actions / CI** | `review` | Workflow runs + status in GitHub hub |
 | 31 | **PR inline review** | `review` | Side-by-side diff · line comments · collapsible threads · replies · copy suggestion |
 
+### Sprint I — Git & editor (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 32 | **Git blame (inline annotations)** | `review` | Toggle in status bar · author + commit + age per line · click opens GitHub commit |
+| 33 | **Merge conflict resolver** | `review` | 3-way merge on pull · Base / Yours / Theirs · Accept yours/theirs/both |
+
 ### Later / hard infrastructure
 
 | # | Feature | Status | Notes |
@@ -348,6 +355,23 @@ These are the biggest daily-friction gaps you called out.
 - Each thread collapses/expands · click line or thread to jump/highlight
 - **Reply** in thread · **Copy** on suggested changes
 - Parses GitHub ` ```suggestion ` blocks into a readable diff snippet
+
+### 32. Git blame (inline annotations) — ready for review
+
+- Status bar **Blame** toggle on GitHub-linked projects (also **⌃⌘⇧B** / command palette)
+- Fetches blame via GitHub GraphQL for the current branch + file
+- Inline annotations at each line: author · short SHA · relative age
+- Hover for commit message · click annotation → open commit on GitHub
+- Requires GitHub connection + linked repository
+
+### 33. Merge conflict resolver — ready for review
+
+- Pull with local changes → **Merge changes** (instead of only discard)
+- Auto-merges non-overlapping edits via 3-way merge against last sync baseline
+- Conflicts listed in **Git → Changes** banner
+- Open a conflict → **Base · Yours · Theirs** side-by-side Monaco view
+- **Accept yours** · **Accept theirs** · **Accept both**
+- **Discard & pull** still available as destructive fallback
 
 ### 17. Full Next/Vite host — ready for review
 

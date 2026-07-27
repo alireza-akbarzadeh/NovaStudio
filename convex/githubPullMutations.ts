@@ -2,12 +2,14 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import { internalMutation, internalQuery } from "./_generated/server";
-import { isProjectFileChanged } from "./lib/projectFiles";
+import { insertImportedFileBatch, deleteProjectFilesBatch, replaceProjectFilesFromImport } from "./lib/importProjectFiles";
 import {
-  deleteProjectFilesBatch,
-  insertImportedFileBatch,
-  replaceProjectFilesFromImport,
-} from "./lib/importProjectFiles";
+  hashContent,
+  readFileContent,
+  upsertFileContent,
+  deleteFileContent,
+} from "./lib/projectFileContents";
+import { isProjectFileChanged } from "./lib/projectFiles";
 
 export const getPullContext = internalQuery({
   args: {
@@ -32,6 +34,184 @@ export const getPullContext = internalQuery({
       project,
       changedCount,
     };
+  },
+});
+
+export const getMergePullContext = internalQuery({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const fileRows: Array<{
+      path: string;
+      kind: "file" | "folder";
+      content: string;
+      syncedContent: string;
+      changed: boolean;
+    }> = [];
+
+    for (const file of files) {
+      if (file.kind !== "file") continue;
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      fileRows.push({
+        path: file.path,
+        kind: file.kind,
+        content: body.content ?? "",
+        syncedContent: body.syncedContent ?? "",
+        changed: isProjectFileChanged(
+          {
+            kind: "file" as const,
+            content: body.content,
+            syncedContent: body.syncedContent,
+            contentHash: file.contentHash,
+            syncedContentHash: file.syncedContentHash,
+            updatedAt: file.updatedAt,
+          },
+          project.syncedAt,
+        ),
+      });
+    }
+
+    return {
+      project,
+      files: fileRows,
+    };
+  },
+});
+
+export const clearMergeConflicts = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const rows = await ctx.db
+      .query("projectMergeConflicts")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const row of rows) {
+      await ctx.db.delete(row._id);
+    }
+  },
+});
+
+export const insertMergeConflicts = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    conflicts: v.array(
+      v.object({
+        path: v.string(),
+        base: v.string(),
+        local: v.string(),
+        remote: v.string(),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    for (const conflict of args.conflicts) {
+      const existing = await ctx.db
+        .query("projectMergeConflicts")
+        .withIndex("by_project_path", (q) =>
+          q.eq("projectId", args.projectId).eq("path", conflict.path),
+        )
+        .unique();
+      if (existing) {
+        await ctx.db.patch(existing._id, {
+          base: conflict.base,
+          local: conflict.local,
+          remote: conflict.remote,
+          createdAt: now,
+        });
+      } else {
+        await ctx.db.insert("projectMergeConflicts", {
+          projectId: args.projectId,
+          path: conflict.path,
+          base: conflict.base,
+          local: conflict.local,
+          remote: conflict.remote,
+          createdAt: now,
+        });
+      }
+    }
+  },
+});
+
+export const applyMergeFileUpdates = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    updates: v.array(
+      v.object({
+        path: v.string(),
+        content: v.string(),
+        syncedContent: v.string(),
+      }),
+    ),
+    newFiles: v.array(
+      v.object({
+        path: v.string(),
+        content: v.string(),
+      }),
+    ),
+    deletePaths: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    for (const update of args.updates) {
+      const file = await ctx.db
+        .query("projectFiles")
+        .withIndex("by_project_path", (q) =>
+          q.eq("projectId", args.projectId).eq("path", update.path),
+        )
+        .unique();
+      if (!file || file.kind !== "file") continue;
+
+      const contentHash = hashContent(update.content);
+      const syncedHash = hashContent(update.syncedContent);
+      await upsertFileContent(
+        ctx,
+        {
+          projectId: args.projectId,
+          path: update.path,
+          content: update.content,
+          syncedContent: update.syncedContent,
+        },
+        { skipSearchIndex: true },
+      );
+      await ctx.db.patch(file._id, {
+        content: undefined,
+        syncedContent: undefined,
+        contentHash,
+        syncedContentHash: syncedHash,
+        staged: update.content !== update.syncedContent,
+        updatedAt: now,
+      });
+    }
+
+    if (args.newFiles.length > 0) {
+      await insertImportedFileBatch(ctx, args.projectId, args.newFiles);
+    }
+
+    for (const path of args.deletePaths) {
+      await deleteFileContent(ctx, args.projectId, path);
+      const file = await ctx.db
+        .query("projectFiles")
+        .withIndex("by_project_path", (q) =>
+          q.eq("projectId", args.projectId).eq("path", path),
+        )
+        .unique();
+      if (file) {
+        await ctx.db.delete(file._id);
+      }
+    }
   },
 });
 

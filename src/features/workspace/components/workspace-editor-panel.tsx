@@ -7,6 +7,7 @@ import {
   FileJsonIcon,
   FolderPlusIcon,
   GitPullRequestIcon,
+  GitMergeIcon,
   KeyboardIcon,
   Loader2Icon,
   MoreVerticalIcon,
@@ -66,6 +67,7 @@ import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
 import { PullRequestView } from "@/features/workspace/views/pull-request-view";
+import { MergeConflictView } from "@/features/workspace/views/merge-conflict-view";
 import { WorkspaceUserJsonView } from "@/features/workspace/views/workspace-user-json-view";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +91,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
       return <FileDiffIcon className="size-3 shrink-0 opacity-70" />;
     case "pull-request":
       return <GitPullRequestIcon className="size-3 shrink-0 opacity-70" />;
+    case "merge-conflict":
+      return <GitMergeIcon className="size-3 shrink-0 text-amber-500 opacity-90" />;
     case "file":
       return <FileIcon className="size-3 shrink-0 opacity-70" />;
     default:
@@ -544,6 +548,15 @@ function SplitPaneContent({
     case "pull-request":
       return tab.pullNumber ? (
         <PullRequestView projectId={projectId} pullNumber={tab.pullNumber} />
+      ) : null;
+    case "merge-conflict":
+      return tab.conflictId ? (
+        <MergeConflictView
+          projectId={projectId}
+          filePath={tab.path ?? ""}
+          conflictId={tab.conflictId}
+          syncWorkspaceChrome={false}
+        />
       ) : null;
     case "welcome":
     default:

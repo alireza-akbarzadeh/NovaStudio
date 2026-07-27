@@ -25,16 +25,23 @@ export type ConfirmOptions = {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Optional middle action (e.g. merge vs discard). */
+  secondaryLabel?: string;
   /** Destructive styling for the confirm button */
   tone?: "default" | "danger";
+  /** Destructive styling for the secondary button */
+  secondaryTone?: "default" | "danger";
 };
 
-type ConfirmFn = (options: ConfirmOptions) => Promise<boolean>;
+/** `true` = primary confirm, `"secondary"` = middle button, `false` = cancel */
+export type ConfirmResult = boolean | "secondary";
+
+type ConfirmFn = (options: ConfirmOptions) => Promise<ConfirmResult>;
 
 const ConfirmContext = createContext<ConfirmFn | null>(null);
 
 type PendingConfirm = ConfirmOptions & {
-  resolve: (value: boolean) => void;
+  resolve: (value: ConfirmResult) => void;
 };
 
 export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
@@ -43,7 +50,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
   const settledRef = useRef(false);
 
   const confirm = useCallback<ConfirmFn>((options) => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<ConfirmResult>((resolve) => {
       settledRef.current = false;
       const next = { ...options, resolve };
       pendingRef.current = next;
@@ -51,7 +58,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const close = useCallback((value: boolean) => {
+  const close = useCallback((value: ConfirmResult) => {
     if (settledRef.current) {
       return;
     }
@@ -90,6 +97,20 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
             >
               {pending?.cancelLabel ?? "Cancel"}
             </Button>
+            {pending?.secondaryLabel ? (
+              <Button
+                type="button"
+                className={
+                  pending.secondaryTone === "danger"
+                    ? "bg-ws-danger text-white hover:bg-ws-danger-bg-hover"
+                    : "border-ws-border bg-ws-hover text-ws-text hover:bg-ws-border"
+                }
+                variant={pending.secondaryTone === "danger" ? "default" : "outline"}
+                onClick={() => close("secondary")}
+              >
+                {pending.secondaryLabel}
+              </Button>
+            ) : null}
             <Button
               type="button"
               className={

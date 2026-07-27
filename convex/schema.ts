@@ -413,6 +413,18 @@ export default defineSchema({
     ),
   }).index("by_project_created", ["projectId", "createdAt"]),
 
+  /** Unresolved 3-way merge conflicts after a merge pull. */
+  projectMergeConflicts: defineTable({
+    projectId: v.id("projects"),
+    path: v.string(),
+    base: v.string(),
+    local: v.string(),
+    remote: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_path", ["projectId", "path"]),
+
   /** Project-level team chat messages (live via Convex subscriptions). */
   projectChatMessages: defineTable({
     projectId: v.id("projects"),

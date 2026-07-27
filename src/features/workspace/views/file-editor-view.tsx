@@ -33,6 +33,8 @@ import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useFileLineComments } from "@/features/workspace/hooks/use-file-line-comments";
 import { useMonacoBreakpoints } from "@/features/workspace/hooks/use-monaco-breakpoints";
+import { useMonacoBlame } from "@/features/workspace/hooks/use-monaco-blame";
+import { useGitHubBlame } from "@/features/github/hooks/use-github-blame";
 import {
   useProjectFile,
   useProjectFileMetadata,
@@ -553,6 +555,20 @@ export function FileEditorView({
   useMonacoBreakpoints({
     filePath,
     enabled: Boolean(filePath) && syncWorkspaceChrome,
+  });
+
+  const blameVisible = useWorkspaceStore((s) => s.blameVisible);
+  const blameEnabled = Boolean(filePath) && syncWorkspaceChrome && blameVisible;
+  const { lines: blameLines, loading: blameLoading } = useGitHubBlame({
+    projectId,
+    filePath: blameEnabled ? filePath : null,
+    enabled: blameEnabled,
+  });
+
+  useMonacoBlame({
+    filePath,
+    lines: blameLines,
+    enabled: blameEnabled && !blameLoading,
   });
 
   useEffect(() => {

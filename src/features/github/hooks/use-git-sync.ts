@@ -23,17 +23,23 @@ export function usePullFromGitHub(projectId: string) {
   const [isPulling, setIsPulling] = useState(false);
 
   const pull = useCallback(
-    async (options?: { force?: boolean; branch?: string }) => {
+    async (options?: { force?: boolean; merge?: boolean; branch?: string }) => {
       setIsPulling(true);
       try {
         const result = await pullFromGitHub({
           projectId: projectId as Id<"projects">,
           force: options?.force,
+          merge: options?.merge,
           branch: options?.branch,
         });
-        toast.success(`Pulling ${result.branch}…`, {
-          description: "Fast sync started — usually finishes within about a minute.",
-        });
+        toast.success(
+          result.merge ? `Merging ${result.branch}…` : `Pulling ${result.branch}…`,
+          {
+            description: result.merge
+              ? "Auto-merging your changes with GitHub — conflicts will appear in Git → Changes."
+              : "Fast sync started — usually finishes within about a minute.",
+          },
+        );
         return result;
       } catch (error) {
         const message = parseConvexErrorMessage(
@@ -41,17 +47,22 @@ export function usePullFromGitHub(projectId: string) {
           "Failed to pull from GitHub",
         );
         const looksLikeLocalChanges =
-          isLocalChangesError(message) && !options?.force;
+          isLocalChangesError(message) && !options?.force && !options?.merge;
 
         if (looksLikeLocalChanges) {
-          const discard = await confirm({
-            title: "Discard local changes?",
-            description: `${message}\n\nThis will overwrite your uncommitted files with the latest from GitHub.`,
-            confirmLabel: "Discard & pull",
-            cancelLabel: "Keep changes",
-            tone: "danger",
+          const choice = await confirm({
+            title: "Local changes detected",
+            description: `${message}\n\nMerge keeps your edits and combines them with GitHub when possible. Unresolved conflicts open in a 3-way review.`,
+            confirmLabel: "Merge changes",
+            secondaryLabel: "Discard & pull",
+            secondaryTone: "danger",
+            cancelLabel: "Cancel",
           });
-          if (discard) {
+          if (choice === true) {
+            setIsPulling(false);
+            return pull({ ...options, merge: true });
+          }
+          if (choice === "secondary") {
             setIsPulling(false);
             return pull({ ...options, force: true });
           }

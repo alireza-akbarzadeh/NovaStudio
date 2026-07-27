@@ -21,6 +21,7 @@ import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
 import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-commit-message";
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
+import { WorkspaceMergeConflictsPanel } from "@/features/workspace/components/workspace-merge-conflicts-panel";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
 import { WorkspaceGitHubHub } from "@/features/workspace/components/workspace-git-hub";
 import { WorkspaceLinearLink } from "@/features/workspace/components/workspace-linear-link";
@@ -217,6 +218,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
               className="border-b border-ws-border-subtle px-2.5 py-1.5 text-[11px]"
             />
           ) : null}
+
+          <WorkspaceMergeConflictsPanel projectId={projectId} />
 
           <div className="flex h-6 shrink-0 items-center gap-2 border-b border-ws-border-subtle bg-ws-panel/80 px-2.5 text-[11px] font-medium text-ws-text-muted">
             <span>Changes</span>
