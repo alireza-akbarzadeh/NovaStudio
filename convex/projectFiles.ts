@@ -193,6 +193,13 @@ export const migrateInlineContentBatch = internalMutation({
         fileContentSplit: true,
         updatedAt: Date.now(),
       });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.projectSearch.scheduleSearchIndexBackfill,
+        {
+          projectId: args.projectId,
+        },
+      );
     }
 
     return { migrated, hasMore };
@@ -466,6 +473,35 @@ export const getByPath = query({
       content: body.content,
       syncedContent: body.syncedContent,
     };
+  },
+});
+
+/** Batch-read file bodies for editor definitions, AI mentions, etc. */
+export const getContentsByPaths = query({
+  args: {
+    projectId: v.id("projects"),
+    paths: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+
+    const uniquePaths = [...new Set(args.paths.filter(Boolean))].slice(0, 300);
+    const rows: { path: string; content: string }[] = [];
+
+    for (const path of uniquePaths) {
+      const file = await ctx.db
+        .query("projectFiles")
+        .withIndex("by_project_path", (q) =>
+          q.eq("projectId", args.projectId).eq("path", path),
+        )
+        .unique();
+      if (!file || file.kind !== "file") continue;
+
+      const body = await readFileContent(ctx, args.projectId, path, file);
+      rows.push({ path, content: body.content ?? "" });
+    }
+
+    return rows;
   },
 });
 

@@ -29,6 +29,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { useConvex } from "convex/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -52,8 +53,8 @@ import {
 } from "@/features/projects/hooks/use-projects";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { runCommand } from "@/features/workspace/commands/registry";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
 import { exportProjectAsZip } from "@/features/workspace/lib/export-project-zip";
+import { fetchAllProjectFilesWithContents } from "@/features/workspace/lib/load-all-project-files";
 import { cn } from "@/lib/utils";
 
 type WorkspaceSwitcherProps = {
@@ -121,7 +122,7 @@ export function WorkspaceSwitcher({
 }: WorkspaceSwitcherProps) {
   const projects = useProjects();
   const project = useProject({ projectId });
-  const projectFiles = useProjectFiles(projectId);
+  const convex = useConvex();
   const updateProject = useUpdateProject();
   const { openProject, leaveToProjectsHub } = useOpenWorkspaceProject();
   const { isLoaded, isPro } = useBilling();
@@ -157,13 +158,13 @@ export function WorkspaceSwitcher({
 
   const exportProject = async () => {
     if (isExporting) return;
-    if (projectFiles === undefined) {
-      toast.message("Loading project files…");
-      return;
-    }
 
     setIsExporting(true);
     try {
+      const projectFiles = await fetchAllProjectFilesWithContents(
+        convex,
+        projectId,
+      );
       const result = exportProjectAsZip({
         projectName: displayName,
         files: projectFiles,

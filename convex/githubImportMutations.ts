@@ -148,6 +148,13 @@ export const completeImport = internalMutation({
         limit: 40,
       },
     );
+    await ctx.scheduler.runAfter(
+      0,
+      internal.projectSearch.scheduleSearchIndexBackfill,
+      {
+        projectId: args.projectId,
+      },
+    );
 
     await createNotification(ctx, {
       userId: project.ownerId,

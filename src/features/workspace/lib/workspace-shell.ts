@@ -4,7 +4,7 @@
  */
 
 import { tokenizeCommandLine } from "@/lib/argv";
-import { resolveAbsolutePath } from "@/lib/posix-path";
+import { resolveAbsolutePath, toProjectPath } from "@/lib/posix-path";
 import { handleGitCommand } from "@/features/workspace/lib/terminal/git-command";
 import { HELP_TEXT } from "@/features/workspace/lib/terminal/help-text";
 import { handlePackageManagerCommand } from "@/features/workspace/lib/terminal/package-manager-command";
@@ -31,12 +31,32 @@ export type {
 /** Sentinel output telling the terminal to reset its buffer. */
 export const CLEAR_SCREEN = "__CLEAR__";
 
-function catCommand(args: string[], context: ShellContext): ShellResult {
+async function catCommand(
+  args: string[],
+  context: ShellContext,
+  handlers: ShellHandlers,
+): Promise<ShellResult> {
   const cwd = context.cwd;
   const target = args[0];
 
   if (!target) {
     return { output: "cat: missing file operand", exitCode: 1, cwd };
+  }
+
+  const path = toProjectPath(resolveAbsolutePath(target, cwd));
+  const file = context.files.find(
+    (entry) => entry.kind === "file" && entry.path === path,
+  );
+
+  if (file?.content !== undefined) {
+    return { output: file.content, exitCode: 0, cwd };
+  }
+
+  if (handlers.readFileContent) {
+    const remote = await handlers.readFileContent(path);
+    if (remote !== null) {
+      return { output: remote, exitCode: 0, cwd };
+    }
   }
 
   const result = readFile(context.files, cwd, target);
@@ -91,7 +111,7 @@ export async function runShellCommand(
         cwd,
       };
     case "cat":
-      return catCommand(args, context);
+      return catCommand(args, context, handlers);
     case "cd":
       return cdCommand(args, context);
     case "echo":

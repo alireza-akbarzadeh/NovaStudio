@@ -11,6 +11,7 @@ import {
   UploadIcon,
   UsersIcon,
 } from "lucide-react";
+import { useConvex } from "convex/react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -44,9 +45,9 @@ import { useProject } from "@/features/projects/hooks/use-projects";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
-  useProjectFiles,
 } from "@/features/workspace/hooks/use-project-files";
 import { exportProjectAsZip } from "@/features/workspace/lib/export-project-zip";
+import { fetchAllProjectFilesWithContents } from "@/features/workspace/lib/load-all-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -62,9 +63,9 @@ function toGitHubUrl(repoUrl: string) {
 
 export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
   const project = useProject({ projectId });
+  const convex = useConvex();
   const access = useProjectAccess(projectId);
   const { openTab } = useEditorTabs(projectId);
-  const projectFiles = useProjectFiles(projectId);
   const changedFiles = useChangedFiles(projectId);
   const { isConnected, hasRepoScope } = useGitHubConnection();
   const { connect, isConnecting } = useConnectGitHub();
@@ -93,25 +94,27 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
 
   const onExportZip = () => {
     if (isExporting) return;
-    if (projectFiles === undefined) {
-      toast.message("Loading project files…");
-      return;
-    }
 
     setIsExporting(true);
-    try {
-      const result = exportProjectAsZip({
-        projectName: project?.name ?? "project",
-        files: projectFiles,
-      });
-      toast.success(`Exported ${result.fileCount} files as ${result.filename}`);
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Could not export project",
-      );
-    } finally {
-      setIsExporting(false);
-    }
+    void (async () => {
+      try {
+        const projectFiles = await fetchAllProjectFilesWithContents(
+          convex,
+          projectId,
+        );
+        const result = exportProjectAsZip({
+          projectName: project?.name ?? "project",
+          files: projectFiles,
+        });
+        toast.success(`Exported ${result.fileCount} files as ${result.filename}`);
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Could not export project",
+        );
+      } finally {
+        setIsExporting(false);
+      }
+    })();
   };
 
   const onDeploy = (provider: DeployProvider) => {
@@ -257,7 +260,7 @@ export function WorkspacePublishMenu({ projectId }: WorkspacePublishMenuProps) {
           <DropdownMenuItem
             className="text-[12px] focus:bg-ws-hover focus:text-ws-text"
             onClick={onExportZip}
-            disabled={isExporting || projectFiles === undefined}
+            disabled={isExporting}
           >
             {isExporting ? (
               <Loader2Icon className="size-3.5 animate-spin" />

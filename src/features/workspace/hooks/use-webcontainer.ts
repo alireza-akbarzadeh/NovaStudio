@@ -13,7 +13,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import {
   useProjectFileMetadata,
-  useProjectFiles,
+  useProjectAllFileContents,
 } from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import type { PackageManager } from "@/features/workspace/lib/terminal/package-scripts";
@@ -93,15 +93,20 @@ export type UseWebContainerResult = {
 export function useWebContainer(projectId: string): UseWebContainerResult {
   const project = useProject({ projectId });
   const metadata = useProjectFileMetadata(projectId);
-  const files = useProjectFiles(projectId);
-  const writeFileAtPath = useMutation(api.projectFiles.writeFileAtPath);
-
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const bottomPanelTab = useWorkspaceStore((s) => s.bottomPanelTab);
   const editorPanelView = useWorkspaceStore((s) => s.editorPanelView);
   const terminalCommandRequest = useWorkspaceStore(
     (s) => s.terminalCommandRequest,
   );
+  const wantsBoot =
+    (terminalOpen && bottomPanelTab === "terminal") ||
+    editorPanelView === "preview" ||
+    Boolean(terminalCommandRequest) ||
+    Boolean(project?.pendingScaffoldCommand);
+
+  const { files } = useProjectAllFileContents(projectId, wantsBoot);
+  const writeFileAtPath = useMutation(api.projectFiles.writeFileAtPath);
 
   const [status, setStatus] = useState<WebContainerStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -299,12 +304,6 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     },
     [ensureReady],
   );
-
-  const wantsBoot =
-    (terminalOpen && bottomPanelTab === "terminal") ||
-    editorPanelView === "preview" ||
-    Boolean(terminalCommandRequest) ||
-    Boolean(project?.pendingScaffoldCommand);
 
   useEffect(() => {
     if (!wantsBoot || status === "ready" || status === "error") return;

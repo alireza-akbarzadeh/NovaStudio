@@ -1,5 +1,11 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import {
+  deleteProjectSearchLinesBatch,
+  deleteSearchLinesForPath,
+  renameSearchLinesPath,
+  syncSearchLinesForFile,
+} from "./projectFileSearchIndex";
 
 export function hashContent(content: string): string {
   let h = 5381;
@@ -59,6 +65,7 @@ export async function upsertFileContent(
     content: string;
     syncedContent?: string;
   },
+  options?: { skipSearchIndex?: boolean },
 ) {
   const existing = await getFileContentRecord(ctx, args.projectId, args.path);
   const now = Date.now();
@@ -70,15 +77,27 @@ export async function upsertFileContent(
         : {}),
       updatedAt: now,
     });
-    return;
+  } else {
+    await ctx.db.insert("projectFileContents", {
+      projectId: args.projectId,
+      path: args.path,
+      content: args.content,
+      syncedContent: args.syncedContent,
+      updatedAt: now,
+    });
   }
-  await ctx.db.insert("projectFileContents", {
-    projectId: args.projectId,
-    path: args.path,
-    content: args.content,
-    syncedContent: args.syncedContent,
-    updatedAt: now,
-  });
+
+  if (!options?.skipSearchIndex) {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (project?.importStatus !== "importing") {
+      await syncSearchLinesForFile(
+        ctx,
+        args.projectId,
+        args.path,
+        args.content,
+      );
+    }
+  }
 }
 
 export async function deleteFileContent(
@@ -90,6 +109,7 @@ export async function deleteFileContent(
   if (row) {
     await ctx.db.delete(row._id);
   }
+  await deleteSearchLinesForPath(ctx, projectId, path);
 }
 
 export async function renameContentPath(
@@ -112,6 +132,7 @@ export async function renameContentPath(
     updatedAt: Date.now(),
   });
   await ctx.db.delete(row._id);
+  await renameSearchLinesPath(ctx, projectId, oldPath, newPath);
 }
 
 export async function copyFileContent(
@@ -135,6 +156,8 @@ export async function deleteProjectContents(
   projectId: Id<"projects">,
   limit: number,
 ): Promise<number> {
+  await deleteProjectSearchLinesBatch(ctx, projectId, limit);
+
   const rows = await ctx.db
     .query("projectFileContents")
     .withIndex("by_project_path", (q) => q.eq("projectId", projectId))

@@ -6,8 +6,7 @@ import { useOptionalWebContainer } from "@/features/workspace/components/webcont
 import type { ProjectFileRow } from "@/features/workspace/hooks/use-project-files";
 import {
   useProjectFileMetadata,
-  useProjectFiles,
-  useProjectFilesContentsLoading,
+  useProjectAllFileContents,
 } from "@/features/workspace/hooks/use-project-files";
 import { getMemoryDraftStats } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -78,8 +77,10 @@ export function useWorkspacePerformanceStats(
   const refreshNonce = options?.refreshNonce ?? 0;
 
   const metadata = useProjectFileMetadata(projectId);
-  const files = useProjectFiles(projectId);
-  const contentsLoading = useProjectFilesContentsLoading(projectId);
+  const { files, loading: contentsLoading } = useProjectAllFileContents(
+    projectId,
+    enabled,
+  );
   const webcontainer = useOptionalWebContainer();
 
   const editorTabs = useWorkspaceStore((s) =>

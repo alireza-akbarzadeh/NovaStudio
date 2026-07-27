@@ -8,7 +8,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProjectFile, useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import type { PreviewConsoleLevel } from "@/features/workspace/lib/preview-runtime-bridge";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -71,7 +71,8 @@ function logId(): string {
  */
 export function usePreviewServer(projectId: string): UsePreviewServerResult {
   const webcontainer = useOptionalWebContainer();
-  const files = useProjectFiles(projectId);
+  const metadata = useProjectFileMetadata(projectId);
+  const packageJsonDoc = useProjectFile(projectId, "package.json");
   const editorPanelView = useWorkspaceStore((s) => s.editorPanelView);
   const previewWanted = editorPanelView === "preview";
 
@@ -164,21 +165,17 @@ export function usePreviewServer(projectId: string): UsePreviewServerResult {
 
   // Resolve package.json (+ drafts) → decide whether a WC preview is possible
   const packageJson = (() => {
-    if (!files) return null;
-    const file = files.find(
-      (f) => f.kind === "file" && f.path === "package.json",
-    );
-    if (!file) return null;
+    if (!packageJsonDoc || packageJsonDoc.kind !== "file") return null;
     const draft = loadFileContentDraft(projectId, "package.json");
-    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+    if (draft && draft.updatedAt >= (packageJsonDoc.updatedAt ?? 0)) {
       return draft.content;
     }
-    return file.content ?? null;
+    return packageJsonDoc.content ?? null;
   })();
 
   const scriptName = packageJson ? detectDevScript(packageJson) : null;
 
-  const filesReady = files !== undefined;
+  const filesReady = metadata !== undefined;
 
   // Lifecycle: start / stop the preview server
   useEffect(() => {

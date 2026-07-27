@@ -182,6 +182,20 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_project_path", ["projectId", "path"]),
 
+  /** Per-line search index (updated on file write; backfilled after import). */
+  projectFileSearchLines: defineTable({
+    projectId: v.id("projects"),
+    path: v.string(),
+    line: v.number(),
+    lineText: v.string(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_path", ["projectId", "path"])
+    .searchIndex("search_line_text", {
+      searchField: "lineText",
+      filterFields: ["projectId"],
+    }),
+
   userPreferences: defineTable({
     userId: v.string(),
     sidebarOpen: v.boolean(),

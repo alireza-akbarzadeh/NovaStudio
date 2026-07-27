@@ -40,6 +40,10 @@ export type ShellHandlers = {
   onGitCreateBranch?: (name: string) => Promise<string>;
   onGitLog?: (limit?: number) => Promise<string>;
   /**
+   * Read a single file body on demand (simulated `cat` when bodies are not cached).
+   */
+  readFileContent?: (path: string) => Promise<string | null>;
+  /**
    * Run a package-manager command inside WebContainer.
    * Implementations should stream output to the terminal themselves
    * and return an empty `output` (to avoid double-printing).

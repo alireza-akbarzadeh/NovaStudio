@@ -63,7 +63,12 @@ export function useProjectFileMetadataQuery(projectId: string, enabled: boolean)
   );
 }
 
-export function useProjectFileContentsPages(projectId: string, enabled: boolean) {
+export function useProjectFileContentsPages(
+  projectId: string,
+  enabled: boolean,
+  options?: { exhaustAll?: boolean },
+) {
+  const exhaustAll = options?.exhaustAll ?? false;
   const { results, status, loadMore, isLoading } = usePaginatedQuery(
     api.projectFiles.listFileContentsPage,
     enabled ? { projectId: asProjectId(projectId) } : "skip",
@@ -71,13 +76,14 @@ export function useProjectFileContentsPages(projectId: string, enabled: boolean)
   );
 
   useEffect(() => {
-    if (!enabled || status !== "CanLoadMore") return;
+    if (!enabled || !exhaustAll || status !== "CanLoadMore") return;
     loadMore(200);
-  }, [enabled, status, loadMore]);
+  }, [enabled, exhaustAll, status, loadMore]);
 
   return {
     results,
     ready: enabled && status === "Exhausted" && !isLoading,
+    loading: enabled && (isLoading || status === "CanLoadMore"),
   };
 }
 
@@ -130,40 +136,47 @@ export function useProjectFileMetadata(projectId: string) {
   return metadata as ProjectFileRow[];
 }
 
-export function useProjectFilesContentsLoading(projectId: string) {
-  const ctx = useProjectFilesContext(projectId);
-  const splitReady = useEnsureFileContentSplit(projectId);
-  const metadata = useProjectFileMetadataQuery(projectId, splitReady && !ctx);
-  const { ready: contentsReady } = useProjectFileContentsPages(
-    projectId,
-    splitReady && !ctx,
-  );
-
-  if (ctx) {
-    return ctx.contentsLoading;
-  }
-
-  return splitReady && metadata !== undefined && !contentsReady;
+export function useProjectFilesContentsLoading(_projectId: string) {
+  return false;
 }
 
+/** Metadata rows — file bodies are not loaded until explicitly requested. */
 export function useProjectFiles(projectId: string) {
-  const ctx = useProjectFilesContext(projectId);
-  const splitReady = useEnsureFileContentSplit(projectId);
-  const metadata = useProjectFileMetadataQuery(projectId, splitReady && !ctx);
-  const { results: contents, ready: contentsReady } =
-    useProjectFileContentsPages(projectId, splitReady && !ctx);
+  return useProjectFileMetadata(projectId);
+}
 
-  const standaloneFiles = useMemo(
+/**
+ * Paginate in every file body. Enable only when a feature truly needs the
+ * full project in memory (WebContainer mount, esbuild preview, dev metrics).
+ */
+export function useProjectAllFileContents(
+  projectId: string,
+  enabled: boolean,
+) {
+  const splitReady = useEnsureFileContentSplit(projectId);
+  const metadata = useProjectFileMetadataQuery(projectId, splitReady && enabled);
+  const { results: contents, ready: contentsReady, loading } =
+    useProjectFileContentsPages(projectId, splitReady && enabled, {
+      exhaustAll: true,
+    });
+
+  const files = useMemo(
     () =>
-      mergeProjectFiles(
-        metadata as ProjectFileRow[] | undefined,
-        contents,
-        contentsReady,
-      ),
-    [metadata, contents, contentsReady],
+      enabled
+        ? mergeProjectFiles(
+            metadata as ProjectFileRow[] | undefined,
+            contents,
+            contentsReady,
+          )
+        : undefined,
+    [contents, contentsReady, enabled, metadata],
   );
 
-  return ctx ? ctx.files : standaloneFiles;
+  return {
+    files,
+    loading: enabled && Boolean(metadata) && loading,
+    ready: enabled && contentsReady && files !== undefined,
+  };
 }
 
 export function useProjectFile(projectId: string, path: string) {

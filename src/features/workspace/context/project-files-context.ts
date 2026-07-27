@@ -8,7 +8,7 @@ export type ProjectFilesContextValue = {
   projectId: string;
   /** File/folder rows without bodies — available as soon as metadata loads. */
   metadata: ProjectFileRow[] | undefined;
-  /** Full rows with content — undefined until all content pages are loaded. */
+  /** Same as metadata — bodies load via `useProjectAllFileContents` or per-path queries. */
   files: ProjectFileRow[] | undefined;
   contentsLoading: boolean;
 };

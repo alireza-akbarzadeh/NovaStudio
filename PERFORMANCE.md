@@ -22,13 +22,13 @@ Use this doc to tackle **one item at a time**. Mark items `[x]` when done.
 
 On a repo near import limits (~5,000 files):
 
-1. **Convex client cache** — all `projectFileContents` rows
-2. **`useProjectFiles` merged array** — full content strings in JS heap
+1. **Convex client cache** — metadata always; file bodies only when a feature opts in
+2. **`useProjectFiles`** — metadata rows (paths/names); bodies via per-path or bulk loaders
 3. **WebContainer filesystem** — second full copy when mounted
 4. **Monaco** — one editor per open tab; each gets a subset of files for go-to-definition
 5. **Liveblocks** — Y.Doc per open collaborative file tab
 6. **`node_modules`** — after install inside WebContainer (browser memory)
-7. **Search** — line splitting / matching (now off main thread for text search)
+7. **Search** — server-side Convex search index + paginated content scan fallback
 8. **Unbounded Maps** — edit drafts, AI attachment cache (still open)
 
 ---
@@ -37,10 +37,10 @@ On a repo near import limits (~5,000 files):
 
 | Area | Path |
 |------|------|
-| Files hook + provider | `src/features/workspace/hooks/use-project-files.ts`, `components/project-files-provider.tsx` |
+| Files hook + provider | `src/features/workspace/hooks/use-project-files.ts`, `components/project-files-provider.tsx`, `lib/load-all-project-files.ts` |
 | File tree | `hooks/use-file-tree-state.ts`, `components/workspace-file-tree.tsx`, `components/file-tree/virtualized-file-tree-list.tsx` |
 | Sidebar panels | `components/workspace-sidebar.tsx`, `components/workspace-explorer-panel.tsx` |
-| Search | `components/workspace-search-panel.tsx`, `lib/search.ts`, `lib/search.worker.ts`, `hooks/use-project-text-search.ts` |
+| Search | `components/workspace-search-panel.tsx`, `lib/search.ts`, `hooks/use-project-server-text-search.ts`, `convex/projectSearch.ts` |
 | WebContainer | `hooks/use-webcontainer.ts`, `lib/webcontainer/mount-filter.ts`, `lib/webcontainer/sync.ts` |
 | Preview | `hooks/use-preview-server.ts` |
 | Editor / Monaco | `views/file-editor-view.tsx`, `lib/resolve-import-path.ts` (`selectDefinitionFiles`) |
@@ -74,6 +74,8 @@ On a repo near import limits (~5,000 files):
 - [x] **P2.9 Metadata migration** — chat composer/panel + dependencies panel
 - [x] **P3.12 Dev performance panel** — bottom panel **Performance** tab (dev only)
 - [x] **P3.10 Progressive clone** — batched GitHub import with live file progress; open workspace while cloning
+- [x] **P3.11 Server-side search index** — Convex `projectFileSearchLines` table; `searchInProject` action; search panel uses server hook (no client file bodies for text search)
+- [x] **P4.1 On-demand file content loading** — provider metadata-only; `useProjectAllFileContents` for WC/preview/metrics; per-path fetches for editor/AI/terminal/export
 
 ## Backlog — P1 Memory (highest impact)
 
@@ -149,16 +151,16 @@ Do these first on large clones and long editing sessions.
 
 ### 9. Migrate more consumers to metadata-only
 
-- [x] **Status:** Done (chat + dependencies; terminal/switcher still need full content)
+- [x] **Status:** Done
 - **Problem:** Several components still call `useProjectFiles` when they only need paths/names.
-- **Fix:** Switch to `useProjectFileMetadata` where content is unused.
+- **Fix:** Switch to `useProjectFileMetadata` where content is unused; terminal uses metadata + on-demand `cat`; export fetches bodies on click.
 
 | Component | Hook today | Likely needs |
 |-----------|------------|--------------|
-| `use-terminal-shell.ts` | `useProjectFiles` | metadata (completions) |
-| `workspace-switcher.tsx` | `useProjectFiles` | metadata |
-| `workspace-chat-panel.tsx` / `chat-composer.tsx` | `useProjectFiles` | metadata for mentions |
-| `workspace-dependencies-panel.tsx` | `useProjectFiles` | `package.json` only |
+| `use-terminal-shell.ts` | metadata + `getByPath` for `cat` | metadata (completions via package.json) |
+| `workspace-switcher.tsx` | fetch on export | metadata |
+| `workspace-chat-panel.tsx` / `chat-composer.tsx` | metadata for mentions | metadata for mentions |
+| `workspace-dependencies-panel.tsx` | `package.json` only | `package.json` only |
 
 - **Verify:** Fewer blocked spinners; less duplicate merge work (provider already dedupes Convex).
 
@@ -176,10 +178,10 @@ Do these first on large clones and long editing sessions.
 
 ### 11. Server-side search index
 
-- [ ] **Status:** Not started
+- [x] **Status:** Done
 - **Problem:** Worker search still postMessages entire project content on each query.
-- **Fix:** Convex search index / trigram table updated on file write; query paginated from server.
-- **Files:** new Convex module + search panel integration
+- **Fix:** Convex search index / per-line table updated on file write; batched backfill after import; `searchInProject` action with index + paginated scan fallback; client `useProjectServerTextSearch`.
+- **Files:** `convex/projectSearch.ts`, `convex/lib/projectFileSearchIndex.ts`, `hooks/use-project-server-text-search.ts`, `components/workspace-search-panel.tsx`
 - **Verify:** Text search on 5k files without shipping all bodies to worker.
 
 ### 12. Dev memory observability
@@ -190,6 +192,14 @@ Do these first on large clones and long editing sessions.
 - **Files:** `components/workspace-performance-panel.tsx`, `components/workspace-performance-charts.tsx`, `hooks/use-workspace-performance-stats.ts`
 - **Open via:** bottom **Performance** tab, `⌘⇧.` shortcut, Settings search → "performance"
 - **Verify:** Numbers update after clone, tab open, WC boot.
+
+### 13. On-demand file content loading
+
+- [x] **Status:** Done
+- **Problem:** Opening a workspace auto-paginated every `projectFileContents` row into the Convex client cache and JS heap.
+- **Fix:** `ProjectFilesProvider` metadata-only; `useProjectAllFileContents(enabled)` for WebContainer / esbuild preview / dev metrics; `getContentsByPaths` + `getByPath` for editor definitions, AI @-mentions, terminal `cat`; export uses one-shot `fetchAllProjectFilesWithContents`.
+- **Files:** `hooks/use-project-files.ts`, `components/project-files-provider.tsx`, `lib/load-all-project-files.ts`, `convex/projectFiles.ts`
+- **Verify:** Large clone opens with tree + search usable without multi-GB client cache growth; WC/preview still work when activated.
 
 ---
 
@@ -206,9 +216,8 @@ Do these first on large clones and long editing sessions.
 9. ~~P2.8 — Debounced diff stats~~ ✅  
 10. ~~P3.12 — Dev performance panel~~ ✅  
 11. ~~P3.10 — Progressive clone~~ ✅  
-12. P3.11 — Server-side search index (optional)  
-
----
+12. ~~P3.11 — Server-side search index~~ ✅  
+13. ~~P4.1 — On-demand file content loading~~ ✅  
 
 ## Manual test checklist (large cloned repo)
 

@@ -193,6 +193,9 @@ export const completePullJob = internalMutation({
       projectId: args.projectId,
       limit: 40,
     });
+    await ctx.scheduler.runAfter(0, internal.projectSearch.scheduleSearchIndexBackfill, {
+      projectId: args.projectId,
+    });
   },
 });
 

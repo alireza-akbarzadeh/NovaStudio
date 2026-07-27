@@ -41,12 +41,16 @@ async function insertTreeNode(
   });
 
   if (node.kind === "file" && content !== undefined) {
-    await upsertFileContent(ctx, {
-      projectId,
-      path: node.path,
-      content,
-      syncedContent: content,
-    });
+    await upsertFileContent(
+      ctx,
+      {
+        projectId,
+        path: node.path,
+        content,
+        syncedContent: content,
+      },
+      { skipSearchIndex: true },
+    );
   }
 
   if (node.kind === "folder") {
@@ -108,12 +112,16 @@ export async function insertImportedFileBatch(
 
     if (existing) {
       if (existing.kind !== "file") continue;
-      await upsertFileContent(ctx, {
-        projectId,
-        path,
-        content: file.content,
-        syncedContent: file.content,
-      });
+      await upsertFileContent(
+        ctx,
+        {
+          projectId,
+          path,
+          content: file.content,
+          syncedContent: file.content,
+        },
+        { skipSearchIndex: true },
+      );
       await ctx.db.patch(existing._id, {
         content: undefined,
         syncedContent: undefined,
@@ -125,12 +133,16 @@ export async function insertImportedFileBatch(
       continue;
     }
 
-    await upsertFileContent(ctx, {
-      projectId,
-      path,
-      content: file.content,
-      syncedContent: file.content,
-    });
+    await upsertFileContent(
+      ctx,
+      {
+        projectId,
+        path,
+        content: file.content,
+        syncedContent: file.content,
+      },
+      { skipSearchIndex: true },
+    );
     await ctx.db.insert("projectFiles", {
       projectId,
       name: fileName,

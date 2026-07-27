@@ -1,7 +1,7 @@
 "use client";
 
-import { useAction } from "convex/react";
-import { useCallback, useRef } from "react";
+import { useAction, useConvex } from "convex/react";
+import { useCallback, useMemo, useRef } from "react";
 
 import { isActionCancelled } from "@/components/confirm-dialog";
 import { api } from "@/convex/_generated/api";
@@ -16,10 +16,13 @@ import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import {
   useChangedFiles,
-  useProjectFiles,
+  useProjectFile,
+  useProjectFileMetadata,
 } from "@/features/workspace/hooks/use-project-files";
+import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import type {
   ShellContext,
+  ShellFile,
   ShellHandlers,
 } from "@/features/workspace/lib/workspace-shell";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
@@ -30,8 +33,10 @@ import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
  */
 export function useTerminalShell(projectId: string) {
   const project = useProject({ projectId });
-  const files = useProjectFiles(projectId);
+  const metadata = useProjectFileMetadata(projectId);
+  const packageJsonDoc = useProjectFile(projectId, "package.json");
   const changedFiles = useChangedFiles(projectId);
+  const convex = useConvex();
   const { initialize } = useInitializeGitRepo(projectId);
   const { pull } = usePullFromGitHub(projectId);
   const { push } = useCommitAndPush(projectId);
@@ -39,12 +44,52 @@ export function useTerminalShell(projectId: string) {
   const listCommits = useAction(api.githubHistory.listCommits);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
 
+  const shellFiles = useMemo((): ShellFile[] | undefined => {
+    if (!metadata) return undefined;
+
+    const packageDraft = loadFileContentDraft(projectId, "package.json");
+    const packageContent =
+      packageDraft &&
+      packageDraft.updatedAt >= (packageJsonDoc?.updatedAt ?? 0)
+        ? packageDraft.content
+        : packageJsonDoc?.kind === "file"
+          ? (packageJsonDoc.content ?? "")
+          : undefined;
+
+    return metadata.map((file) => ({
+      path: file.path,
+      name: file.name,
+      kind: file.kind,
+      content:
+        file.path === "package.json" && file.kind === "file"
+          ? packageContent
+          : undefined,
+    }));
+  }, [metadata, packageJsonDoc, projectId]);
+
   const projectRef = useRef(project);
-  const filesRef = useRef(files);
+  const filesRef = useRef(shellFiles);
   const changedFilesRef = useRef(changedFiles);
   projectRef.current = project;
-  filesRef.current = files;
+  filesRef.current = shellFiles;
   changedFilesRef.current = changedFiles;
+
+  const readFileContent = useCallback(
+    async (path: string) => {
+      const doc = await convex.query(api.projectFiles.getByPath, {
+        projectId: projectId as Id<"projects">,
+        path,
+      });
+      if (!doc || doc.kind !== "file") return null;
+
+      const draft = loadFileContentDraft(projectId, path);
+      if (draft && draft.updatedAt >= (doc.updatedAt ?? 0)) {
+        return draft.content;
+      }
+      return doc.content ?? "";
+    },
+    [convex, projectId],
+  );
 
   const getContext = useCallback((cwd: string): ShellContext | null => {
     const currentProject = projectRef.current;
@@ -64,6 +109,7 @@ export function useTerminalShell(projectId: string) {
   const createHandlers = useCallback(
     (writeln: (line: string) => void): ShellHandlers => ({
       onOpenGitInitDialog: openGitInitDialog,
+      readFileContent,
       onGitInit: async (repoName) => {
         writeln("Initializing GitHub repository…");
         const result = await initialize({ repoName });
@@ -146,6 +192,7 @@ export function useTerminalShell(projectId: string) {
       projectId,
       pull,
       push,
+      readFileContent,
     ],
   );
 

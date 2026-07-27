@@ -35,8 +35,11 @@ import { useFileLineComments } from "@/features/workspace/hooks/use-file-line-co
 import { useMonacoBreakpoints } from "@/features/workspace/hooks/use-monaco-breakpoints";
 import {
   useProjectFile,
-  useProjectFiles,
+  useProjectFileMetadata,
 } from "@/features/workspace/hooks/use-project-files";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
 import { canFormatPath } from "@/features/workspace/lib/format-code";
 import { formatActiveDocument } from "@/features/workspace/lib/format-active-document";
 import {
@@ -376,36 +379,61 @@ function FileEditorContent({
     draft,
   );
   const [content, setContent] = useState(seedContent);
-  const projectFiles = useProjectFiles(projectId);
+  const metadata = useProjectFileMetadata(projectId);
+  const packageJsonDoc = useProjectFile(projectId, "package.json");
   const { openTab } = useEditorTabs(projectId);
   const setPendingEditorReveal = useWorkspaceStore(
     (s) => s.setPendingEditorReveal,
   );
+
+  const definitionCandidates = useMemo(() => {
+    const fileRows = (metadata ?? [])
+      .filter((file) => file.kind === "file")
+      .map((file) => ({
+        path: file.path,
+        content: file.path === filePath ? content : "",
+      }));
+    return selectDefinitionFiles(filePath, fileRows);
+  }, [content, filePath, metadata]);
+
+  const definitionPathsToLoad = useMemo(
+    () =>
+      definitionCandidates
+        .map((file) => file.path)
+        .filter((path) => path !== filePath),
+    [definitionCandidates, filePath],
+  );
+
+  const definitionContents = useQuery(
+    api.projectFiles.getContentsByPaths,
+    definitionPathsToLoad.length > 0
+      ? {
+          projectId: projectId as Id<"projects">,
+          paths: definitionPathsToLoad,
+        }
+      : "skip",
+  );
+
   const definitionFiles = useMemo(
     () =>
-      selectDefinitionFiles(
-        filePath,
-        (projectFiles ?? [])
-          .filter((file) => file.kind === "file")
-          .map((file) => ({
-            path: file.path,
-            content: file.content ?? "",
-          })),
-      ),
-    [filePath, projectFiles],
+      definitionCandidates.map((file) => {
+        if (file.path === filePath) {
+          return { path: file.path, content };
+        }
+        const loaded = definitionContents?.find((row) => row.path === file.path);
+        return { path: file.path, content: loaded?.content ?? "" };
+      }),
+    [content, definitionCandidates, definitionContents, filePath],
   );
   const projectPaths = definitionFiles.map((file) => file.path);
   const packageJsonContent = useMemo(() => {
-    const file = (projectFiles ?? []).find(
-      (f) => f.kind === "file" && f.path === "package.json",
-    );
-    if (!file) return null;
+    if (!packageJsonDoc || packageJsonDoc.kind !== "file") return null;
     const draft = loadFileContentDraft(projectId, "package.json");
-    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+    if (draft && draft.updatedAt >= (packageJsonDoc.updatedAt ?? 0)) {
       return draft.content;
     }
-    return file.content ?? null;
-  }, [projectFiles, projectId]);
+    return packageJsonDoc.content ?? null;
+  }, [packageJsonDoc, projectId]);
   const hostMode = detectPreviewHost({
     packageJson: packageJsonContent,
     paths: projectPaths,

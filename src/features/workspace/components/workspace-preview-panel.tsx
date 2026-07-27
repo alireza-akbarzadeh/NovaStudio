@@ -21,7 +21,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOptionalPreviewServer } from "@/features/workspace/components/preview-server-provider";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import {
+  useProjectFile,
+  useProjectFileMetadata,
+  useProjectAllFileContents,
+} from "@/features/workspace/hooks/use-project-files";
 import {
   getPreviewDevice,
   PREVIEW_DEVICES,
@@ -84,7 +88,8 @@ export function WorkspacePreviewPanel({
   projectId,
   active = true,
 }: WorkspacePreviewPanelProps) {
-  const projectFiles = useProjectFiles(projectId);
+  const metadata = useProjectFileMetadata(projectId);
+  const packageJsonDoc = useProjectFile(projectId, "package.json");
   const previewServer = useOptionalPreviewServer();
   const webcontainer = useOptionalWebContainer();
 
@@ -130,28 +135,30 @@ export function WorkspacePreviewPanel({
   const serverError = previewServer?.error ?? null;
   const useHotReload = hot && serverUrl != null;
 
-  const filePaths = (projectFiles ?? [])
+  const filePaths = (metadata ?? [])
     .filter((file) => file.kind === "file")
     .map((file) => file.path);
 
   const packageJson = useMemo(() => {
-    if (!projectFiles) return null;
-    const file = projectFiles.find(
-      (f) => f.kind === "file" && f.path === "package.json",
-    );
-    if (!file) return null;
+    if (!packageJsonDoc || packageJsonDoc.kind !== "file") return null;
     const draft = loadFileContentDraft(projectId, "package.json");
-    if (draft && draft.updatedAt >= (file.updatedAt ?? 0)) {
+    if (draft && draft.updatedAt >= (packageJsonDoc.updatedAt ?? 0)) {
       return draft.content;
     }
-    return file.content ?? null;
-  }, [projectFiles, projectId]);
+    return packageJsonDoc.content ?? null;
+  }, [packageJsonDoc, projectId]);
 
   const hostMode = useMemo(
     () => detectPreviewHost({ packageJson, paths: filePaths }),
     [filePaths, packageJson],
   );
   const requiresWebContainer = hostMode === "webcontainer";
+  const needsEsbuildFiles =
+    active && hostMode === "esbuild" && !(hot && serverUrl);
+  const { files: projectFiles } = useProjectAllFileContents(
+    projectId,
+    needsEsbuildFiles,
+  );
 
   const canPreviewFile = filePath ? isPreviewableFile(filePath) : false;
   const canPreview =
@@ -301,14 +308,14 @@ export function WorkspacePreviewPanel({
       return;
     }
 
-    if (!canPreview || projectFiles === undefined) {
+    if (!canPreview || (needsEsbuildFiles && projectFiles === undefined)) {
       setPreviewHtml(null);
       setPreviewError(null);
       return;
     }
 
     const files: Record<string, string> = {};
-    for (const file of projectFiles) {
+    for (const file of projectFiles ?? []) {
       if (file.kind !== "file") continue;
       files[file.path] = file.content ?? "";
     }
@@ -493,10 +500,18 @@ export function WorkspacePreviewPanel({
     } as const;
   }, [frameHeight, frameWidth]);
 
-  if (projectFiles === undefined) {
+  if (metadata === undefined) {
     return (
       <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
         Loading project…
+      </div>
+    );
+  }
+
+  if (needsEsbuildFiles && projectFiles === undefined) {
+    return (
+      <div className="flex h-full items-center justify-center p-6 text-[13px] text-ws-text-muted">
+        Loading preview files…
       </div>
     );
   }

@@ -10,10 +10,8 @@ import { HighlightedText } from "@/features/workspace/components/highlighted-tex
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useProjectFileMetadata,
-  useProjectFiles,
-  useProjectFilesContentsLoading,
 } from "@/features/workspace/hooks/use-project-files";
-import { useProjectTextSearch } from "@/features/workspace/hooks/use-project-text-search";
+import { useProjectServerTextSearch } from "@/features/workspace/hooks/use-project-server-text-search";
 import {
   SEARCH_FILE_NAME_LIMIT,
   SEARCH_MATCH_PAGE_SIZE,
@@ -40,8 +38,6 @@ const SEARCH_TABS: { id: SearchPanelMode; label: string }[] = [
 
 export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
   const metadata = useProjectFileMetadata(projectId);
-  const files = useProjectFiles(projectId);
-  const contentsLoading = useProjectFilesContentsLoading(projectId);
   const { openTab } = useEditorTabs(projectId);
   const mode = useWorkspaceStore((s) => s.searchPanelMode);
   const setSearchPanelMode = useWorkspaceStore((s) => s.setSearchPanelMode);
@@ -66,15 +62,15 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
     setFileMatchLimit(SEARCH_FILE_NAME_LIMIT);
   }, [query, caseSensitive, folderScope, mode]);
 
-  const textMatchesFromWorker = useProjectTextSearch(files, query, {
+  const textMatchesFromServer = useProjectServerTextSearch(projectId, query, {
     caseSensitive,
     pathPrefix: folderScope ?? undefined,
     enabled: mode === "text",
     maxMatches: textMatchLimit,
   });
-  const textMatches = textMatchesFromWorker.matches;
-  const textSearching = textMatchesFromWorker.searching;
-  const textTruncated = textMatchesFromWorker.truncated;
+  const textMatches = textMatchesFromServer.matches;
+  const textSearching = textMatchesFromServer.searching;
+  const textTruncated = textMatchesFromServer.truncated;
 
   const fileSearchResult = useMemo(() => {
     if (mode !== "file" || !metadata || !query.trim()) {
@@ -114,9 +110,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
   }
 
   const textSearchPending =
-    mode === "text" &&
-    query.trim().length > 0 &&
-    (contentsLoading || textSearching);
+    mode === "text" && query.trim().length > 0 && textSearching;
 
   return (
     <div className="flex h-full flex-col">
@@ -241,7 +235,7 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
         ) : textSearchPending ? (
           <div className="flex items-center gap-2 px-2 py-3 text-[11px] text-ws-text-muted">
             <Loader2Icon className="size-3.5 animate-spin" />
-            {contentsLoading ? "Loading file contents…" : "Searching…"}
+            Searching…
           </div>
         ) : textMatches.length === 0 ? (
           <p className="px-2 py-3 text-[11px] text-ws-text-muted">

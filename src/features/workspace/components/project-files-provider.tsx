@@ -4,10 +4,8 @@ import { useMemo, type ReactNode } from "react";
 
 import { ProjectFilesContext } from "@/features/workspace/context/project-files-context";
 import {
-  mergeProjectFiles,
   type ProjectFileRow,
   useEnsureFileContentSplit,
-  useProjectFileContentsPages,
   useProjectFileMetadataQuery,
 } from "@/features/workspace/hooks/use-project-files";
 
@@ -16,14 +14,13 @@ type ProjectFilesProviderProps = {
   children: ReactNode;
 };
 
+/** Subscribes to file tree metadata only — bodies load on demand elsewhere. */
 export function ProjectFilesProvider({
   projectId,
   children,
 }: ProjectFilesProviderProps) {
   const splitReady = useEnsureFileContentSplit(projectId);
   const metadata = useProjectFileMetadataQuery(projectId, splitReady);
-  const { results: contents, ready: contentsReady } =
-    useProjectFileContentsPages(projectId, splitReady);
 
   const metadataRows = useMemo((): ProjectFileRow[] | undefined => {
     if (!splitReady || metadata === undefined) {
@@ -32,20 +29,14 @@ export function ProjectFilesProvider({
     return metadata as ProjectFileRow[];
   }, [metadata, splitReady]);
 
-  const files = useMemo(
-    () => mergeProjectFiles(metadataRows, contents, contentsReady),
-    [contents, contentsReady, metadataRows],
-  );
-
   const value = useMemo(
     () => ({
       projectId,
       metadata: metadataRows,
-      files,
-      contentsLoading:
-        splitReady && metadataRows !== undefined && !contentsReady,
+      files: metadataRows,
+      contentsLoading: false,
     }),
-    [contentsReady, files, metadataRows, projectId, splitReady],
+    [metadataRows, projectId],
   );
 
   return (

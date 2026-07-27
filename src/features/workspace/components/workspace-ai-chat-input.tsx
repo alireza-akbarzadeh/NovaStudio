@@ -50,7 +50,11 @@ import { SpeechInput } from "@/components/ai-elements/speech-input";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceAiModeToggle } from "@/features/workspace/components/workspace-ai-mode-toggle";
 import { WorkspaceAiModelPicker } from "@/features/workspace/components/workspace-ai-model-picker";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useConvex } from "convex/react";
+
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { LruMap } from "@/features/workspace/lib/lru-map";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import type { AiChatMode } from "@/lib/ai/chat-mode";
@@ -159,7 +163,7 @@ type MentionFileOption = {
 };
 
 function filterMentionFiles(
-  files: ReturnType<typeof useProjectFiles>,
+  files: ReturnType<typeof useProjectFileMetadata>,
   query: string,
 ): MentionFileOption[] {
   const all = (files ?? [])
@@ -258,23 +262,38 @@ function PromptInputFields({
   const attachments = usePromptInputAttachments();
   const referenced = usePromptInputReferencedSources();
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
+  const convex = useConvex();
   const [mentionIndex, setMentionIndex] = useState(0);
+
+  const readReferencedContent = useCallback(
+    async (path: string) => {
+      const doc = await convex.query(api.projectFiles.getByPath, {
+        projectId: projectId as Id<"projects">,
+        path,
+      });
+      if (!doc || doc.kind !== "file") return "";
+      return doc.content ?? "";
+    },
+    [convex, projectId],
+  );
 
   const attachCurrentFile = useCallback(() => {
     if (!currentFilePath) return;
     const file = (files ?? []).find((item) => item.path === currentFilePath);
     if (!file || file.kind !== "file") return;
 
-    fileContentsRef.current.set(file.path, file.content ?? "");
-    referenced.add({
-      type: "source-document",
-      sourceId: file.path,
-      title: file.name,
-      filename: file.name,
-      mediaType: "text/plain",
+    void readReferencedContent(file.path).then((body) => {
+      fileContentsRef.current.set(file.path, body);
+      referenced.add({
+        type: "source-document",
+        sourceId: file.path,
+        title: file.name,
+        filename: file.name,
+        mediaType: "text/plain",
+      });
     });
-  }, [currentFilePath, fileContentsRef, files, referenced]);
+  }, [currentFilePath, fileContentsRef, files, readReferencedContent, referenced]);
 
   const insertCodeFence = useCallback(() => {
     const current = controller.textInput.value;
@@ -311,19 +330,21 @@ function PromptInputFields({
         `${prefix}${needsSpace && atIndex < 0 ? " " : ""}@${file.path} `,
       );
 
-      fileContentsRef.current.set(file.path, file.content);
-      referenced.add({
-        type: "source-document",
-        sourceId: file.path,
-        title: file.name,
-        filename: file.name,
-        mediaType: "text/plain",
+      void readReferencedContent(file.path).then((body) => {
+        fileContentsRef.current.set(file.path, body);
+        referenced.add({
+          type: "source-document",
+          sourceId: file.path,
+          title: file.name,
+          filename: file.name,
+          mediaType: "text/plain",
+        });
       });
 
       setMentionOpen(false);
       setMentionIndex(0);
     },
-    [controller.textInput, fileContentsRef, referenced, setMentionOpen],
+    [controller.textInput, fileContentsRef, readReferencedContent, referenced, setMentionOpen],
   );
 
   const handleTextChange = useCallback(
@@ -515,7 +536,8 @@ function PendingChatAttachBridge({
   projectId: string;
   fileContentsRef: MutableRefObject<LruMap<string, string>>;
 }) {
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
+  const convex = useConvex();
   const referenced = usePromptInputReferencedSources();
   const pendingChatAttachPaths = useWorkspaceStore(
     (s) => s.pendingChatAttachPaths,
@@ -537,25 +559,36 @@ function PendingChatAttachBridge({
       return;
     }
 
-    for (const path of pendingChatAttachPaths) {
-      const file = files.find((item) => item.path === path);
-      if (!file || file.kind !== "file") continue;
+    void (async () => {
+      for (const path of pendingChatAttachPaths) {
+        const file = files.find((item) => item.path === path);
+        if (!file || file.kind !== "file") continue;
 
-      fileContentsRef.current.set(file.path, file.content ?? "");
-      referenced.add({
-        type: "source-document",
-        sourceId: file.path,
-        title: file.name,
-        filename: file.name,
-        mediaType: "text/plain",
-      });
-    }
+        const doc = await convex.query(api.projectFiles.getByPath, {
+          projectId: projectId as Id<"projects">,
+          path: file.path,
+        });
+        fileContentsRef.current.set(
+          file.path,
+          doc?.kind === "file" ? (doc.content ?? "") : "",
+        );
+        referenced.add({
+          type: "source-document",
+          sourceId: file.path,
+          title: file.name,
+          filename: file.name,
+          mediaType: "text/plain",
+        });
+      }
 
-    setPendingChatAttachPaths(null);
+      setPendingChatAttachPaths(null);
+    })();
   }, [
+    convex,
     fileContentsRef,
     files,
     pendingChatAttachPaths,
+    projectId,
     referenced,
     requestNewChat,
     setPendingChatAttachPaths,
