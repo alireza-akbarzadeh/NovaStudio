@@ -157,6 +157,26 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
     [activeFile, createReviewComment, detail],
   );
 
+  const onThreadReply = useCallback(
+    async (args: { line: number; body: string; inReplyTo: number }) => {
+      if (!detail) return;
+      const comment = await createReviewComment({
+        pullNumber: detail.number,
+        body: args.body,
+        inReplyTo: args.inReplyTo,
+      });
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              reviewComments: [...current.reviewComments, comment],
+            }
+          : current,
+      );
+    },
+    [createReviewComment, detail],
+  );
+
   const onSubmitReply = useCallback(() => {
     if (!detail || !replyBody.trim()) return;
     void createComment(detail.number, replyBody.trim()).then((comment) => {
@@ -230,6 +250,7 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
               canComment={canComment}
               isSubmitting={isReviewCommenting}
               onSubmitLineComment={onLineComment}
+              onSubmitThreadReply={onThreadReply}
             />
           ) : (
             <div className="flex flex-1 items-center justify-center text-[13px] text-ws-text-muted">

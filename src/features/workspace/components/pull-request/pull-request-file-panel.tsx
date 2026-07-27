@@ -20,6 +20,11 @@ type PullRequestFilePanelProps = {
     body: string;
     suggestion?: string;
   }) => Promise<void>;
+  onSubmitThreadReply?: (args: {
+    line: number;
+    body: string;
+    inReplyTo: number;
+  }) => Promise<void>;
 };
 
 export function PullRequestFilePanel({
@@ -28,6 +33,7 @@ export function PullRequestFilePanel({
   canComment,
   isSubmitting,
   onSubmitLineComment,
+  onSubmitThreadReply,
 }: PullRequestFilePanelProps) {
   const parsed = useMemo(
     () => (file.patch ? parseUnifiedPatch(file.patch) : null),
@@ -63,6 +69,7 @@ export function PullRequestFilePanel({
             isSubmitting={isSubmitting}
             fillHeight
             onSubmitLineComment={onSubmitLineComment}
+            onSubmitThreadReply={onSubmitThreadReply}
           />
         </div>
       ) : (

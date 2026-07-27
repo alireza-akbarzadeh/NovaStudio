@@ -18,6 +18,10 @@ export function buildLineThreads(
   for (const [fileLine, comments] of byFileLine) {
     const editorLine = parsed.fileLineToModifiedEditorLine.get(fileLine);
     if (!editorLine) continue;
+    comments.sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    );
     threads.push({ editorLine, fileLine, comments });
   }
   threads.sort((a, b) => a.editorLine - b.editorLine);

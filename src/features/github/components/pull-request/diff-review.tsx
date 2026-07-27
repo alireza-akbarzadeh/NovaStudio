@@ -45,6 +45,7 @@ export function PullRequestDiffReview({
   fillHeight = false,
   height = 480,
   onSubmitLineComment,
+  onSubmitThreadReply,
 }: PullRequestDiffReviewProps) {
   const { resolvedTheme } = useTheme();
   const { enabledIds, activeThemeId } = useExtensionsState();
@@ -185,7 +186,10 @@ export function PullRequestDiffReview({
       <CommentThreadsPanel
         threads={lineThreads}
         activeFileLine={activeThreadFileLine}
+        canComment={canComment}
+        isSubmitting={isSubmitting}
         onSelectThread={selectThread}
+        onSubmitThreadReply={onSubmitThreadReply}
       />
 
       {draftEditorLine !== null && draftFileLine !== undefined ? (

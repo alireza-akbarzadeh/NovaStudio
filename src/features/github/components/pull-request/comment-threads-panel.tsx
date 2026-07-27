@@ -9,13 +9,23 @@ import type { LineThread } from "@/features/github/lib/pull-request/types";
 type CommentThreadsPanelProps = {
   threads: LineThread[];
   activeFileLine: number | null;
+  canComment?: boolean;
+  isSubmitting?: boolean;
   onSelectThread: (thread: LineThread) => void;
+  onSubmitThreadReply?: (args: {
+    line: number;
+    body: string;
+    inReplyTo: number;
+  }) => Promise<void>;
 };
 
 export function CommentThreadsPanel({
   threads,
   activeFileLine,
+  canComment = false,
+  isSubmitting = false,
   onSelectThread,
+  onSubmitThreadReply,
 }: CommentThreadsPanelProps) {
   const [panelExpanded, setPanelExpanded] = useState(true);
 
@@ -53,7 +63,19 @@ export function CommentThreadsPanel({
               comments={thread.comments}
               isActive={activeFileLine === thread.fileLine}
               defaultExpanded={activeFileLine === thread.fileLine}
+              canComment={canComment}
+              isSubmitting={isSubmitting}
               onSelect={() => onSelectThread(thread)}
+              onReply={
+                onSubmitThreadReply
+                  ? (body, inReplyTo) =>
+                      onSubmitThreadReply({
+                        line: thread.fileLine,
+                        body,
+                        inReplyTo,
+                      })
+                  : undefined
+              }
             />
           ))}
         </div>

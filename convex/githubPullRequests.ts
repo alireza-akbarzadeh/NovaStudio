@@ -91,6 +91,7 @@ function mapPullRequestReviewComment(comment: {
   user: { login: string; avatar_url: string } | null;
   created_at: string;
   html_url: string;
+  in_reply_to_id?: number | null;
 }) {
   return {
     id: comment.id,
@@ -102,6 +103,7 @@ function mapPullRequestReviewComment(comment: {
     authorAvatarUrl: comment.user?.avatar_url ?? "",
     createdAt: comment.created_at,
     url: comment.html_url,
+    inReplyToId: comment.in_reply_to_id ?? undefined,
   };
 }
 
@@ -344,13 +346,14 @@ export const createPullRequestReviewComment = action({
     line: v.number(),
     side: v.optional(v.union(v.literal("LEFT"), v.literal("RIGHT"))),
     commitId: v.optional(v.string()),
+    inReplyTo: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const body = args.body.trim();
     const path = args.path.trim();
     if (!body) throw new Error("Comment cannot be empty");
-    if (!path) throw new Error("File path is required");
-    if (!Number.isFinite(args.line) || args.line < 1) {
+    if (!path && !args.inReplyTo) throw new Error("File path is required");
+    if (!args.inReplyTo && (!Number.isFinite(args.line) || args.line < 1)) {
       throw new Error("Line number must be at least 1");
     }
 
@@ -360,7 +363,7 @@ export const createPullRequestReviewComment = action({
     );
 
     let commitId = args.commitId?.trim();
-    if (!commitId) {
+    if (!commitId && !args.inReplyTo) {
       const { data: pr } = await octokit.rest.pulls.get({
         owner,
         repo,
@@ -370,16 +373,32 @@ export const createPullRequestReviewComment = action({
     }
 
     try {
-      const { data: comment } = await octokit.rest.pulls.createReviewComment({
-        owner,
-        repo,
-        pull_number: args.pullNumber,
-        body,
-        commit_id: commitId,
-        path,
-        line: args.line,
-        side: args.side ?? "RIGHT",
-      });
+      let comment;
+      if (args.inReplyTo) {
+        const response = await octokit.rest.pulls.createReviewComment({
+          owner,
+          repo,
+          pull_number: args.pullNumber,
+          body,
+          in_reply_to: args.inReplyTo,
+          // Octokit types require commit_id/path; GitHub accepts in_reply_to alone.
+          commit_id: "",
+          path: "",
+        } as Parameters<typeof octokit.rest.pulls.createReviewComment>[0]);
+        comment = response.data;
+      } else {
+        const response = await octokit.rest.pulls.createReviewComment({
+          owner,
+          repo,
+          pull_number: args.pullNumber,
+          body,
+          commit_id: commitId!,
+          path,
+          line: args.line,
+          side: args.side ?? "RIGHT",
+        });
+        comment = response.data;
+      }
 
       return mapPullRequestReviewComment(comment);
     } catch (error) {

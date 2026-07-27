@@ -52,6 +52,7 @@ export type GitHubPullRequestReviewComment = {
   authorAvatarUrl: string;
   createdAt: string;
   url: string;
+  inReplyToId?: number;
 };
 
 export type GitHubPullRequestDetail = GitHubPullRequestSummary & {
@@ -221,24 +222,26 @@ export function useGitHubPullRequests(projectId: string) {
   const createReviewComment = useCallback(
     async (args: {
       pullNumber: number;
-      path: string;
-      line: number;
       body: string;
+      path?: string;
+      line?: number;
       side?: "LEFT" | "RIGHT";
       commitId?: string;
+      inReplyTo?: number;
     }) => {
       setIsReviewCommenting(true);
       try {
         const comment = await reviewCommentAction({
           projectId: projectId as Id<"projects">,
           pullNumber: args.pullNumber,
-          path: args.path,
-          line: args.line,
+          path: args.path ?? "",
+          line: args.line ?? 1,
           body: args.body,
           side: args.side,
           commitId: args.commitId,
+          inReplyTo: args.inReplyTo,
         });
-        toast.success("Review comment posted");
+        toast.success(args.inReplyTo ? "Reply posted" : "Review comment posted");
         return comment;
       } catch (error) {
         toast.error(

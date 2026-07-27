@@ -1,8 +1,9 @@
 "use client";
 
 import { useMonaco } from "@monaco-editor/react";
-import { MarkerSeverity } from "monaco-editor";
 import { useEffect, useState } from "react";
+
+import { MONACO_MARKER_SEVERITY } from "@/features/workspace/lib/monaco-ssr-safe";
 
 export type ProblemSeverity = "error" | "warning" | "info";
 
@@ -20,10 +21,10 @@ export type WorkspaceProblem = {
   code?: string;
 };
 
-function severityFromMarker(severity: MarkerSeverity): ProblemSeverity | null {
-  if (severity === MarkerSeverity.Error) return "error";
-  if (severity === MarkerSeverity.Warning) return "warning";
-  if (severity === MarkerSeverity.Info) return "info";
+function severityFromMarker(severity: number): ProblemSeverity | null {
+  if (severity === MONACO_MARKER_SEVERITY.Error) return "error";
+  if (severity === MONACO_MARKER_SEVERITY.Warning) return "warning";
+  if (severity === MONACO_MARKER_SEVERITY.Info) return "info";
   return null;
 }
 

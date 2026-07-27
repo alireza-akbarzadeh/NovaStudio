@@ -1,7 +1,6 @@
 "use client";
 
 import type { editor } from "monaco-editor";
-import { KeyCode } from "monaco-editor";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -75,13 +74,15 @@ export function useMonacoBreakpoints({
       toggleBreakpoint(filePath, line);
     };
 
-    const attach = (ed: editor.IStandaloneCodeEditor) => {
+    const attach = async (ed: editor.IStandaloneCodeEditor) => {
       if (isDebuggableScriptPath(filePath)) {
         decorationIdsRef.current = ed.deltaDecorations(
           decorationIdsRef.current,
           breakpointDecorations(linesRef.current),
         );
       }
+
+      const { KeyCode } = await import("monaco-editor");
 
       // Glyph margin (2) or line numbers (3).
       mouseDisposable = ed.onMouseDown((event) => {
@@ -141,7 +142,7 @@ export function useMonacoBreakpoints({
         pollId = window.setTimeout(tryAttach, 120);
         return;
       }
-      attach(ed);
+      void attach(ed);
     };
 
     tryAttach();

@@ -81,6 +81,15 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 27 | **Stash preview / diff** | `review` | Expand stash → file list → diff before apply · Apply & keep |
 
+### Sprint H — GitHub in-app hub
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 28 | **GitHub Issues hub** | `review` | Git panel → GitHub → Issues: list, create, comment, close/reopen |
+| 29 | **GitHub Pull Requests hub** | `review` | List, create, open PR in full editor tab |
+| 30 | **GitHub Actions / CI** | `review` | Workflow runs + status in GitHub hub |
+| 31 | **PR inline review** | `review` | Side-by-side diff · line comments · collapsible threads · replies · copy suggestion |
+
 ### Later / hard infrastructure
 
 | # | Feature | Status | Notes |
@@ -312,6 +321,33 @@ These are the biggest daily-friction gaps you called out.
 - Click a file → inline Monaco diff (current tree vs stashed content)
 - Per-file +/- counts before apply
 - **Apply** removes the stash · **Apply & keep** restores without deleting
+
+### 28. GitHub Issues hub — ready for review
+
+- Git panel **GitHub** tab → **Issues** sub-tab
+- List open/closed issues · create new · view detail inline
+- Comment on issues · close / reopen without leaving NovaStudio
+
+### 29. GitHub Pull Requests hub — ready for review
+
+- **Pull Requests** sub-tab: list, filter, create PR from branches
+- Click a PR → opens as a **full-width editor tab** (not cramped sidebar)
+- Review dropdown: Approve · Request changes · Merge
+- Collapsible conversation panel for PR-level comments
+
+### 30. GitHub Actions / CI — ready for review
+
+- **Actions** sub-tab lists recent workflow runs for the linked repo
+- Status badges (success / failure / in progress) · link to run on GitHub
+
+### 31. PR inline review — ready for review
+
+- Side-by-side Monaco diff per changed file
+- Click a line or **+** to add a review comment with optional suggestion block
+- Comments live in a **collapsible panel below the diff** (no overlap with code)
+- Each thread collapses/expands · click line or thread to jump/highlight
+- **Reply** in thread · **Copy** on suggested changes
+- Parses GitHub ` ```suggestion ` blocks into a readable diff snippet
 
 ### 17. Full Next/Vite host — ready for review
 

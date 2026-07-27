@@ -21,6 +21,11 @@ export type PullRequestDiffReviewProps = {
     body: string;
     suggestion?: string;
   }) => Promise<void>;
+  onSubmitThreadReply?: (args: {
+    line: number;
+    body: string;
+    inReplyTo: number;
+  }) => Promise<void>;
 };
 
 export type SubmitLineCommentArgs = PullRequestDiffReviewProps["onSubmitLineComment"] extends (
