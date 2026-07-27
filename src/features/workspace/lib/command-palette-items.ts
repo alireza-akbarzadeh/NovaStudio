@@ -149,6 +149,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "shift+f12",
   },
   {
+    id: "peekDefinition",
+    label: "Peek Definition",
+    keywords: "inline preview definition symbol alt f12",
+    shortcut: "alt+f12",
+  },
+  {
     id: "renameSymbol",
     label: "Rename Symbol",
     keywords: "refactor f2 symbol identifier",

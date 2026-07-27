@@ -21,6 +21,7 @@ import { LanguageSupportBanner } from "@/features/workspace/components/language-
 import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-monaco-editor";
 import { resolveSafeMonacoLanguage } from "@/features/workspace/lib/language-support";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
+import { registerAutoImport } from "@/features/workspace/lib/monaco-auto-import";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
@@ -340,6 +341,17 @@ export function CodeEditor({
         );
       } catch (error) {
         console.warn("[editor] symbol refactor unavailable", error);
+      }
+
+      try {
+        disposablesRef.current.push(
+          registerAutoImport(monaco, ed, () => ({
+            currentPath: filePathRef.current,
+            files: definitionFilesRef.current ?? [],
+          })),
+        );
+      } catch (error) {
+        console.warn("[editor] auto-import unavailable", error);
       }
 
       editorRef.current = ed;

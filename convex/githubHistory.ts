@@ -166,3 +166,110 @@ export const listFileCommits = action({
     });
   },
 });
+
+export const getFileAtCommit = action({
+  args: {
+    projectId: v.id("projects"),
+    path: v.string(),
+    sha: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    path: string;
+    sha: string;
+    shortSha: string;
+    content: string;
+    exists: boolean;
+  }> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const filePath = args.path.trim().replace(/^\/+/, "");
+    const sha = args.sha.trim();
+    if (!filePath) {
+      throw new Error("File path is required");
+    }
+    if (!sha) {
+      throw new Error("Commit SHA is required");
+    }
+
+    const token = await getClerkGitHubToken(identity.subject);
+    if (!token) {
+      throw new Error("GitHub is not connected.");
+    }
+
+    const context = await ctx.runQuery(internal.githubPushMutations.getPushContext, {
+      projectId: args.projectId,
+    });
+
+    if (!context) {
+      throw new Error("Project not found");
+    }
+
+    const { project } = context;
+    if (project.ownerId !== identity.subject) {
+      throw new Error("Unauthorized access to this project");
+    }
+    if (!project.githubRepoUrl) {
+      throw new Error("This project is not linked to a GitHub repository");
+    }
+
+    const { owner, repo } = parseOwnerRepo(project.githubRepoUrl);
+    const octokit = createOctokit(token);
+
+    try {
+      const { data } = await octokit.rest.repos.getContent({
+        owner,
+        repo,
+        path: filePath,
+        ref: sha,
+      });
+
+      if (Array.isArray(data) || data.type !== "file") {
+        return {
+          path: filePath,
+          sha,
+          shortSha: sha.slice(0, 7),
+          content: "",
+          exists: false,
+        };
+      }
+
+      const raw = data.content ?? "";
+      const content =
+        data.encoding === "base64"
+          ? Buffer.from(raw.replace(/\n/g, ""), "base64").toString("utf-8")
+          : raw;
+
+      return {
+        path: filePath,
+        sha,
+        shortSha: sha.slice(0, 7),
+        content,
+        exists: true,
+      };
+    } catch (error) {
+      const status =
+        error &&
+        typeof error === "object" &&
+        "status" in error &&
+        typeof (error as { status?: number }).status === "number"
+          ? (error as { status: number }).status
+          : null;
+      if (status === 404) {
+        return {
+          path: filePath,
+          sha,
+          shortSha: sha.slice(0, 7),
+          content: "",
+          exists: false,
+        };
+      }
+      throw error;
+    }
+  },
+});

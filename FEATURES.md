@@ -113,6 +113,14 @@ These are the biggest daily-friction gaps you called out.
 | 38 | **File git history** | `review` | Git → History tab · toggle all commits vs current file |
 | 39 | **Deploy env sync** | `review` | Env panel · Pull/Push Vercel or Netlify · merge into `.env*` (requires deploy link) |
 
+### Sprint L — Git history & deploy polish (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 40 | **Restore file from git history** | `review` | File-scoped History · click commit → diff vs current · Restore to working tree |
+| 41 | **Vercel deploy status polling** | `review` | Poll Vercel deployments until ready/error (matches Netlify) |
+| 42 | **Peek definition** | `review` | Alt+F12 inline peek at symbol definition · command palette |
+
 ### Later / hard infrastructure
 
 | # | Feature | Status | Notes |
@@ -410,6 +418,46 @@ These are the biggest daily-friction gaps you called out.
 - Preview console logs how many vars were loaded on start
 - Saving in the Environment panel **auto-restarts** a running preview (HMR server picks up new values)
 - Files still sync to the container FS so Vite/Next native dotenv also works
+
+### 37. Go to Symbol in workspace — ready for review
+
+- **⌘T** (or command palette) opens workspace symbol search
+- Indexes functions, classes, types, and components across project files
+- Fuzzy filter · click jumps to file + line
+- Respects local editor drafts when indexing
+
+### 38. File git history — ready for review
+
+- Git panel **History** tab lists recent commits on the linked branch
+- Toggle **All commits** vs **current file** (when a file is open)
+- Refresh · open commit on GitHub via external link icon
+
+### 39. Deploy env sync — ready for review
+
+- Environment panel **Deploy sync** cards for Vercel + Netlify
+- **Pull** merges remote variables into the editor · **Push** upserts editor rows to the linked project
+- Compact provider cards (logo · link status · Pull | Push segmented control)
+- Collapsible paste `.env` section · Save optional before push
+- Requires deploy provider connection + at least one deploy to link the project/site
+
+### 40. Restore file from git history — ready for review
+
+- Git → **History** with a file open → switch to file-scoped commits
+- Click a commit → inline diff (current working tree vs file at that SHA)
+- **Restore** writes the historical version into your working tree (with confirm)
+- External link icon still opens the commit on GitHub
+
+### 41. Vercel deploy status polling — ready for review
+
+- **Refresh deployment status** now polls Vercel (not just Netlify)
+- Maps Vercel `readyState` → stored status · updates URL when live
+- In-app + webhook notifications when status flips to ready/error
+
+### 42. Peek definition — ready for review
+
+- **Alt+F12** or command palette → **Peek Definition**
+- Uses Monaco peek widget with the existing go-to-definition resolver
+- Works for imports, JSX components, and local symbols in `.ts` / `.tsx` / `.js` / `.jsx`
 
 ### 17. Full Next/Vite host — ready for review
 

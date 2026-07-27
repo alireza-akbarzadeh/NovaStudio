@@ -102,6 +102,12 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         description: "Also ⌘-click a component or import",
       },
       {
+        id: "peek-definition",
+        label: "Peek definition",
+        keys: "⌥ F12",
+        description: "Inline preview at the symbol definition",
+      },
+      {
         id: "inline-ai-edit",
         label: "Inline AI edit",
         keys: "⌘ K",

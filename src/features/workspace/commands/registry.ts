@@ -15,6 +15,7 @@ import { isApplePlatform } from "@/lib/keyboard";
 import { toast } from "sonner";
 import {
   runFindReferences,
+  runPeekDefinition,
   runRenameSymbol,
 } from "@/features/workspace/lib/symbol-refactor-actions";
 
@@ -63,6 +64,7 @@ export type CommandId =
   | "toggleZenMode"
   | "toggleBlame"
   | "findReferences"
+  | "peekDefinition"
   | "renameSymbol";
 
 export type Command = {
@@ -427,6 +429,14 @@ export const workspaceCommands: Command[] = [
     allowInInput: true,
     run: () => {
       void runFindReferences();
+    },
+  },
+  {
+    id: "peekDefinition",
+    shortcut: "alt+f12",
+    allowInInput: true,
+    run: () => {
+      void runPeekDefinition();
     },
   },
   {

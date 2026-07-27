@@ -38,3 +38,7 @@ export function runFindReferences(): boolean {
 export function runRenameSymbol(): boolean {
   return runActiveEditorAction("polaris.renameSymbol");
 }
+
+export function runPeekDefinition(): boolean {
+  return runActiveEditorAction("editor.action.peekDefinition");
+}

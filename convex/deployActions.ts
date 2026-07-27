@@ -10,7 +10,13 @@ import {
   type DeployProvider,
 } from "./lib/deploy";
 import { deployNetlifyFromGit, fetchNetlifyDeployStatus, fetchNetlifySiteEnv, pushNetlifySiteEnv, verifyNetlifyToken } from "./lib/netlify";
-import { deployVercelFromGit, fetchVercelProjectEnv, pushVercelProjectEnv, verifyVercelToken } from "./lib/vercel";
+import {
+  deployVercelFromGit,
+  fetchVercelDeploymentStatus,
+  fetchVercelProjectEnv,
+  pushVercelProjectEnv,
+  verifyVercelToken,
+} from "./lib/vercel";
 
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
 
@@ -276,27 +282,33 @@ export const refreshDeploymentStatus = action({
       };
     }
 
-    if (deployment.provider !== "netlify") {
-      // Vercel polling can be added later; return stored status for now.
-      return {
-        status: deployment.status,
-        url: deployment.url,
-        inspectorUrl: deployment.inspectorUrl,
-      };
-    }
-
+    const provider = deployment.provider;
     const connection = await ctx.runQuery(internal.deploy.getConnectionSecret, {
       userId: identity.subject,
-      provider: "netlify",
+      provider,
     });
     if (!connection) {
-      throw new Error("Netlify is not connected");
+      throw new Error(
+        `${provider === "vercel" ? "Vercel" : "Netlify"} is not connected`,
+      );
     }
 
-    const latest = await fetchNetlifyDeployStatus({
-      token: connection.accessToken,
-      deployId: deployment.externalId,
+    const linked = await ctx.runQuery(internal.deploy.getProjectTargetInternal, {
+      projectId: deployment.projectId,
+      provider,
     });
+
+    const latest =
+      provider === "vercel"
+        ? await fetchVercelDeploymentStatus({
+            token: connection.accessToken,
+            deploymentId: deployment.externalId,
+            teamId: linked?.teamId ?? connection.teamId,
+          })
+        : await fetchNetlifyDeployStatus({
+            token: connection.accessToken,
+            deployId: deployment.externalId,
+          });
 
     await ctx.runMutation(internal.deploy.updateDeployment, {
       deploymentId: args.deploymentId,

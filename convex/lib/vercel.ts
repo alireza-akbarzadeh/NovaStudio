@@ -299,3 +299,71 @@ export async function pushVercelProjectEnv(args: {
 
   return { pushed, failed };
 }
+
+type VercelDeploymentDetail = {
+  id: string;
+  url?: string;
+  inspectorUrl?: string;
+  readyState?: string;
+  status?: string;
+  errorMessage?: string;
+  error?: { message?: string };
+};
+
+/** Map Vercel deployment state into a compact status we store in Convex. */
+export function normalizeVercelDeployState(state: string | undefined): string {
+  const value = (state ?? "").toUpperCase();
+  if (value === "READY") return "ready";
+  if (value === "ERROR" || value === "FAILED") return "error";
+  if (value === "CANCELED" || value === "CANCELLED") return "cancelled";
+  if (
+    value === "QUEUED" ||
+    value === "BUILDING" ||
+    value === "INITIALIZING" ||
+    value === "UPLOADING"
+  ) {
+    return "building";
+  }
+  return value ? value.toLowerCase() : "building";
+}
+
+export async function fetchVercelDeploymentStatus(args: {
+  token: string;
+  deploymentId: string;
+  teamId?: string | null;
+}): Promise<{
+  status: string;
+  url?: string;
+  inspectorUrl?: string;
+  errorMessage?: string;
+  rawState?: string;
+}> {
+  const response = await fetch(
+    `https://api.vercel.com/v13/deployments/${encodeURIComponent(args.deploymentId)}${teamQuery(args.teamId)}`,
+    { headers: { Authorization: `Bearer ${args.token}` } },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const deployment = (await response.json()) as VercelDeploymentDetail;
+  const rawState = deployment.readyState || deployment.status;
+  const status = normalizeVercelDeployState(rawState);
+  const host = deployment.url
+    ? deployment.url.startsWith("http")
+      ? deployment.url
+      : `https://${deployment.url}`
+    : undefined;
+
+  return {
+    status,
+    url: status === "ready" ? host : undefined,
+    inspectorUrl: deployment.inspectorUrl,
+    errorMessage:
+      deployment.errorMessage ??
+      deployment.error?.message ??
+      undefined,
+    rawState,
+  };
+}
