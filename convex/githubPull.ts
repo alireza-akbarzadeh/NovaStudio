@@ -3,9 +3,12 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { getClerkGitHubToken, parseRepoUrl } from "./lib/github";
 import { fetchRepoFiles } from "./lib/githubFetch";
+
+const WRITE_BATCH_SIZE = 40;
+const DELETE_BATCH_SIZE = 200;
 
 export const pullFromGitHub = action({
   args: {
@@ -18,7 +21,7 @@ export const pullFromGitHub = action({
   handler: async (
     ctx,
     args,
-  ): Promise<{ commitSha: string; fileCount: number; branch: string }> => {
+  ): Promise<{ queued: true; branch: string }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
@@ -55,32 +58,120 @@ export const pullFromGitHub = action({
       );
     }
 
-    const { owner, repo } = parseRepoUrl(project.githubRepoUrl);
     const branch =
       args.branch?.trim() || project.githubBranch?.trim() || "main";
 
-    const { files, commitSha } = await fetchRepoFiles(
-      token,
-      owner,
-      repo,
-      branch,
+    const { importJobToken } = await ctx.runMutation(
+      internal.githubPullMutations.queuePullJob,
+      {
+        projectId: args.projectId,
+        githubBranch: branch,
+      },
     );
 
-    if (files.length === 0) {
-      throw new Error("No importable files found on this branch.");
-    }
-
-    await ctx.runMutation(internal.githubPullMutations.replaceFiles, {
+    await ctx.scheduler.runAfter(0, internal.githubPull.processPullJob, {
       projectId: args.projectId,
-      files,
-      commitSha,
-      githubBranch: branch,
+      jobToken: importJobToken,
+      branch,
     });
 
     return {
-      commitSha,
-      fileCount: files.length,
+      queued: true,
       branch,
     };
+  },
+});
+
+export const processPullJob = internalAction({
+  args: {
+    projectId: v.id("projects"),
+    jobToken: v.string(),
+    branch: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ ok: true; fileCount: number }> => {
+    const project = await ctx.runQuery(internal.githubPullMutations.getPullJob, {
+      projectId: args.projectId,
+    });
+
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    if (project.importStatus !== "importing") {
+      return { ok: true, fileCount: 0 };
+    }
+    if (!project.importJobToken || project.importJobToken !== args.jobToken) {
+      throw new Error("Pull job token mismatch");
+    }
+    if (project.source !== "github" || !project.githubRepoUrl) {
+      throw new Error("This project is not linked to a GitHub repository");
+    }
+
+    try {
+      const token = await getClerkGitHubToken(project.ownerId);
+      if (!token) {
+        throw new Error(
+          "GitHub is not connected. Link your GitHub account to pull changes.",
+        );
+      }
+
+      const { owner, repo } = parseRepoUrl(project.githubRepoUrl);
+      const { files, commitSha } = await fetchRepoFiles(
+        token,
+        owner,
+        repo,
+        args.branch,
+      );
+      if (files.length === 0) {
+        throw new Error("No importable files found on this branch.");
+      }
+
+      await ctx.runMutation(internal.githubPullMutations.setPullProgress, {
+        projectId: args.projectId,
+        totalFiles: files.length,
+        doneFiles: 0,
+      });
+
+      // Clear existing files in batches to stay under transaction limits.
+      for (;;) {
+        const { remaining } = await ctx.runMutation(
+          internal.githubPullMutations.clearProjectFilesBatch,
+          {
+            projectId: args.projectId,
+            limit: DELETE_BATCH_SIZE,
+          },
+        );
+        if (remaining === 0) break;
+      }
+
+      for (let i = 0; i < files.length; i += WRITE_BATCH_SIZE) {
+        const batch = files.slice(i, i + WRITE_BATCH_SIZE);
+        await ctx.runMutation(internal.githubPullMutations.insertFilesBatch, {
+          projectId: args.projectId,
+          files: batch,
+        });
+        await ctx.runMutation(internal.githubPullMutations.setPullProgress, {
+          projectId: args.projectId,
+          doneFiles: Math.min(i + batch.length, files.length),
+          totalFiles: files.length,
+        });
+      }
+
+      await ctx.runMutation(internal.githubPullMutations.completePullJob, {
+        projectId: args.projectId,
+        commitSha,
+        githubBranch: args.branch,
+        fileCount: files.length,
+      });
+
+      return { ok: true, fileCount: files.length };
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "Failed to pull from GitHub";
+      await ctx.runMutation(internal.githubPullMutations.failPullJob, {
+        projectId: args.projectId,
+        reason,
+      });
+      throw error;
+    }
   },
 });

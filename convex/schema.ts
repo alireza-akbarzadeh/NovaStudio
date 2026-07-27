@@ -62,6 +62,11 @@ export default defineSchema({
     ),
     importStartedAt: v.optional(v.number()),
     importJobToken: v.optional(v.string()),
+    /** Progress while cloning / pulling from GitHub. */
+    importTotalFiles: v.optional(v.number()),
+    importDoneFiles: v.optional(v.number()),
+    /** True when file bodies live in projectFileContents (not inline on projectFiles). */
+    fileContentSplit: v.optional(v.boolean()),
     /** Non-interactive CLI to run once WebContainer boots (e.g. create-next-app). */
     pendingScaffoldCommand: v.optional(v.string()),
     exportStatus: v.optional(
@@ -154,8 +159,12 @@ export default defineSchema({
     name: v.string(),
     parentId: v.optional(v.id("projectFiles")),
     kind: v.union(v.literal("file"), v.literal("folder")),
+    /** @deprecated — content lives in projectFileContents. */
     content: v.optional(v.string()),
+    /** @deprecated — synced baseline lives in projectFileContents. */
     syncedContent: v.optional(v.string()),
+    contentHash: v.optional(v.string()),
+    syncedContentHash: v.optional(v.string()),
     staged: v.optional(v.boolean()),
     path: v.string(),
     updatedAt: v.number(),
@@ -163,6 +172,15 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_project_parent", ["projectId", "parentId"])
     .index("by_project_path", ["projectId", "path"]),
+
+  /** File bodies stored separately so tree listings stay under Convex read limits. */
+  projectFileContents: defineTable({
+    projectId: v.id("projects"),
+    path: v.string(),
+    content: v.string(),
+    syncedContent: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_project_path", ["projectId", "path"]),
 
   userPreferences: defineTable({
     userId: v.string(),

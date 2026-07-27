@@ -39,6 +39,7 @@ import type * as lib_githubFetch from "../lib/githubFetch.js";
 import type * as lib_importProjectFiles from "../lib/importProjectFiles.js";
 import type * as lib_netlify from "../lib/netlify.js";
 import type * as lib_projectAccess from "../lib/projectAccess.js";
+import type * as lib_projectFileContents from "../lib/projectFileContents.js";
 import type * as lib_projectFiles from "../lib/projectFiles.js";
 import type * as lib_projectTemplates from "../lib/projectTemplates.js";
 import type * as lib_recordActivity from "../lib/recordActivity.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "lib/importProjectFiles": typeof lib_importProjectFiles;
   "lib/netlify": typeof lib_netlify;
   "lib/projectAccess": typeof lib_projectAccess;
+  "lib/projectFileContents": typeof lib_projectFileContents;
   "lib/projectFiles": typeof lib_projectFiles;
   "lib/projectTemplates": typeof lib_projectTemplates;
   "lib/recordActivity": typeof lib_recordActivity;

@@ -19,6 +19,7 @@ import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
 import { Button } from "@/components/ui/button";
+import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { useProject } from "@/features/projects/hooks/use-projects";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
@@ -159,22 +160,62 @@ export function WorkspaceChangeList({
 
   if (!project.syncedAt) {
     const isGitHub = project.source === "github" && project.githubRepoUrl;
+    const isSyncing = project.importStatus === "importing";
+    const total = project.importTotalFiles;
+    const done = project.importDoneFiles ?? 0;
+    const hasProgress = typeof total === "number" && total > 0;
+    const percent = hasProgress
+      ? Math.min(100, Math.round((done / total) * 100))
+      : null;
+    const startedAt = project.importStartedAt;
+    const canRetryStuck =
+      isSyncing &&
+      typeof startedAt === "number" &&
+      Date.now() - startedAt > 45_000;
+
     return (
       <div className="flex flex-col gap-3 px-3 py-5">
         <div className="flex size-9 items-center justify-center rounded-md bg-ws-hover text-ws-text-muted">
-          <GitBranchIcon className="size-4" />
+          {isSyncing ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <GitBranchIcon className="size-4" />
+          )}
         </div>
         <div className="space-y-1">
           <p className="text-[12px] font-medium text-ws-text">
-            Change tracking not ready
+            {isSyncing ? "Syncing repository…" : "Change tracking not ready"}
           </p>
           <p className="text-[11px] leading-relaxed text-ws-text-muted">
-            {isGitHub
-              ? "Pull from GitHub once to create a sync baseline, then edits will show up here with diffs."
-              : "Initialize a GitHub repository for this project to stage, diff, and push local changes."}
+            {isSyncing
+              ? hasProgress
+                ? `Writing files ${done.toLocaleString()} / ${total.toLocaleString()} (${percent}%). Usually finishes within about a minute.`
+                : "Downloading repository from GitHub… usually under a minute."
+              : isGitHub
+                ? "Pull from GitHub once to create a sync baseline, then edits will show up here with diffs."
+                : "Initialize a GitHub repository for this project to stage, diff, and push local changes."}
           </p>
         </div>
-        {!isGitHub ? (
+        {isSyncing ? (
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-ws-hover">
+            <div
+              className="h-full rounded-full bg-ws-accent transition-[width] duration-300"
+              style={{
+                width: percent == null ? "30%" : `${percent}%`,
+                ...(percent == null
+                  ? { animation: "pulse 1.4s ease-in-out infinite" }
+                  : {}),
+              }}
+            />
+          </div>
+        ) : null}
+        {isGitHub && (canRetryStuck || !isSyncing) ? (
+          <RetryPullButton
+            projectId={projectId}
+            label={canRetryStuck ? "Retry fast sync" : undefined}
+          />
+        ) : null}
+        {!isGitHub && !isSyncing ? (
           <Button
             type="button"
             size="sm"
@@ -422,6 +463,34 @@ function parentDir(path: string): string {
   const parts = path.split("/").filter(Boolean);
   if (parts.length <= 1) return "";
   return parts.slice(0, -1).join("/");
+}
+
+function RetryPullButton({
+  projectId,
+  label = "Pull from GitHub",
+}: {
+  projectId: string;
+  label?: string;
+}) {
+  const { pull, isPulling } = usePullFromGitHub(projectId);
+  return (
+    <Button
+      type="button"
+      size="sm"
+      disabled={isPulling}
+      onClick={() => void pull({ force: true })}
+      className="h-7 w-fit bg-ws-accent text-[11px] text-white hover:bg-ws-accent-hover"
+    >
+      {isPulling ? (
+        <>
+          <Loader2Icon className="size-3 animate-spin" />
+          Starting…
+        </>
+      ) : (
+        label
+      )}
+    </Button>
+  );
 }
 
 function ChangeSection({

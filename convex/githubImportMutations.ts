@@ -86,6 +86,8 @@ export const completeImport = internalMutation({
       updatedAt: Date.now(),
       importStartedAt: undefined,
       importJobToken: undefined,
+      importTotalFiles: undefined,
+      importDoneFiles: undefined,
     });
 
     await createNotification(ctx, {
@@ -116,6 +118,8 @@ export const failImport = internalMutation({
       updatedAt: Date.now(),
       importStartedAt: undefined,
       importJobToken: undefined,
+      importTotalFiles: undefined,
+      importDoneFiles: undefined,
     });
 
     await createNotification(ctx, {
@@ -157,6 +161,8 @@ export const failImportWithToken = mutation({
       updatedAt: Date.now(),
       importStartedAt: undefined,
       importJobToken: undefined,
+      importTotalFiles: undefined,
+      importDoneFiles: undefined,
     });
 
     await createNotification(ctx, {
@@ -262,6 +268,8 @@ export const failStaleImport = mutation({
       updatedAt: Date.now(),
       importStartedAt: undefined,
       importJobToken: undefined,
+      importTotalFiles: undefined,
+      importDoneFiles: undefined,
     });
 
     await createNotification(ctx, {

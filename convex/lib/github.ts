@@ -18,7 +18,7 @@ const IGNORED_PATHS = new Set([
   ".env",
 ]);
 
-export const MAX_IMPORT_FILES = 500;
+export const MAX_IMPORT_FILES = 5000;
 export const MAX_FILE_BYTES = 512 * 1024;
 
 export function parseRepoUrl(input: string): { owner: string; repo: string } {

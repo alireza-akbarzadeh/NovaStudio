@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import {
   buildPath,
   deleteFolderRecursive,
@@ -19,6 +21,13 @@ import {
   identityDisplayName,
 } from "./lib/projectAccess";
 import { recordProjectActivity } from "./lib/recordActivity";
+import {
+  hashContent,
+  readFileContent,
+  upsertFileContent,
+  deleteFileContent,
+  copyFileContent,
+} from "./lib/projectFileContents";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
@@ -95,10 +104,111 @@ export const listByProject = query({
   },
   handler: async (ctx, args) => {
     await verifyProjectAccess(ctx, args.projectId);
-    return await ctx.db
+    const rows = await ctx.db
       .query("projectFiles")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
+
+    return rows.map((file) => ({
+      _id: file._id,
+      _creationTime: file._creationTime,
+      projectId: file.projectId,
+      name: file.name,
+      parentId: file.parentId,
+      kind: file.kind,
+      path: file.path,
+      updatedAt: file.updatedAt,
+      staged: file.staged,
+      contentHash: file.contentHash,
+      syncedContentHash: file.syncedContentHash,
+    }));
+  },
+});
+
+/** Paginated file bodies for WebContainer mount / export. */
+export const listFileContentsPage = query({
+  args: {
+    projectId: v.id("projects"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+    return await ctx.db
+      .query("projectFileContents")
+      .withIndex("by_project_path", (q) => q.eq("projectId", args.projectId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+/** Move inline file bodies off projectFiles (legacy → split table). */
+export const migrateInlineContentBatch = internalMutation({
+  args: {
+    projectId: v.id("projects"),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    let migrated = 0;
+    let hasMore = false;
+
+    for await (const file of ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))) {
+      if (file.kind !== "file") continue;
+      if (file.content === undefined && file.syncedContent === undefined) {
+        continue;
+      }
+
+      const content = file.content ?? "";
+      await upsertFileContent(ctx, {
+        projectId: args.projectId,
+        path: file.path,
+        content,
+        syncedContent: file.syncedContent,
+      });
+
+      await ctx.db.patch(file._id, {
+        content: undefined,
+        syncedContent: undefined,
+        contentHash: hashContent(content),
+        syncedContentHash:
+          file.syncedContent !== undefined
+            ? hashContent(file.syncedContent)
+            : undefined,
+      });
+
+      migrated += 1;
+      if (migrated >= args.limit) {
+        hasMore = true;
+        break;
+      }
+    }
+
+    if (hasMore) {
+      await ctx.scheduler.runAfter(0, internal.projectFiles.migrateInlineContentBatch, {
+        projectId: args.projectId,
+        limit: args.limit,
+      });
+    } else {
+      await ctx.db.patch(args.projectId, {
+        fileContentSplit: true,
+        updatedAt: Date.now(),
+      });
+    }
+
+    return { migrated, hasMore };
+  },
+});
+
+export const startContentMigration = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectAccess(ctx, args.projectId);
+    await ctx.scheduler.runAfter(0, internal.projectFiles.migrateInlineContentBatch, {
+      projectId: args.projectId,
+      limit: 40,
+    });
   },
 });
 
@@ -121,6 +231,9 @@ export const listChangedFiles = query({
   },
   handler: async (ctx, args) => {
     const project = await verifyProjectAccess(ctx, args.projectId);
+    if (project.fileContentSplit !== true) {
+      return [];
+    }
     if (!project.syncedAt) {
       return [];
     }
@@ -139,6 +252,7 @@ export const listChangedFiles = query({
         updatedAt: file.updatedAt,
         staged: file.staged === true,
         isNew:
+          file.syncedContentHash === undefined &&
           file.syncedContent === undefined &&
           file._creationTime > project.syncedAt!,
       }))
@@ -162,22 +276,28 @@ export const listStagedCommitContext = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    return files
-      .filter(
-        (file) =>
-          file.kind === "file" &&
-          file.staged === true &&
-          isProjectFileChanged(file, project.syncedAt),
-      )
-      .map((file) => ({
+    const staged = files.filter(
+      (file) =>
+        file.kind === "file" &&
+        file.staged === true &&
+        isProjectFileChanged(file, project.syncedAt),
+    );
+
+    const rows = [];
+    for (const file of staged) {
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      rows.push({
         path: file.path,
         isNew:
+          file.syncedContentHash === undefined &&
           file.syncedContent === undefined &&
           file._creationTime > project.syncedAt!,
-        content: truncateForCommitContext(file.content),
-        syncedContent: truncateForCommitContext(file.syncedContent),
-      }))
-      .sort((a, b) => a.path.localeCompare(b.path));
+        content: truncateForCommitContext(body.content),
+        syncedContent: truncateForCommitContext(body.syncedContent),
+      });
+    }
+
+    return rows.sort((a, b) => a.path.localeCompare(b.path));
   },
 });
 
@@ -197,20 +317,26 @@ export const listChangedCommitContext = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    return files
-      .filter(
-        (file) =>
-          file.kind === "file" && isProjectFileChanged(file, project.syncedAt),
-      )
-      .map((file) => ({
+    const changed = files.filter(
+      (file) =>
+        file.kind === "file" && isProjectFileChanged(file, project.syncedAt),
+    );
+
+    const rows = [];
+    for (const file of changed) {
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      rows.push({
         path: file.path,
         isNew:
+          file.syncedContentHash === undefined &&
           file.syncedContent === undefined &&
           file._creationTime > project.syncedAt!,
-        content: truncateForCommitContext(file.content),
-        syncedContent: truncateForCommitContext(file.syncedContent),
-      }))
-      .sort((a, b) => a.path.localeCompare(b.path));
+        content: truncateForCommitContext(body.content),
+        syncedContent: truncateForCommitContext(body.syncedContent),
+      });
+    }
+
+    return rows.sort((a, b) => a.path.localeCompare(b.path));
   },
 });
 
@@ -281,9 +407,14 @@ export const discardFileChanges = mutation({
       return;
     }
 
+    const body = await readFileContent(ctx, args.projectId, args.path, file);
+    const hasBaseline =
+      body.syncedContent !== undefined || file.syncedContentHash !== undefined;
+
     // New unsynced file — discard by deleting.
-    if (file.syncedContent === undefined) {
+    if (!hasBaseline) {
       if (file._creationTime > (project.syncedAt ?? 0)) {
+        await deleteFileContent(ctx, args.projectId, args.path);
         await ctx.db.delete(file._id);
         await touchProject(ctx, args.projectId);
         return;
@@ -293,8 +424,19 @@ export const discardFileChanges = mutation({
       );
     }
 
+    const baseline = body.syncedContent ?? "";
+    await upsertFileContent(ctx, {
+      projectId: args.projectId,
+      path: args.path,
+      content: baseline,
+      syncedContent: baseline,
+    });
+    const baselineHash = hashContent(baseline);
     await ctx.db.patch(file._id, {
-      content: file.syncedContent,
+      content: undefined,
+      syncedContent: undefined,
+      contentHash: baselineHash,
+      syncedContentHash: baselineHash,
       staged: false,
       updatedAt: project.syncedAt ?? Date.now(),
     });
@@ -309,12 +451,21 @@ export const getByPath = query({
   },
   handler: async (ctx, args) => {
     await verifyProjectAccess(ctx, args.projectId);
-    return await ctx.db
+    const file = await ctx.db
       .query("projectFiles")
       .withIndex("by_project_path", (q) =>
         q.eq("projectId", args.projectId).eq("path", args.path),
       )
       .unique();
+    if (!file) return null;
+    if (file.kind !== "file") return file;
+
+    const body = await readFileContent(ctx, args.projectId, args.path, file);
+    return {
+      ...file,
+      content: body.content,
+      syncedContent: body.syncedContent,
+    };
   },
 });
 
@@ -381,12 +532,21 @@ export const create = mutation({
       name: leafName,
       parentId,
       kind: args.kind,
-      content,
-      syncedContent: undefined,
+      ...(args.kind === "file"
+        ? { contentHash: hashContent(content ?? "") }
+        : {}),
       staged: args.kind === "file" ? false : undefined,
       path,
       updatedAt: now,
     });
+
+    if (args.kind === "file") {
+      await upsertFileContent(ctx, {
+        projectId: args.projectId,
+        path,
+        content: content ?? "",
+      });
+    }
 
     if (args.kind === "folder") {
       folderIds.push(fileId);
@@ -476,11 +636,25 @@ export const writeFileAtPath = mutation({
       if (existingFile.kind !== "file") {
         throw new Error(`Path conflict: ${filePath} is a folder`);
       }
+      const body = await readFileContent(
+        ctx,
+        args.projectId,
+        filePath,
+        existingFile,
+      );
       const stillChanged =
-        existingFile.syncedContent === undefined ||
-        args.content !== existingFile.syncedContent;
-      await ctx.db.patch(existingFile._id, {
+        body.syncedContent === undefined ||
+        args.content !== body.syncedContent;
+      await upsertFileContent(ctx, {
+        projectId: args.projectId,
+        path: filePath,
         content: args.content,
+        syncedContent: body.syncedContent,
+      });
+      await ctx.db.patch(existingFile._id, {
+        content: undefined,
+        syncedContent: undefined,
+        contentHash: hashContent(args.content),
         updatedAt: now,
         staged: stillChanged ? existingFile.staged === true : false,
       });
@@ -488,13 +662,17 @@ export const writeFileAtPath = mutation({
       return { path: filePath, created: false };
     }
 
+    await upsertFileContent(ctx, {
+      projectId: args.projectId,
+      path: filePath,
+      content: args.content,
+    });
     await ctx.db.insert("projectFiles", {
       projectId: args.projectId,
       name: fileName,
       parentId,
       kind: "file",
-      content: args.content,
-      syncedContent: undefined,
+      contentHash: hashContent(args.content),
       staged: false,
       path: filePath,
       updatedAt: now,
@@ -529,12 +707,21 @@ export const updateContent = mutation({
 
     const now = Date.now();
     const nextContent = args.content;
-    const contentChanged = file.content !== nextContent;
+    const body = await readFileContent(ctx, args.projectId, args.path, file);
+    const contentChanged = body.content !== nextContent;
     const stillChanged =
-      file.syncedContent === undefined || nextContent !== file.syncedContent;
+      body.syncedContent === undefined || nextContent !== body.syncedContent;
 
-    await ctx.db.patch(file._id, {
+    await upsertFileContent(ctx, {
+      projectId: args.projectId,
+      path: args.path,
       content: nextContent,
+      syncedContent: body.syncedContent,
+    });
+    await ctx.db.patch(file._id, {
+      content: undefined,
+      syncedContent: undefined,
+      contentHash: hashContent(nextContent),
       updatedAt: now,
       staged: stillChanged ? file.staged === true : false,
     });
@@ -555,7 +742,7 @@ export const updateContent = mutation({
         actorName:
           member?.name ??
           (identity ? identityDisplayName(identity) : undefined),
-        beforeContent: file.content ?? "",
+        beforeContent: body.content,
         afterContent: nextContent,
       });
     }
@@ -647,6 +834,8 @@ export const remove = mutation({
 
     if (item.kind === "folder") {
       await deleteFolderRecursive(ctx, item._id, args.projectId);
+    } else {
+      await deleteFileContent(ctx, args.projectId, args.path);
     }
 
     await ctx.db.delete(item._id);
@@ -819,12 +1008,17 @@ async function duplicateNodeRecursive(
     name,
     parentId,
     kind: source.kind,
-    content: source.kind === "file" ? (source.content ?? "") : undefined,
-    syncedContent: undefined,
+    ...(source.kind === "file"
+      ? { contentHash: source.contentHash ?? hashContent("") }
+      : {}),
     staged: source.kind === "file" ? false : undefined,
     path,
     updatedAt: now,
   });
+
+  if (source.kind === "file") {
+    await copyFileContent(ctx, projectId, source.path, path, source);
+  }
 
   if (source.kind === "folder") {
     const children = await ctx.db

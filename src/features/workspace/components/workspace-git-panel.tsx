@@ -70,6 +70,15 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
   }
 
   const isGitHub = project.source === "github" && project.githubRepoUrl;
+  const isSyncing = project.importStatus === "importing";
+  const syncTotal = project.importTotalFiles;
+  const syncDone = project.importDoneFiles ?? 0;
+  const syncLabel =
+    isSyncing && typeof syncTotal === "number" && syncTotal > 0
+      ? ` · syncing ${syncDone}/${syncTotal}`
+      : isSyncing
+        ? " · syncing…"
+        : "";
   const changeCount = changedFiles?.length ?? 0;
   const stagedCount = changedFiles?.filter((file) => file.staged).length ?? 0;
   const unstagedCount = changeCount - stagedCount;
@@ -132,12 +141,12 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                 size="icon-sm"
                 variant="ghost"
                 disabled={isPulling || isPushing}
-                onClick={() => void pull()}
-                title="Pull from GitHub"
-                aria-label="Pull from GitHub"
+                onClick={() => void pull({ force: isSyncing })}
+                title={isSyncing ? "Restart sync" : "Pull from GitHub"}
+                aria-label={isSyncing ? "Restart sync" : "Pull from GitHub"}
                 className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
               >
-                {isPulling ? (
+                {isPulling || isSyncing ? (
                   <Loader2Icon className="size-3.5 animate-spin" />
                 ) : (
                   <DownloadIcon className="size-3.5" />
@@ -147,7 +156,7 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                 type="button"
                 size="icon-sm"
                 variant="ghost"
-                disabled={!canPush || isGenerating}
+                disabled={!canPush || isGenerating || isSyncing}
                 onClick={() => void onCommitAndPush()}
                 title={
                   canPush
@@ -172,18 +181,22 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
                 size="icon-sm"
                 variant="ghost"
                 disabled={isPulling || isPushing}
-                onClick={() => void pull()}
+                onClick={() => void pull({ force: isSyncing })}
                 title="Refresh"
                 aria-label="Refresh"
                 className="size-6 rounded-sm text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
               >
                 <RefreshCwIcon
-                  className={cn("size-3.5", isPulling && "animate-spin")}
+                  className={cn(
+                    "size-3.5",
+                    (isPulling || isSyncing) && "animate-spin",
+                  )}
                 />
               </Button>
               <div className="mx-1 h-3.5 w-px shrink-0 bg-ws-border-subtle" />
               <span className="truncate px-1 text-[10px] text-ws-text-muted">
                 {project.githubBranch ?? "main"}
+                {syncLabel}
                 {changeCount > 0
                   ? ` · ${changeCount} change${changeCount === 1 ? "" : "s"}`
                   : ""}

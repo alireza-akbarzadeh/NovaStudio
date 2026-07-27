@@ -1,6 +1,11 @@
 import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
+import {
+  hashContent,
+  readFileContent,
+  upsertFileContent,
+} from "./lib/projectFileContents";
 
 export const getInitContext = internalQuery({
   args: {
@@ -22,12 +27,14 @@ export const getInitContext = internalQuery({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    const fileEntries = files
-      .filter((file) => file.kind === "file")
-      .map((file) => ({
+    const fileEntries = [];
+    for (const file of files.filter((row) => row.kind === "file")) {
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      fileEntries.push({
         path: file.path,
-        content: file.content ?? "",
-      }));
+        content: body.content,
+      });
+    }
 
     return {
       project,
@@ -71,8 +78,19 @@ export const linkRepository = internalMutation({
 
     for (const file of files) {
       if (file.kind !== "file") continue;
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      const syncedHash = hashContent(body.content);
+      await upsertFileContent(ctx, {
+        projectId: args.projectId,
+        path: file.path,
+        content: body.content,
+        syncedContent: body.content,
+      });
       await ctx.db.patch(file._id, {
-        syncedContent: file.content ?? "",
+        content: undefined,
+        syncedContent: undefined,
+        contentHash: syncedHash,
+        syncedContentHash: syncedHash,
         staged: false,
         updatedAt: now,
       });
@@ -85,6 +103,7 @@ export const linkRepository = internalMutation({
       lastCommitSha: args.commitSha,
       syncedAt: now,
       exportStatus: "completed",
+      fileContentSplit: true,
       updatedAt: now,
     });
   },

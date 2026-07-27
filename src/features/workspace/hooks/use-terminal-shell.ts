@@ -76,6 +76,9 @@ export function useTerminalShell(projectId: string) {
         writeln("Pulling from GitHub…");
         try {
           const result = await pull();
+          if ("queued" in result && result.queued) {
+            return `Pull queued for '${result.branch}'. Sync is running in background.`;
+          }
           return `Updated ${result.fileCount} file${result.fileCount === 1 ? "" : "s"} from ${result.branch} (${result.commitSha.slice(0, 7)})`;
         } catch (error) {
           if (isActionCancelled(error)) throw error;

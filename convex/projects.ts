@@ -62,10 +62,12 @@ export const createProject = mutation({
     // CLI scaffolds (create-next-app) need an empty root — skip static seed files.
     if (!pendingScaffoldCommand) {
       await seedProjectFiles(ctx, projectId, templateId);
+      await ctx.db.patch(projectId, { fileContentSplit: true });
     } else {
       await ctx.db.patch(projectId, {
         templateId,
         syncedAt: Date.now(),
+        fileContentSplit: true,
       });
     }
 

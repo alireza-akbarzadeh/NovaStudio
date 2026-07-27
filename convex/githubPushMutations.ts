@@ -2,6 +2,11 @@ import { v } from "convex/values";
 
 import { internalMutation, internalQuery } from "./_generated/server";
 import { isProjectFileChanged } from "./lib/projectFiles";
+import {
+  hashContent,
+  readFileContent,
+  upsertFileContent,
+} from "./lib/projectFileContents";
 
 export const getPushContext = internalQuery({
   args: {
@@ -23,12 +28,18 @@ export const getPushContext = internalQuery({
         isProjectFileChanged(file, project.syncedAt) && file.staged === true,
     );
 
+    const changedFiles = [];
+    for (const file of stagedFiles) {
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      changedFiles.push({
+        path: file.path,
+        content: body.content,
+      });
+    }
+
     return {
       project,
-      changedFiles: stagedFiles.map((file) => ({
-        path: file.path,
-        content: file.content ?? "",
-      })),
+      changedFiles,
     };
   },
 });
@@ -70,8 +81,19 @@ export const completePush = internalMutation({
       if (file.kind !== "file" || !pathSet.has(file.path)) {
         continue;
       }
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      const syncedHash = hashContent(body.content);
+      await upsertFileContent(ctx, {
+        projectId: args.projectId,
+        path: file.path,
+        content: body.content,
+        syncedContent: body.content,
+      });
       await ctx.db.patch(file._id, {
-        syncedContent: file.content ?? "",
+        content: undefined,
+        syncedContent: undefined,
+        contentHash: syncedHash,
+        syncedContentHash: syncedHash,
         staged: false,
         updatedAt: now,
       });

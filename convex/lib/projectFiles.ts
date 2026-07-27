@@ -6,6 +6,13 @@ import {
   type SeedNode,
   type TemplateId,
 } from "./projectTemplates";
+import {
+  deleteFileContent,
+  hashContent,
+  renameContentPath,
+  upsertFileContent,
+  copyFileContent,
+} from "./projectFileContents";
 
 export {
   resolveProjectAccess,
@@ -160,12 +167,24 @@ export function isProjectFileChanged(
     kind: "file" | "folder";
     content?: string;
     syncedContent?: string;
+    contentHash?: string;
+    syncedContentHash?: string;
     updatedAt: number;
   },
   syncedAt: number | undefined,
 ): boolean {
   if (file.kind !== "file") {
     return false;
+  }
+
+  if (
+    file.contentHash !== undefined ||
+    file.syncedContentHash !== undefined
+  ) {
+    if (file.syncedContentHash === undefined) {
+      return true;
+    }
+    return file.contentHash !== file.syncedContentHash;
   }
 
   if (file.syncedContent !== undefined) {
@@ -191,6 +210,8 @@ export async function deleteFolderRecursive(
   for (const child of children) {
     if (child.kind === "folder") {
       await deleteFolderRecursive(ctx, child._id, projectId);
+    } else {
+      await deleteFileContent(ctx, projectId, child.path);
     }
     await ctx.db.delete(child._id);
   }
@@ -210,8 +231,12 @@ export async function updateDescendantPaths(
   for (const file of allFiles) {
     if (file.path === oldPrefix || file.path.startsWith(`${oldPrefix}/`)) {
       const suffix = file.path.slice(oldPrefix.length);
+      const newPath = `${newPrefix}${suffix}`;
+      if (file.kind === "file") {
+        await renameContentPath(ctx, projectId, file.path, newPath);
+      }
       await ctx.db.patch(file._id, {
-        path: `${newPrefix}${suffix}`,
+        path: newPath,
         updatedAt: Date.now(),
       });
     }
@@ -236,12 +261,25 @@ async function seedNode(
     name: node.name,
     parentId,
     kind: isFile ? "file" : "folder",
-    content,
-    syncedContent: isFile ? content : undefined,
+    ...(isFile
+      ? {
+          contentHash: hashContent(content ?? ""),
+          syncedContentHash: hashContent(content ?? ""),
+        }
+      : {}),
     staged: false,
     path,
     updatedAt: now,
   });
+
+  if (isFile && content !== undefined) {
+    await upsertFileContent(ctx, {
+      projectId,
+      path,
+      content,
+      syncedContent: content,
+    });
+  }
 
   if (node.children) {
     for (const child of node.children) {
