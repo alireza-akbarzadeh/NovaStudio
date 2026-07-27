@@ -80,7 +80,7 @@ File tree, Monaco editor, AI sidebar, terminal, and preview — the full coding 
 | **Extensions** | Marketplace for editor themes + Vue language pack; installs sync to your account |
 | **Auth & billing** | Clerk sign-in, orgs / workspaces, pricing & Pro upgrade surface |
 | **Notifications** | In-app alerts + optional web push |
-| **Integrations** | GitHub live; Slack, Linear, Discord, Vercel, Notion marked coming soon |
+| **Integrations** | GitHub, Linear, Notion, Slack/Discord, Vercel/Netlify, Google Calendar |
 
 ### Already strong (good places to contribute polish)
 

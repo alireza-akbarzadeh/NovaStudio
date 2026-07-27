@@ -149,6 +149,20 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
+  /**
+   * Google Calendar link metadata. Access tokens come from Clerk
+   * (`oauth_google`) at call time — never stored here.
+   */
+  googleCalendarConnections: defineTable({
+    userId: v.string(),
+    googleUserId: v.string(),
+    email: v.string(),
+    displayName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   /** Linked Linear issue per NovaStudio project. */
   projectLinearLinks: defineTable({
     projectId: v.id("projects"),

@@ -5,7 +5,8 @@ export type IntegrationId =
   | "discord"
   | "vercel"
   | "netlify"
-  | "notion";
+  | "notion"
+  | "google-calendar";
 
 export type IntegrationStatus = "connected" | "available" | "coming-soon";
 
@@ -81,5 +82,14 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     category: "Productivity",
     status: "available",
     accent: "from-neutral-700 to-neutral-900",
+  },
+  {
+    id: "google-calendar",
+    name: "Google Calendar",
+    description:
+      "See upcoming meetings in the Calendar hub and create events with Google Meet links.",
+    category: "Productivity",
+    status: "available",
+    accent: "from-[#4285F4] to-[#34A853]",
   },
 ];

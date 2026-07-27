@@ -74,6 +74,7 @@ These are the biggest daily-friction gaps you called out.
 | 24 | **Discord integration** | `review` | Channel webhook · deploy success/failure alerts |
 | 25 | **Linear integration** | `review` | API key · Git Linear tab · create / state / cycle · sync on push / deploy |
 | 26 | **Notion integration** | `review` | Internal integration · export AI plans + markdown docs to pages |
+| 31 | **Google Calendar** | `review` | Clerk Google OAuth · Calendar hub meetings · create event + Meet link |
 
 ### Sprint G — Git & editor (current focus)
 
@@ -349,6 +350,14 @@ These are the biggest daily-friction gaps you called out.
 - **Markdown tabs** → right-click tab → Export to Notion (uses draft buffer when unsaved)
 - Creates child pages with headings, lists, paragraphs, and fenced code blocks
 - Integration secret stored server-side; never returned to clients
+
+### 31. Google Calendar — ready for review
+
+- Integrations hub **Google Calendar** card: Clerk `oauth_google` + Calendar scopes (same pattern as GitHub)
+- **Calendar hub**: meetings for the selected day · Join Meet · open in Google
+- **Schedule meeting**: title · start/end · optional Google Meet link
+- Project **deadlines** remain separate on the same page
+- Access tokens fetched from Clerk at call time; never stored in Convex
 
 ### 27. Stash preview / diff — ready for review
 

@@ -2,6 +2,7 @@
 
 import { ComingSoonIntegrationCard } from "@/features/integrations/components/coming-soon-integration-card";
 import { GitHubIntegrationCard } from "@/features/integrations/components/github-integration-card";
+import { GoogleCalendarIntegrationCard } from "@/features/integrations/components/google-calendar-integration-card";
 import { LinearIntegrationCard } from "@/features/integrations/components/linear-integration-card";
 import { NotionIntegrationCard } from "@/features/integrations/components/notion-integration-card";
 import { WebhookIntegrationCard } from "@/features/integrations/components/webhook-integration-card";
@@ -48,6 +49,9 @@ export function IntegrationCard({ integration }: IntegrationCardProps) {
   }
   if (integration.id === "notion") {
     return <NotionIntegrationCard integration={integration} />;
+  }
+  if (integration.id === "google-calendar") {
+    return <GoogleCalendarIntegrationCard integration={integration} />;
   }
   return <ComingSoonIntegrationCard integration={integration} />;
 }
