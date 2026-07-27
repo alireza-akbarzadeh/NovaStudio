@@ -22,6 +22,7 @@ import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-mona
 import { resolveSafeMonacoLanguage } from "@/features/workspace/lib/language-support";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerAutoImport } from "@/features/workspace/lib/monaco-auto-import";
+import { syncDefinitionModels } from "@/features/workspace/lib/monaco-definition-models";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
@@ -199,6 +200,17 @@ export function CodeEditor({
       cancelled = true;
     };
   }, [language, enabledIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loader.init().then((monaco) => {
+      if (cancelled) return;
+      syncDefinitionModels(monaco, definitionFiles, filePath);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [definitionFiles, filePath]);
 
   const extensionTheme = monacoThemeIdForActiveExtension(activeThemeId);
   const theme =

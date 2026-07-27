@@ -33,7 +33,6 @@
 .polaris-monaco .monaco-editor .monaco-hover,
 .polaris-monaco .monaco-editor .parameter-hints-widget,
 .polaris-monaco .monaco-editor .find-widget,
-.polaris-monaco .monaco-editor .zone-widget .peekview-widget,
 .polaris-monaco .context-view.monaco-menu-container {
   border-radius: var(--monaco-chrome-radius) !important;
   border: 1px solid var(--ws-border) !important;
@@ -156,14 +155,120 @@
 }
 
 /* ── Peek view (go-to-definition inline) ── */
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget {
+  border-radius: var(--monaco-chrome-radius) var(--monaco-chrome-radius) 0 0 !important;
+  border: 1px solid var(--ws-border) !important;
+  border-top: 2px solid var(--ws-accent) !important;
+  overflow: hidden;
+  box-shadow: var(--monaco-chrome-shadow);
+  background: var(--ws-panel) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin-top: 2px;
+}
+
 .polaris-monaco .monaco-editor .zone-widget .peekview-widget .head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--ws-border);
-  padding: 4px 8px;
+  background: color-mix(in oklab, var(--ws-panel) 90%, var(--ws-accent)) !important;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-title .dirname {
+  color: var(--ws-text-muted);
+  opacity: 0.9;
+  flex-shrink: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-title .filename {
+  color: var(--ws-text);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-title .meta {
+  color: var(--ws-text-muted);
+  opacity: 0.75;
+  font-size: 10px;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-actions .action-label {
+  border-radius: 4px;
+  padding: 2px 5px;
+  transition: background-color 80ms ease, opacity 80ms ease;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .head .peekview-actions .action-label:hover {
+  background: var(--ws-hover);
+  opacity: 1;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget > .body {
+  border-top: none;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .peekview-editor .monaco-editor {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .peekview-results {
+  background: color-mix(in oklab, var(--ws-panel) 94%, var(--ws-bg)) !important;
+  border-left: 1px solid var(--ws-border);
   font-size: 11px;
 }
 
-.polaris-monaco .monaco-editor .zone-widget .peekview-widget .body {
-  border-top: none;
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .peekview-results .monaco-list-row {
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .peekview-results .monaco-list-row.focused,
+.polaris-monaco .monaco-editor .zone-widget .peekview-widget .peekview-results .monaco-list-row.selected {
+  background: color-mix(in oklab, var(--ws-accent) 16%, transparent) !important;
+}
+
+.polaris-monaco .monaco-editor .reference-zone-widget .ref-tree .referenceMatch {
+  background: color-mix(in oklab, var(--ws-accent) 32%, transparent);
+  border-radius: 2px;
+}
+
+.polaris-monaco .monaco-editor .reference-zone-widget .ref-tree .monaco-list-row {
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin: 0 4px;
+}
+
+.polaris-monaco .monaco-editor .reference-zone-widget .ref-tree .monaco-list-row.focused,
+.polaris-monaco .monaco-editor .reference-zone-widget .ref-tree .monaco-list-row.selected {
+  background: color-mix(in oklab, var(--ws-accent) 16%, transparent) !important;
 }
 
 /* ── Context menu ── */
