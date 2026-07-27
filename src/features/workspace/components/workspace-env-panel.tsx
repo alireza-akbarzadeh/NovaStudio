@@ -50,6 +50,18 @@ type EnvRow = {
   id: string;
 };
 
+type DeployEnvPullResult =
+  | {
+      ok: true;
+      variables: Array<{ key: string; value: string }>;
+      projectName: string;
+    }
+  | {
+      ok: false;
+      reason: "not_connected" | "no_target" | "provider_error";
+      message?: string;
+    };
+
 function rowsFromContent(content: string, filePath: string): EnvRow[] {
   return parseEnvBulk(content, filePath).map((entry, index) => ({
     key: entry.key,
@@ -82,7 +94,9 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
   const previewServer = useOptionalPreviewServer();
   const pasteRef = useRef<HTMLTextAreaElement>(null);
   const pullVercelEnv = useAction(api.deployActions.pullVercelEnv);
+  const pullNetlifyEnv = useAction(api.deployActions.pullNetlifyEnv);
   const { isConnected: isVercelConnected } = useDeployConnection("vercel");
+  const { isConnected: isNetlifyConnected } = useDeployConnection("netlify");
   const vercelTarget = useQuery(
     api.deploy.getProjectTarget,
     isAuthenticated
@@ -92,7 +106,17 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
         }
       : "skip",
   );
+  const netlifyTarget = useQuery(
+    api.deploy.getProjectTarget,
+    isAuthenticated
+      ? {
+          projectId: projectId as Id<"projects">,
+          provider: "netlify" as const,
+        }
+      : "skip",
+  );
   const [importingFromVercel, setImportingFromVercel] = useState(false);
+  const [importingFromNetlify, setImportingFromNetlify] = useState(false);
 
   const envPaths = useMemo(() => {
     if (!metadata) return [];
@@ -254,36 +278,38 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
     });
   };
 
-  const onImportFromVercel = async () => {
-    setImportingFromVercel(true);
+  const onImportFromDeployProvider = async (
+    provider: "Vercel" | "Netlify",
+    pull: () => Promise<DeployEnvPullResult>,
+    setLoading: (loading: boolean) => void,
+  ) => {
+    setLoading(true);
     try {
-      const result = await pullVercelEnv({
-        projectId: projectId as Id<"projects">,
-      });
+      const result = await pull();
 
       if (!result.ok) {
         if (result.reason === "not_connected") {
-          toast.error("Vercel is not connected", {
-            description: "Connect Vercel from the Deploy panel first.",
+          toast.error(`${provider} is not connected`, {
+            description: `Connect ${provider} from the Deploy panel first.`,
           });
           return;
         }
         if (result.reason === "no_target") {
-          toast.error("No linked Vercel project", {
+          toast.error(`No linked ${provider} project`, {
             description:
               result.message ??
-              "Deploy this project to Vercel once, then try again.",
+              `Deploy this project to ${provider} once, then try again.`,
           });
           return;
         }
-        toast.error("Vercel import failed", {
+        toast.error(`${provider} import failed`, {
           description: result.message ?? "Could not load environment variables.",
         });
         return;
       }
 
       if (result.variables.length === 0) {
-        toast.message("No Vercel variables found", {
+        toast.message(`No ${provider} variables found`, {
           description: `Linked project: ${result.projectName}`,
         });
         return;
@@ -292,16 +318,36 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
       applyImportedEntries(result.variables, "merge");
       setImportOpen(true);
     } catch (error) {
-      toast.error("Vercel import failed", {
+      toast.error(`${provider} import failed`, {
         description:
           error instanceof Error
             ? error.message
             : "Could not load environment variables.",
       });
     } finally {
-      setImportingFromVercel(false);
+      setLoading(false);
     }
   };
+
+  const onImportFromVercel = () =>
+    void onImportFromDeployProvider(
+      "Vercel",
+      () =>
+        pullVercelEnv({
+          projectId: projectId as Id<"projects">,
+        }),
+      setImportingFromVercel,
+    );
+
+  const onImportFromNetlify = () =>
+    void onImportFromDeployProvider(
+      "Netlify",
+      () =>
+        pullNetlifyEnv({
+          projectId: projectId as Id<"projects">,
+        }),
+      setImportingFromNetlify,
+    );
 
   const onPasteFromClipboard = async () => {
     try {
@@ -421,7 +467,7 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
                       ? `Import from ${vercelTarget.name}`
                       : "Deploy to Vercel first to link a project"
                 }
-                onClick={() => void onImportFromVercel()}
+                onClick={onImportFromVercel}
                 className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
               >
                 {importingFromVercel ? (
@@ -430,6 +476,32 @@ export function WorkspaceEnvPanel({ projectId }: WorkspaceEnvPanelProps) {
                   <CloudDownloadIcon className="size-3" />
                 )}
                 Vercel
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={
+                  importingFromNetlify ||
+                  !isNetlifyConnected ||
+                  netlifyTarget === undefined
+                }
+                title={
+                  !isNetlifyConnected
+                    ? "Connect Netlify in the Deploy panel"
+                    : netlifyTarget
+                      ? `Import from ${netlifyTarget.name}`
+                      : "Deploy to Netlify first to link a site"
+                }
+                onClick={onImportFromNetlify}
+                className="h-6 gap-1 px-1.5 text-[10px] text-ws-text-muted"
+              >
+                {importingFromNetlify ? (
+                  <Loader2Icon className="size-3 animate-spin" />
+                ) : (
+                  <CloudDownloadIcon className="size-3" />
+                )}
+                Netlify
               </Button>
               <Button
                 type="button"

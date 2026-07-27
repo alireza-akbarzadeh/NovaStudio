@@ -303,3 +303,68 @@ export async function fetchNetlifyDeployStatus(args: {
     rawState: deploy.state,
   };
 }
+
+type NetlifyEnvVarValue = {
+  value?: string;
+  context?: string;
+};
+
+type NetlifyEnvVar = {
+  key?: string;
+  values?: NetlifyEnvVarValue[];
+  is_secret?: boolean;
+};
+
+const NETLIFY_ENV_CONTEXT_PRIORITY = [
+  "production",
+  "all",
+  "dev",
+  "dev-server",
+  "branch-deploy",
+  "deploy-preview",
+] as const;
+
+function pickNetlifyEnvValue(values: NetlifyEnvVarValue[]): string {
+  for (const context of NETLIFY_ENV_CONTEXT_PRIORITY) {
+    const match = values.find(
+      (entry) => entry.context === context && entry.value?.trim(),
+    );
+    if (match?.value) return match.value;
+  }
+  return values.find((entry) => entry.value?.trim())?.value ?? "";
+}
+
+export async function fetchNetlifySiteEnv(args: {
+  token: string;
+  siteId: string;
+}): Promise<Array<{ key: string; value: string }>> {
+  const response = await fetch(
+    `https://api.netlify.com/api/v1/sites/${encodeURIComponent(args.siteId)}/env`,
+    {
+      headers: {
+        Authorization: `Bearer ${args.token}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const envs = (await response.json()) as NetlifyEnvVar[];
+  const rows: Array<{ key: string; value: string }> = [];
+  const seen = new Set<string>();
+
+  for (const env of envs) {
+    const key = env.key?.trim();
+    if (!key) continue;
+    const value = pickNetlifyEnvValue(env.values ?? []);
+    if (!value.trim()) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({ key, value });
+  }
+
+  return rows.sort((a, b) => a.key.localeCompare(b.key));
+}
