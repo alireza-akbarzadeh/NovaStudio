@@ -17,6 +17,8 @@ import Image from "next/image";
 import {
   type DragEvent,
   type ReactNode,
+  useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -511,6 +513,11 @@ function EditorSplitPane({
   );
 }
 
+const stagePaneClass =
+  "h-full min-h-0 overflow-hidden rounded-[10px] border border-ws-border-subtle bg-ws-stage shadow-[0_1px_0_color-mix(in_oklab,var(--ws-text)_4%,transparent)]";
+
+const MAX_MOUNTED_FILE_TABS = 3;
+
 function EditorPrimarySurface({
   projectId,
   children,
@@ -519,6 +526,7 @@ function EditorPrimarySurface({
   children: ReactNode;
 }) {
   const { tabs, activeTabId } = useEditorTabs(projectId);
+  const [mountedTabIds, setMountedTabIds] = useState<string[]>([]);
   const fileTabs = tabs.filter(
     (tab): tab is EditorTab & { kind: "file"; path: string } =>
       tab.kind === "file" && Boolean(tab.path),
@@ -527,6 +535,21 @@ function EditorPrimarySurface({
   const activeFileKeptAlive =
     activeTab?.kind === "file" &&
     fileTabs.some((tab) => tab.id === activeTab.id);
+
+  useEffect(() => {
+    if (!activeTabId) return;
+    setMountedTabIds((prev) =>
+      [activeTabId, ...prev.filter((id) => id !== activeTabId)].slice(
+        0,
+        MAX_MOUNTED_FILE_TABS,
+      ),
+    );
+  }, [activeTabId]);
+
+  const mountedTabIdSet = useMemo(
+    () => new Set(mountedTabIds),
+    [mountedTabIds],
+  );
 
   if (tabs.length === 0) {
     return (
@@ -552,10 +575,13 @@ function EditorPrimarySurface({
 
   return (
     <div className="relative h-full min-h-0">
-      {/* Keep open file editors mounted so tab switches do not tear down
-          Liveblocks / wipe unsaved buffers. */}
+      {/* Keep recently used file editors mounted so tab switches preserve
+          unsaved buffers without holding Monaco for every open tab. */}
       {fileTabs.map((tab) => {
         const active = tab.id === activeTabId;
+        if (!mountedTabIdSet.has(tab.id)) {
+          return null;
+        }
         return (
           <div
             key={tab.id}

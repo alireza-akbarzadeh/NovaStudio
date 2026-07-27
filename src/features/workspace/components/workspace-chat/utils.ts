@@ -1,10 +1,10 @@
 import type { FileUIPart } from "ai";
 
 import type { MentionFileOption } from "@/features/workspace/components/workspace-chat/types";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import type { ProjectFileRow } from "@/features/workspace/hooks/use-project-files";
 
 export function filterMentionFiles(
-  files: ReturnType<typeof useProjectFiles>,
+  files: ProjectFileRow[] | undefined,
   query: string,
 ): MentionFileOption[] {
   const all = (files ?? [])

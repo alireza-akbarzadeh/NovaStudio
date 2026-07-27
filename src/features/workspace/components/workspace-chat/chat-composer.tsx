@@ -31,7 +31,7 @@ import {
 } from "@/features/workspace/components/workspace-chat/types";
 import { filterMentionFiles } from "@/features/workspace/components/workspace-chat/utils";
 import { VoiceNoteButton } from "@/features/workspace/components/workspace-chat/voice-note-button";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 
 export type ChatComposerProps = {
   projectId: string;
@@ -46,7 +46,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const controller = usePromptInputController();
   const attachments = usePromptInputAttachments();
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
 

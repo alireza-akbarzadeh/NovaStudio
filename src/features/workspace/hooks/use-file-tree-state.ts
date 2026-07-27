@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
@@ -16,6 +16,7 @@ import {
   collectFolderIdsFromTree,
   filterFileTree,
 } from "@/features/workspace/lib/search";
+import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 import {
   collectFolderIds,
@@ -35,6 +36,9 @@ export function useFileTreeState(projectId: string) {
   const canEdit = access?.canEdit ?? false;
   const seedDefaults = useSeedProjectFiles();
   const pathname = usePathname();
+  const setFileTreeState = useWorkspaceStore((s) => s.setFileTreeState);
+  const getFileTreeState = useWorkspaceStore((s) => s.getFileTreeState);
+  const skipPersistRef = useRef(true);
 
   const [collapseKey, setCollapseKey] = useState(0);
   const [openFolderIds, setOpenFolderIds] = useState<Set<Id<"projectFiles">>>(
@@ -52,6 +56,44 @@ export function useFileTreeState(projectId: string) {
   const [pendingDeleteId, setPendingDeleteId] =
     useState<Id<"projectFiles"> | null>(null);
   const [treeFilter, setTreeFilter] = useState("");
+
+  useEffect(() => {
+    const stored = getFileTreeState(projectId);
+    skipPersistRef.current = true;
+    setOpenFolderIds(new Set(stored.openFolderIds as Id<"projectFiles">[]));
+    setTreeFilter(stored.treeFilter);
+    setFocusedId(stored.focusedId as Id<"projectFiles"> | null);
+    setSelectedIds(new Set(stored.selectedIds as Id<"projectFiles">[]));
+    setSelectionAnchorId(
+      stored.selectionAnchorId as Id<"projectFiles"> | null,
+    );
+    setCollapseKey(0);
+    queueMicrotask(() => {
+      skipPersistRef.current = false;
+    });
+  }, [getFileTreeState, projectId]);
+
+  useEffect(() => {
+    if (skipPersistRef.current) {
+      return;
+    }
+
+    setFileTreeState(projectId, {
+      openFolderIds: [...openFolderIds],
+      treeFilter,
+      focusedId,
+      selectedIds: [...selectedIds],
+      selectionAnchorId,
+    });
+  }, [
+    focusedId,
+    openFolderIds,
+    projectId,
+    selectedIds,
+    selectionAnchorId,
+    setFileTreeState,
+    treeFilter,
+  ]);
 
   const tree = useMemo(
     () => (files ? buildFileTree(files) : undefined),
@@ -75,10 +117,13 @@ export function useFileTreeState(projectId: string) {
       return;
     }
 
-    if (collapseKey === 0) {
+    const stored = getFileTreeState(projectId);
+    const hasStoredFolders = stored.openFolderIds.length > 0;
+
+    if (collapseKey === 0 && !hasStoredFolders) {
       setOpenFolderIds(new Set(collectFolderIds(tree)));
     }
-  }, [tree, filteredTree, collapseKey, isFiltering]);
+  }, [collapseKey, filteredTree, getFileTreeState, isFiltering, projectId, tree]);
 
   useEffect(() => {
     if (!tree || focusedId !== null) {

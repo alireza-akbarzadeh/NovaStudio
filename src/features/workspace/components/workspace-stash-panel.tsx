@@ -15,6 +15,7 @@ import {
   useProjectStashes,
   useRemoveProjectStash,
 } from "@/features/workspace/hooks/use-project-files";
+import { clearFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 
 type WorkspaceStashPanelProps = {
   projectId: string;
@@ -48,6 +49,13 @@ export function WorkspaceStashPanel({ projectId }: WorkspaceStashPanelProps) {
   }, [changedFiles]);
 
   const create = async (onlyStaged: boolean) => {
+    const pathsToStash =
+      changedFiles
+        ?.filter((file) => (onlyStaged ? file.staged : true))
+        .map((file) => file.path) ?? [];
+
+    if (pathsToStash.length === 0) return;
+
     setCreating(true);
     try {
       await createStash({
@@ -55,6 +63,9 @@ export function WorkspaceStashPanel({ projectId }: WorkspaceStashPanelProps) {
         name: name.trim() || undefined,
         onlyStaged,
       });
+      for (const path of pathsToStash) {
+        clearFileContentDraft(projectId, path);
+      }
       setName("");
       toast.success(
         onlyStaged ? "Stashed staged changes" : "Stashed working changes",

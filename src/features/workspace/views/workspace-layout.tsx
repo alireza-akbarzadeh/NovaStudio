@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   usePanelRef,
   type Layout
@@ -41,6 +41,7 @@ import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsi
 import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
 import { usePendingScaffold } from "@/features/workspace/hooks/use-pending-scaffold";
+import { clearMemoryDraftsForOtherProjects } from "@/features/workspace/lib/file-content-drafts";
 import { useWorkspacePrefsSync } from "@/features/workspace/hooks/use-workspace-prefs-sync";
 import { useWorkspaceFocusSync } from "@/features/workspace/hooks/use-workspace-focus-sync";
 import { useWorkspaceShortcuts } from "@/features/workspace/hooks/use-workspace-shortcuts";
@@ -77,6 +78,10 @@ function WorkspaceLayoutInner({
   useUserJsonTabShortcut(projectId);
   usePendingScaffold(projectId);
   useWebContainerAutoInstall(projectId);
+
+  useEffect(() => {
+    clearMemoryDraftsForOtherProjects(projectId);
+  }, [projectId]);
 
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);

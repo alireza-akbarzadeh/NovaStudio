@@ -18,10 +18,16 @@ function getSearchWorker(): Worker {
 export function useProjectTextSearch(
   files: ProjectFileRow[] | undefined,
   query: string,
-  options: { caseSensitive?: boolean; pathPrefix?: string; enabled?: boolean },
+  options: {
+    caseSensitive?: boolean;
+    pathPrefix?: string;
+    enabled?: boolean;
+    maxMatches?: number;
+  },
 ) {
-  const { caseSensitive, pathPrefix, enabled = true } = options;
+  const { caseSensitive, pathPrefix, enabled = true, maxMatches } = options;
   const [matches, setMatches] = useState<SearchMatch[]>([]);
+  const [truncated, setTruncated] = useState(false);
   const [searching, setSearching] = useState(false);
 
   const workerRef = useRef<Worker | null>(null);
@@ -47,6 +53,7 @@ export function useProjectTextSearch(
     const trimmed = query.trim();
     if (!enabled || !searchableFiles || !trimmed) {
       setMatches([]);
+      setTruncated(false);
       setSearching(false);
       return;
     }
@@ -64,6 +71,7 @@ export function useProjectTextSearch(
         if (event.data.id !== requestId) return;
         worker.removeEventListener("message", onMessage);
         setMatches(event.data.matches);
+        setTruncated(event.data.truncated);
         setSearching(false);
       };
 
@@ -73,7 +81,7 @@ export function useProjectTextSearch(
         id: requestId,
         files: searchableFiles,
         query: trimmed,
-        options: { caseSensitive, pathPrefix },
+        options: { caseSensitive, pathPrefix, maxMatches },
       };
       worker.postMessage(payload);
     }, SEARCH_DEBOUNCE_MS);
@@ -81,7 +89,7 @@ export function useProjectTextSearch(
     return () => {
       window.clearTimeout(timer);
     };
-  }, [caseSensitive, enabled, pathPrefix, query, searchableFiles]);
+  }, [caseSensitive, enabled, maxMatches, pathPrefix, query, searchableFiles]);
 
-  return { matches, searching };
+  return { matches, searching, truncated };
 }

@@ -51,6 +51,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { WorkspaceAiModeToggle } from "@/features/workspace/components/workspace-ai-mode-toggle";
 import { WorkspaceAiModelPicker } from "@/features/workspace/components/workspace-ai-model-picker";
 import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { LruMap } from "@/features/workspace/lib/lru-map";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import type { AiChatMode } from "@/lib/ai/chat-mode";
 
@@ -72,7 +73,7 @@ type WorkspaceAiChatInputProps = {
 function buildMessageWithReferences(
   message: PromptInputMessage,
   referenced: (SourceDocumentUIPart & { id: string })[],
-  fileContents: Map<string, string>,
+  fileContents: LruMap<string, string>,
 ): PromptInputMessage {
   if (referenced.length === 0) return message;
 
@@ -251,7 +252,7 @@ function PromptInputFields({
 }: Omit<WorkspaceAiChatInputProps, "onSubmit"> & {
   mentionOpen: boolean;
   setMentionOpen: (open: boolean) => void;
-  fileContentsRef: MutableRefObject<Map<string, string>>;
+  fileContentsRef: MutableRefObject<LruMap<string, string>>;
 }) {
   const controller = usePromptInputController();
   const attachments = usePromptInputAttachments();
@@ -512,7 +513,7 @@ function PendingChatAttachBridge({
   fileContentsRef,
 }: {
   projectId: string;
-  fileContentsRef: MutableRefObject<Map<string, string>>;
+  fileContentsRef: MutableRefObject<LruMap<string, string>>;
 }) {
   const files = useProjectFiles(projectId);
   const referenced = usePromptInputReferencedSources();
@@ -569,7 +570,7 @@ function PromptInputShell({
 }: WorkspaceAiChatInputProps) {
   const [mentionOpen, setMentionOpen] = useState(false);
   const referencedRef = useRef<(SourceDocumentUIPart & { id: string })[]>([]);
-  const fileContentsRef = useRef<Map<string, string>>(new Map());
+  const fileContentsRef = useRef(new LruMap<string, string>(40));
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) =>

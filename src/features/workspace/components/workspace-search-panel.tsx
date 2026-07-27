@@ -15,6 +15,10 @@ import {
 } from "@/features/workspace/hooks/use-project-files";
 import { useProjectTextSearch } from "@/features/workspace/hooks/use-project-text-search";
 import {
+  SEARCH_FILE_NAME_LIMIT,
+  SEARCH_MATCH_PAGE_SIZE,
+} from "@/features/workspace/lib/search-limits";
+import {
   searchFilesByName,
   type FileNameMatch,
   type SearchMatch,
@@ -49,24 +53,37 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
 
   const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
+  const [textMatchLimit, setTextMatchLimit] = useState(SEARCH_MATCH_PAGE_SIZE);
+  const [fileMatchLimit, setFileMatchLimit] = useState(SEARCH_FILE_NAME_LIMIT);
 
   useEffect(() => {
     // Reset query when switching into a scoped find-in-folder.
     setQuery("");
   }, [folderScope]);
 
+  useEffect(() => {
+    setTextMatchLimit(SEARCH_MATCH_PAGE_SIZE);
+    setFileMatchLimit(SEARCH_FILE_NAME_LIMIT);
+  }, [query, caseSensitive, folderScope, mode]);
+
   const textMatchesFromWorker = useProjectTextSearch(files, query, {
     caseSensitive,
     pathPrefix: folderScope ?? undefined,
     enabled: mode === "text",
+    maxMatches: textMatchLimit,
   });
   const textMatches = textMatchesFromWorker.matches;
   const textSearching = textMatchesFromWorker.searching;
+  const textTruncated = textMatchesFromWorker.truncated;
 
-  const fileMatches = useMemo(() => {
-    if (mode !== "file" || !metadata || !query.trim()) return [];
-    return searchFilesByName(metadata, query);
-  }, [metadata, mode, query]);
+  const fileSearchResult = useMemo(() => {
+    if (mode !== "file" || !metadata || !query.trim()) {
+      return { matches: [] as FileNameMatch[], truncated: false };
+    }
+    return searchFilesByName(metadata, query, { maxResults: fileMatchLimit });
+  }, [fileMatchLimit, metadata, mode, query]);
+  const fileMatches = fileSearchResult.matches;
+  const fileTruncated = fileSearchResult.truncated;
 
   const grouped = useMemo(
     () => groupMatchesByFile(textMatches),
@@ -212,6 +229,13 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
                   </li>
                 ))}
               </ul>
+              {fileTruncated ? (
+                <ShowMoreButton
+                  onClick={() =>
+                    setFileMatchLimit((limit) => limit + SEARCH_FILE_NAME_LIMIT)
+                  }
+                />
+              ) : null}
             </div>
           )
         ) : textSearchPending ? (
@@ -258,10 +282,29 @@ export function WorkspaceSearchPanel({ projectId }: WorkspaceSearchPanelProps) {
                 </ul>
               </div>
             ))}
+            {textTruncated ? (
+              <ShowMoreButton
+                onClick={() =>
+                  setTextMatchLimit((limit) => limit + SEARCH_MATCH_PAGE_SIZE)
+                }
+              />
+            ) : null}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function ShowMoreButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mx-2 mt-1 w-[calc(100%-1rem)] rounded-sm border border-ws-border-subtle px-2 py-1 text-[11px] text-ws-text-secondary hover:bg-ws-hover hover:text-ws-text"
+    >
+      Show more results
+    </button>
   );
 }
 

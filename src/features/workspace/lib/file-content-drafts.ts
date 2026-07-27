@@ -1,9 +1,12 @@
 /** Local draft buffer so editor content survives refresh before Convex autosave. */
 
+import { LruMap } from "@/features/workspace/lib/lru-map";
+
 const STORAGE_PREFIX = "polaris-file-draft:";
 
-/** Session memory — survives tab remounts even if localStorage draft was cleared. */
-const memoryDrafts = new Map<string, FileContentDraft>();
+/** Session memory — survives tab remounts; capped to limit RAM on large projects. */
+const MAX_MEMORY_DRAFTS = 50;
+const memoryDrafts = new LruMap<string, FileContentDraft>(MAX_MEMORY_DRAFTS);
 
 export type FileContentDraft = {
   content: string;
@@ -83,6 +86,15 @@ export function clearFileContentDraft(
     localStorage.removeItem(storageKey(projectId, path));
   } catch {
     // ignore
+  }
+}
+
+/** Free RAM from other projects when entering a workspace. */
+export function clearMemoryDraftsForOtherProjects(activeProjectId: string) {
+  for (const key of memoryDrafts.keys()) {
+    if (!key.startsWith(`${activeProjectId}:`)) {
+      memoryDrafts.delete(key);
+    }
   }
 }
 

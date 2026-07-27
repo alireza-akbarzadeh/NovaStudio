@@ -16,20 +16,33 @@ export type FileNameMatch = {
   indices: number[];
 };
 
+export type SearchInFilesResult = {
+  matches: SearchMatch[];
+  truncated: boolean;
+};
+
 export function searchInFiles(
   files: Array<{ path: string; kind: string; content?: string }>,
   query: string,
-  options?: { caseSensitive?: boolean; pathPrefix?: string },
-): SearchMatch[] {
+  options?: {
+    caseSensitive?: boolean;
+    pathPrefix?: string;
+    maxMatches?: number;
+  },
+): SearchInFilesResult {
   const trimmed = query.trim();
-  if (!trimmed) return [];
+  if (!trimmed) {
+    return { matches: [], truncated: false };
+  }
 
   const caseSensitive = options?.caseSensitive ?? false;
   const needle = caseSensitive ? trimmed : trimmed.toLowerCase();
   const pathPrefix = options?.pathPrefix?.replace(/\/$/, "") ?? "";
+  const maxMatches = options?.maxMatches ?? Number.POSITIVE_INFINITY;
   const matches: SearchMatch[] = [];
+  let truncated = false;
 
-  for (const file of files) {
+  outer: for (const file of files) {
     if (file.kind !== "file" || !file.content) continue;
     if (
       pathPrefix &&
@@ -58,12 +71,17 @@ export function searchInFiles(
           matchEnd: index + trimmed.length,
         });
 
+        if (matches.length >= maxMatches) {
+          truncated = true;
+          break outer;
+        }
+
         start = index + (needle.length || 1);
       }
     }
   }
 
-  return matches;
+  return { matches, truncated };
 }
 
 /**
@@ -105,13 +123,22 @@ export function fuzzyMatchFile(query: string, path: string): boolean {
   );
 }
 
+export type SearchFilesByNameResult = {
+  matches: FileNameMatch[];
+  truncated: boolean;
+};
+
 export function searchFilesByName(
   files: Array<{ path: string; kind: string; name?: string }>,
   query: string,
-): FileNameMatch[] {
+  options?: { maxResults?: number },
+): SearchFilesByNameResult {
   const trimmed = query.trim();
-  if (!trimmed) return [];
+  if (!trimmed) {
+    return { matches: [], truncated: false };
+  }
 
+  const maxResults = options?.maxResults ?? Number.POSITIVE_INFINITY;
   const matches: FileNameMatch[] = [];
   for (const file of files) {
     if (file.kind !== "file") continue;
@@ -127,12 +154,21 @@ export function searchFilesByName(
     }
   }
 
-  return matches.sort((a, b) => {
+  const sorted = matches.sort((a, b) => {
     const aScore = a.indices.length > 0 ? 0 : 1;
     const bScore = b.indices.length > 0 ? 0 : 1;
     if (aScore !== bScore) return aScore - bScore;
     return a.path.localeCompare(b.path);
   });
+
+  if (sorted.length <= maxResults) {
+    return { matches: sorted, truncated: false };
+  }
+
+  return {
+    matches: sorted.slice(0, maxResults),
+    truncated: true,
+  };
 }
 
 /** Keep folders that contain matches (or match themselves) and matching files. */

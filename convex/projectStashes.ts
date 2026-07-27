@@ -4,8 +4,15 @@ import { mutation, query } from "./_generated/server";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import {
+  deleteFileContent,
+  hashContent,
+  readFileContent,
+  upsertFileContent,
+} from "./lib/projectFileContents";
+import {
   buildPath,
   ensureFolderSegments,
+  isProjectFileChanged,
   normalizeRelativePath,
   touchProject,
   verifyProjectAccess,
@@ -16,14 +23,14 @@ const MAX_STASH_FILES = 200;
 const MAX_STASH_BYTES = 700_000;
 
 type ProjectFileDoc = Doc<"projectFiles">;
+type ProjectDoc = Doc<"projects">;
 
-function isChangedFile(file: ProjectFileDoc): boolean {
-  if (file.kind !== "file") return false;
-  if (file.syncedContent !== undefined) {
-    return (file.content ?? "") !== file.syncedContent;
-  }
-  return true;
-}
+type StashFileSnapshot = {
+  path: string;
+  content: string;
+  syncedContent?: string;
+  staged: boolean;
+};
 
 function fileSizeBytes(value: string) {
   return new TextEncoder().encode(value).byteLength;
@@ -33,6 +40,74 @@ function normalizeStashName(name: string | undefined, fallbackIndex: number) {
   const trimmed = name?.trim();
   if (trimmed) return trimmed;
   return `WIP #${fallbackIndex}`;
+}
+
+async function loadChangedFileSnapshots(
+  ctx: MutationCtx,
+  project: ProjectDoc,
+  onlyStaged: boolean,
+): Promise<StashFileSnapshot[]> {
+  const files = await ctx.db
+    .query("projectFiles")
+    .withIndex("by_project", (q) => q.eq("projectId", project._id))
+    .collect();
+
+  const snapshots: StashFileSnapshot[] = [];
+
+  for (const file of files) {
+    if (file.kind !== "file") continue;
+    if (!isProjectFileChanged(file, project.syncedAt)) continue;
+    if (onlyStaged && file.staged !== true) continue;
+
+    const body = await readFileContent(ctx, project._id, file.path, file);
+    snapshots.push({
+      path: file.path,
+      content: body.content,
+      syncedContent: body.syncedContent,
+      staged: file.staged === true,
+    });
+  }
+
+  return snapshots;
+}
+
+/** Revert a changed file to its last synced baseline (JetBrains-style after stash). */
+async function revertFileToBaseline(
+  ctx: MutationCtx,
+  project: ProjectDoc,
+  file: ProjectFileDoc,
+) {
+  const body = await readFileContent(ctx, project._id, file.path, file);
+  const hasBaseline =
+    body.syncedContent !== undefined || file.syncedContentHash !== undefined;
+
+  if (!hasBaseline) {
+    if (file._creationTime > (project.syncedAt ?? 0)) {
+      await deleteFileContent(ctx, project._id, file.path);
+      await ctx.db.delete(file._id);
+      return;
+    }
+    throw new Error(
+      `Cannot stash "${file.path}" — no sync baseline. Push once to create one.`,
+    );
+  }
+
+  const baseline = body.syncedContent ?? "";
+  await upsertFileContent(ctx, {
+    projectId: project._id,
+    path: file.path,
+    content: baseline,
+    syncedContent: baseline,
+  });
+  const baselineHash = hashContent(baseline);
+  await ctx.db.patch(file._id, {
+    content: undefined,
+    syncedContent: undefined,
+    contentHash: baselineHash,
+    syncedContentHash: baselineHash,
+    staged: false,
+    updatedAt: project.syncedAt ?? Date.now(),
+  });
 }
 
 async function writeStashedFile(
@@ -69,14 +144,31 @@ async function writeStashedFile(
     .unique();
 
   const now = Date.now();
+  const contentHash = hashContent(args.content);
+  const syncedContentHash =
+    args.syncedContent !== undefined
+      ? hashContent(args.syncedContent)
+      : undefined;
+  const stillChanged =
+    args.syncedContent === undefined || args.content !== args.syncedContent;
+
+  await upsertFileContent(ctx, {
+    projectId: args.projectId,
+    path: filePath,
+    content: args.content,
+    syncedContent: args.syncedContent,
+  });
+
   if (existing) {
     if (existing.kind !== "file") {
       throw new Error(`Path conflict: ${filePath} is a folder`);
     }
     await ctx.db.patch(existing._id, {
-      content: args.content,
-      syncedContent: args.syncedContent,
-      staged: args.staged,
+      content: undefined,
+      syncedContent: undefined,
+      contentHash,
+      syncedContentHash,
+      staged: stillChanged ? args.staged : false,
       updatedAt: now,
     });
     return;
@@ -87,9 +179,11 @@ async function writeStashedFile(
     name: fileName,
     parentId,
     kind: "file",
-    content: args.content,
-    syncedContent: args.syncedContent,
-    staged: args.staged,
+    content: undefined,
+    syncedContent: undefined,
+    contentHash,
+    syncedContentHash,
+    staged: stillChanged ? args.staged : false,
     path: filePath,
     updatedAt: now,
   });
@@ -116,33 +210,29 @@ export const create = mutation({
     onlyStaged: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await verifyProjectWriteAccess(ctx, args.projectId);
-    const files = await ctx.db
-      .query("projectFiles")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
+    const { userId, project } = await verifyProjectWriteAccess(
+      ctx,
+      args.projectId,
+    );
+    const onlyStaged = args.onlyStaged === true;
 
-    const changedFiles = files
-      .filter((file) => isChangedFile(file))
-      .filter((file) => (args.onlyStaged ? file.staged === true : true));
+    const snapshots = await loadChangedFileSnapshots(ctx, project, onlyStaged);
 
-    if (changedFiles.length === 0) {
+    if (snapshots.length === 0) {
       throw new Error(
-        args.onlyStaged
-          ? "No staged files to stash"
-          : "No changed files to stash",
+        onlyStaged ? "No staged files to stash" : "No changed files to stash",
       );
     }
-    if (changedFiles.length > MAX_STASH_FILES) {
+    if (snapshots.length > MAX_STASH_FILES) {
       throw new Error(
-        `Too many files to stash (${changedFiles.length}). Max ${MAX_STASH_FILES}.`,
+        `Too many files to stash (${snapshots.length}). Max ${MAX_STASH_FILES}.`,
       );
     }
 
     let totalBytes = 0;
-    for (const file of changedFiles) {
+    for (const file of snapshots) {
       totalBytes += fileSizeBytes(file.path);
-      totalBytes += fileSizeBytes(file.content ?? "");
+      totalBytes += fileSizeBytes(file.content);
       totalBytes += fileSizeBytes(file.syncedContent ?? "");
     }
     if (totalBytes > MAX_STASH_BYTES) {
@@ -162,15 +252,28 @@ export const create = mutation({
       name: normalizeStashName(args.name, stashCount.length + 1),
       createdBy: userId,
       createdAt: now,
-      fileCount: changedFiles.length,
-      files: changedFiles.map((file) => ({
-        path: file.path,
-        content: file.content ?? "",
-        syncedContent: file.syncedContent,
-        staged: file.staged === true,
-      })),
+      fileCount: snapshots.length,
+      files: snapshots,
     });
 
+    const filesByPath = new Map(
+      (
+        await ctx.db
+          .query("projectFiles")
+          .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+          .collect()
+      )
+        .filter((file) => file.kind === "file")
+        .map((file) => [file.path, file] as const),
+    );
+
+    for (const snapshot of snapshots) {
+      const file = filesByPath.get(snapshot.path);
+      if (!file) continue;
+      await revertFileToBaseline(ctx, project, file);
+    }
+
+    await touchProject(ctx, args.projectId);
     return stashId;
   },
 });

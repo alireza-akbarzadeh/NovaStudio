@@ -12,15 +12,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useOptionalWebContainer } from "@/features/workspace/components/webcontainer-provider";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import {
+  useProjectFile,
+  useProjectFileMetadata,
+} from "@/features/workspace/hooks/use-project-files";
 import {
   searchNpmPackages,
   type NpmSearchHit,
 } from "@/features/workspace/lib/npm-search";
 import {
-  getProjectDependencies,
+  parsePackageDependencies,
   type PackageDependency,
 } from "@/features/workspace/lib/terminal/package-json";
+import { resolvePackageJson } from "@/features/workspace/lib/terminal/package-scripts";
 import {
   addPackageCommandLine,
   removePackageCommandLine,
@@ -44,7 +48,12 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 export function WorkspaceDependenciesPanel({
   projectId,
 }: WorkspaceDependenciesPanelProps) {
-  const files = useProjectFiles(projectId);
+  const metadata = useProjectFileMetadata(projectId);
+  const packageJsonPath = useMemo(() => {
+    if (!metadata) return null;
+    return resolvePackageJson(metadata, "/")?.path ?? null;
+  }, [metadata]);
+  const packageJsonFile = useProjectFile(projectId, packageJsonPath ?? "");
   const webcontainer = useOptionalWebContainer();
   const requestTerminalCommand = useWorkspaceStore(
     (s) => s.requestTerminalCommand,
@@ -59,12 +68,14 @@ export function WorkspaceDependenciesPanel({
   const pm = webcontainer?.packageManager ?? "npm";
   const ready = webcontainer?.ready ?? false;
 
-  const { packageJsonPath, dependencies } = useMemo(() => {
-    if (files === undefined) {
-      return { packageJsonPath: null as string | null, dependencies: [] };
+  const { dependencies } = useMemo(() => {
+    if (!packageJsonPath || !packageJsonFile?.content) {
+      return { dependencies: [] as PackageDependency[] };
     }
-    return getProjectDependencies(files, "/");
-  }, [files]);
+    return {
+      dependencies: parsePackageDependencies(packageJsonFile.content),
+    };
+  }, [packageJsonFile?.content, packageJsonPath]);
 
   const installedNames = useMemo(
     () => new Set(dependencies.map((d) => d.name)),
@@ -140,7 +151,7 @@ export function WorkspaceDependenciesPanel({
     runPackageCommand(command, `Remove ${dep.name}`);
   };
 
-  if (files === undefined) {
+  if (metadata === undefined) {
     return (
       <div className="flex items-center gap-2 px-3 py-5 text-[11px] text-ws-text-muted">
         <Loader2Icon className="size-3.5 animate-spin" />

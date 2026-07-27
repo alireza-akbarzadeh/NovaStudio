@@ -61,6 +61,22 @@ export type EditorRevealTarget = {
 
 export type SearchPanelMode = "text" | "file";
 
+export type FileTreeProjectState = {
+  openFolderIds: string[];
+  treeFilter: string;
+  focusedId: string | null;
+  selectedIds: string[];
+  selectionAnchorId: string | null;
+};
+
+export const DEFAULT_FILE_TREE_STATE: FileTreeProjectState = {
+  openFolderIds: [],
+  treeFilter: "",
+  focusedId: null,
+  selectedIds: [],
+  selectionAnchorId: null,
+};
+
 export type EditorTabKind =
   | "welcome"
   | "file"
@@ -130,6 +146,7 @@ type WorkspaceState = WorkspacePrefs & {
   pendingEditorReveal: EditorRevealTarget | null;
   searchFolderScope: string | null;
   searchPanelMode: SearchPanelMode;
+  fileTreeByProject: Record<string, FileTreeProjectState>;
   /** Distraction-free layout — hides chrome and centers the editor. */
   zenMode: boolean;
   zenSnapshot: ZenSnapshot | null;
@@ -229,6 +246,11 @@ type WorkspaceState = WorkspacePrefs & {
   clearPendingEditorReveal: () => void;
   setSearchFolderScope: (path: string | null) => void;
   setSearchPanelMode: (mode: SearchPanelMode) => void;
+  setFileTreeState: (
+    projectId: string,
+    patch: Partial<FileTreeProjectState>,
+  ) => void;
+  getFileTreeState: (projectId: string) => FileTreeProjectState;
   openFindInFiles: (options?: {
     folderScope?: string | null;
     mode?: SearchPanelMode;
@@ -376,6 +398,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   pendingEditorReveal: null,
   searchFolderScope: null,
   searchPanelMode: "text",
+  fileTreeByProject: {},
   zenMode: false,
   zenSnapshot: null,
   editorPanelView: "code",
@@ -730,6 +753,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   clearPendingEditorReveal: () => set({ pendingEditorReveal: null }),
   setSearchFolderScope: (path) => set({ searchFolderScope: path }),
   setSearchPanelMode: (mode) => set({ searchPanelMode: mode }),
+  setFileTreeState: (projectId, patch) =>
+    set((s) => ({
+      fileTreeByProject: {
+        ...s.fileTreeByProject,
+        [projectId]: {
+          ...DEFAULT_FILE_TREE_STATE,
+          ...s.fileTreeByProject[projectId],
+          ...patch,
+        },
+      },
+    })),
+  getFileTreeState: (projectId) => {
+    const state = get().fileTreeByProject[projectId];
+    return state ?? DEFAULT_FILE_TREE_STATE;
+  },
   openFindInFiles: (options) =>
     set({
       leftPanelView: "search",

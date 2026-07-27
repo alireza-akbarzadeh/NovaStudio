@@ -33,7 +33,7 @@ import type {
 import { filePartToBlob } from "@/features/workspace/components/workspace-chat/utils";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
-import { useProjectFiles } from "@/features/workspace/hooks/use-project-files";
+import { useProjectFileMetadata } from "@/features/workspace/hooks/use-project-files";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -43,7 +43,7 @@ export function WorkspaceChatPanel({ projectId }: WorkspaceChatPanelProps) {
   const closeChatPanel = useWorkspaceStore((s) => s.closeChatPanel);
   const currentFilePath = useWorkspaceStore((s) => s.currentFilePath);
   const { openTab } = useEditorTabs(projectId);
-  const files = useProjectFiles(projectId);
+  const files = useProjectFileMetadata(projectId);
   const [sending, setSending] = useState(false);
 
   const projectFilePaths = useMemo(

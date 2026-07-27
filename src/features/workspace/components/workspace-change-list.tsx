@@ -14,7 +14,7 @@ import {
   PlusIcon,
   Undo2Icon,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { useConfirm } from "@/components/confirm-dialog";
@@ -25,7 +25,7 @@ import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import {
   useChangedFiles,
   useDiscardFileChanges,
-  useProjectFiles,
+  useProjectFile,
   useSetAllChangedStaged,
   useSetFileStaged,
 } from "@/features/workspace/hooks/use-project-files";
@@ -87,13 +87,48 @@ function computePathSelection(
   return { selected: new Set([clickedPath]), anchor: clickedPath };
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(id);
+  }, [delayMs, value]);
+
+  return debounced;
+}
+
+function useChangeFileStats(projectId: string, changed: ChangedFile) {
+  const file = useProjectFile(projectId, changed.path);
+
+  const stats = useMemo((): LineDiffStats | undefined => {
+    if (!file || file.kind !== "file") return undefined;
+
+    const original = file.syncedContent ?? "";
+    const serverContent = file.content ?? "";
+    const draft = loadFileContentDraft(projectId, changed.path);
+    const modified = resolveSeedContent(
+      serverContent,
+      file.updatedAt,
+      draft,
+    );
+
+    if (changed.isNew) {
+      return countLineDiffStats("", modified);
+    }
+
+    return countLineDiffStats(original, modified);
+  }, [changed.isNew, changed.path, file, projectId]);
+
+  return useDebouncedValue(stats, 300);
+}
+
 export function WorkspaceChangeList({
   projectId,
   emptyMessage = "No modified files",
 }: WorkspaceChangeListProps) {
   const project = useProject({ projectId });
   const changedFiles = useChangedFiles(projectId);
-  const projectFiles = useProjectFiles(projectId);
   const pathname = usePathname();
   const { openTab } = useEditorTabs(projectId);
   const openGitInitDialog = useWorkspaceStore((s) => s.openGitInitDialog);
@@ -106,40 +141,6 @@ export function WorkspaceChangeList({
   const [busyPath, setBusyPath] = useState<string | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
-
-  const statsByPath = useMemo(() => {
-    const map = new Map<string, LineDiffStats>();
-    if (!changedFiles || !projectFiles) return map;
-
-    const byPath = new Map(
-      projectFiles
-        .filter((file) => file.kind === "file")
-        .map((file) => [file.path, file] as const),
-    );
-
-    for (const changed of changedFiles) {
-      const file = byPath.get(changed.path);
-      const original = file?.syncedContent ?? "";
-      const serverContent = file?.content ?? "";
-      const draft = loadFileContentDraft(projectId, changed.path);
-      const modified = resolveSeedContent(
-        serverContent,
-        file?.updatedAt,
-        draft,
-      );
-
-      if (changed.isNew) {
-        map.set(
-          changed.path,
-          countLineDiffStats("", modified),
-        );
-      } else {
-        map.set(changed.path, countLineDiffStats(original, modified));
-      }
-    }
-
-    return map;
-  }, [changedFiles, projectFiles, projectId]);
 
   const staged = useMemo(
     () => (changedFiles ?? []).filter((file) => file.staged),
@@ -349,7 +350,6 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
               selected={selectedPaths.has(file.path)}
               busy={busyPath === file.path}
@@ -401,7 +401,6 @@ export function WorkspaceChangeList({
               key={file._id}
               projectId={projectId}
               file={file}
-              stats={statsByPath.get(file.path)}
               activeMode={activeChangeMode(pathname, projectId, file.path)}
               selected={selectedPaths.has(file.path)}
               busy={busyPath === file.path}
@@ -583,7 +582,6 @@ function DiffStatBadges({ stats }: { stats?: LineDiffStats }) {
 function ChangeRow({
   projectId,
   file,
-  stats,
   activeMode,
   selected = false,
   busy = false,
@@ -596,7 +594,6 @@ function ChangeRow({
 }: {
   projectId: string;
   file: ChangedFile;
-  stats?: LineDiffStats;
   activeMode: "diff" | "file" | null;
   selected?: boolean;
   busy?: boolean;
@@ -607,6 +604,7 @@ function ChangeRow({
   onUnstage?: () => void;
   onDiscard?: () => void;
 }) {
+  const stats = useChangeFileStats(projectId, file);
   const href = `/projects/${projectId}/diff/${file.path}`;
   const marker = file.isNew ? "A" : "M";
   const markerColor = file.isNew ? "text-ws-link" : "text-ws-success";

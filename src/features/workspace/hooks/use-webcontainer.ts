@@ -109,7 +109,7 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
   const [installAttempted, setInstallAttempted] = useState(false);
 
   const mountedProjectRef = useRef<string | null>(null);
-  const lastSyncHashRef = useRef<string>("");
+  const lastSyncedByPathRef = useRef<Map<string, string>>(new Map());
   const filesRef = useRef(files);
   const bootPromiseRef = useRef<Promise<void> | null>(null);
   filesRef.current = files;
@@ -178,10 +178,10 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
       setStatus("mounting");
       const withDrafts = applyDrafts(projectFiles);
       const mountable = filterFilesForWebContainerMount(withDrafts);
-      await mountProject(wc, mountable);
-      mountedProjectRef.current = projectId;
-      lastSyncHashRef.current = hashFileSnapshot(withDrafts);
-      setInstallAttempted(false);
+          await mountProject(wc, mountable);
+          mountedProjectRef.current = projectId;
+          lastSyncedByPathRef.current.clear();
+          setInstallAttempted(false);
     }
 
     const hasPkg = projectFiles.some(
@@ -326,10 +326,6 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     if (mountedProjectRef.current !== projectId) return;
 
     const withDrafts = applyDrafts(files);
-    const hash = hashFileSnapshot(withDrafts);
-    if (hash === lastSyncHashRef.current) return;
-    lastSyncHashRef.current = hash;
-
     const wc = getWebContainer();
     if (!wc) return;
 
@@ -337,8 +333,15 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
     void (async () => {
       for (const file of withDrafts) {
         if (cancelled || file.kind !== "file") continue;
+
+        const signature = fileSyncSignature(file);
+        if (lastSyncedByPathRef.current.get(file.path) === signature) {
+          continue;
+        }
+
         try {
           await writeProjectFile(wc, file.path, file.content ?? "");
+          lastSyncedByPathRef.current.set(file.path, signature);
         } catch {
           // Best-effort sync; install may lock files briefly.
         }
@@ -370,17 +373,13 @@ export function useWebContainer(projectId: string): UseWebContainerResult {
   };
 }
 
-function hashFileSnapshot(
-  files: { path: string; kind: string; content?: string; updatedAt?: number }[],
-): string {
-  return files
-    .filter((f) => f.kind === "file")
-    .map(
-      (f) =>
-        `${f.path}:${f.updatedAt ?? 0}:${(f.content ?? "").length}`,
-    )
-    .sort()
-    .join("|");
+function fileSyncSignature(file: {
+  path: string;
+  updatedAt?: number;
+  content?: string;
+  contentHash?: string;
+}): string {
+  return `${file.updatedAt ?? 0}:${(file.content ?? "").length}:${file.contentHash ?? ""}`;
 }
 
 export { installArgs };
