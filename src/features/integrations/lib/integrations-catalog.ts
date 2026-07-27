@@ -41,7 +41,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     id: "linear",
     name: "Linear",
     description:
-      "Link issues to projects and sync status when PRs merge from NovaStudio.",
+      "Manage Linear issues in the workspace: list, create, change state, filter by cycle, and sync on push or deploy.",
     category: "Productivity",
     status: "available",
     accent: "from-indigo-600 to-violet-700",

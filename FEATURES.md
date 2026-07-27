@@ -72,7 +72,7 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 23 | **Slack integration** | `review` | Incoming webhook · deploy success/failure alerts |
 | 24 | **Discord integration** | `review` | Channel webhook · deploy success/failure alerts |
-| 25 | **Linear integration** | `review` | API key · link issue in Git Info · sync on push / deploy |
+| 25 | **Linear integration** | `review` | API key · Git Linear tab · create / state / cycle · sync on push / deploy |
 | 26 | **Notion integration** | `review` | Internal integration · export AI plans + markdown docs to pages |
 
 ### Sprint G — Git & editor (current focus)
@@ -332,7 +332,10 @@ These are the biggest daily-friction gaps you called out.
 ### 25. Linear integration — ready for review
 
 - Integrations hub **Linear** card: personal API key · verifies viewer + org on connect
-- Git panel **Info** tab: link an issue by ID (e.g. `ENG-123`) · open in Linear · unlink
+- Git panel **Linear** tab: team picker · Mine / Team / Cycle filters · list · create · change state
+- Active **cycle** (Linear sprint) filter + optional “Add to active cycle” on create
+- Issue detail: workflow state select · Open in Linear · **Link to project** (sync target)
+- Git panel **Info** tab: compact linked-issue summary · unlink
 - **Push to GitHub** → comment on linked issue + move to In Review / In Progress when available
 - **Deploy success** → comment + move to Done / Completed when available in team workflow
 - API key stored server-side; never returned to clients

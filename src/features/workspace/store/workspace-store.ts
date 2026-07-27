@@ -20,7 +20,13 @@ export type LeftPanelView =
 
 export type ExplorerTab = "project" | "changes" | "quality";
 
-export type GitPanelTab = "changes" | "stashes" | "history" | "github" | "info";
+export type GitPanelTab =
+  | "changes"
+  | "stashes"
+  | "history"
+  | "github"
+  | "linear"
+  | "info";
 
 export type BottomPanelTab =
   | "terminal"

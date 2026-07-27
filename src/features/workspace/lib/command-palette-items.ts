@@ -131,6 +131,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+h",
   },
   {
+    id: "showLinear",
+    label: "Linear: Issues",
+    keywords: "linear tasks issues sprint cycle board",
+  },
+  {
     id: "toggleTerminal",
     label: "Toggle Terminal",
     keywords: "shell console bottom",

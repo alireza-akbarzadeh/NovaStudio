@@ -41,6 +41,50 @@ export type LinearViewer = {
   organization?: { id: string; name: string };
 };
 
+export type LinearWorkflowState = {
+  id: string;
+  name: string;
+  type: string;
+  color?: string;
+};
+
+export type LinearTeamSummary = {
+  id: string;
+  name: string;
+  key: string;
+};
+
+export type LinearCycleSummary = {
+  id: string;
+  name: string;
+  number: number;
+  endsAt?: string | null;
+};
+
+export type LinearIssueListItem = {
+  id: string;
+  identifier: string;
+  title: string;
+  url: string;
+  updatedAt: string;
+  state?: { id: string; name: string; type: string; color?: string };
+  assignee?: { name: string } | null;
+  cycle?: { id: string; name: string; number: number } | null;
+};
+
+export type LinearIssueDetail = LinearIssueListItem & {
+  description?: string | null;
+  createdAt: string;
+  team: {
+    id: string;
+    name: string;
+    key: string;
+    states: { nodes: LinearWorkflowState[] };
+  };
+};
+
+export type LinearIssueScope = "mine" | "team" | "cycle";
+
 export type LinearIssueSummary = {
   id: string;
   identifier: string;
@@ -216,4 +260,249 @@ export async function syncLinearIssue(args: {
     nextState.id,
   );
   return { stateUpdated: true as const, stateName };
+}
+
+export async function listLinearTeams(
+  apiKey: string,
+): Promise<LinearTeamSummary[]> {
+  const data = await linearGraphql<{
+    teams: { nodes: LinearTeamSummary[] };
+  }>(
+    apiKey,
+    `query Teams {
+      teams(first: 50) {
+        nodes { id name key }
+      }
+    }`,
+  );
+  return data.teams.nodes;
+}
+
+export async function getActiveLinearCycle(
+  apiKey: string,
+  teamId: string,
+): Promise<LinearCycleSummary | null> {
+  const data = await linearGraphql<{
+    team: {
+      activeCycle: {
+        id: string;
+        name: string;
+        number: number;
+        endsAt?: string | null;
+      } | null;
+    } | null;
+  }>(
+    apiKey,
+    `query ActiveCycle($teamId: String!) {
+      team(id: $teamId) {
+        activeCycle { id name number endsAt }
+      }
+    }`,
+    { teamId },
+  );
+
+  const cycle = data.team?.activeCycle;
+  if (!cycle) return null;
+  return {
+    id: cycle.id,
+    name: cycle.name,
+    number: cycle.number,
+    endsAt: cycle.endsAt,
+  };
+}
+
+export async function listLinearWorkflowStates(
+  apiKey: string,
+  teamId: string,
+): Promise<LinearWorkflowState[]> {
+  const data = await linearGraphql<{
+    team: {
+      states: { nodes: LinearWorkflowState[] };
+    } | null;
+  }>(
+    apiKey,
+    `query TeamStates($teamId: String!) {
+      team(id: $teamId) {
+        states {
+          nodes { id name type color }
+        }
+      }
+    }`,
+    { teamId },
+  );
+
+  return data.team?.states.nodes ?? [];
+}
+
+function buildIssueFilterObject(
+  scope: LinearIssueScope,
+  cycleId?: string,
+): Record<string, unknown> {
+  const filter: Record<string, unknown> = {
+    state: {
+      type: { nin: ["completed", "canceled"] },
+    },
+  };
+
+  if (scope === "mine") {
+    filter.assignee = { isMe: { eq: true } };
+  }
+
+  if (scope === "cycle") {
+    if (!cycleId) {
+      throw new Error("No active cycle for this team");
+    }
+    filter.cycle = { id: { eq: cycleId } };
+  }
+
+  return filter;
+}
+
+export async function listLinearIssues(args: {
+  apiKey: string;
+  teamId: string;
+  scope: LinearIssueScope;
+  limit?: number;
+}): Promise<{
+  issues: LinearIssueListItem[];
+  activeCycle: LinearCycleSummary | null;
+}> {
+  const first = Math.min(Math.max(args.limit ?? 40, 1), 50);
+  const activeCycle = await getActiveLinearCycle(args.apiKey, args.teamId);
+
+  if (args.scope === "cycle" && !activeCycle) {
+    return { issues: [], activeCycle: null };
+  }
+
+  const data = await linearGraphql<{
+    team: {
+      issues: { nodes: LinearIssueListItem[] };
+    } | null;
+  }>(
+    args.apiKey,
+    `query TeamIssues($teamId: String!, $filter: IssueFilter, $first: Int!) {
+      team(id: $teamId) {
+        issues(
+          first: $first
+          filter: $filter
+          orderBy: updatedAt
+        ) {
+          nodes {
+            id
+            identifier
+            title
+            url
+            updatedAt
+            state { id name type color }
+            assignee { name }
+            cycle { id name number }
+          }
+        }
+      }
+    }`,
+    {
+      teamId: args.teamId,
+      first,
+      filter: buildIssueFilterObject(args.scope, activeCycle?.id),
+    },
+  );
+
+  return {
+    issues: data.team?.issues.nodes ?? [],
+    activeCycle,
+  };
+}
+
+export async function getLinearIssueDetail(
+  apiKey: string,
+  identifier: string,
+): Promise<LinearIssueDetail> {
+  const normalized = normalizeLinearIssueIdentifier(identifier);
+  const data = await linearGraphql<{
+    issueSearch: { nodes: LinearIssueDetail[] };
+  }>(
+    apiKey,
+    `query IssueDetail($query: String!) {
+      issueSearch(query: $query, first: 5) {
+        nodes {
+          id
+          identifier
+          title
+          url
+          description
+          createdAt
+          updatedAt
+          state { id name type color }
+          assignee { name }
+          cycle { id name number }
+          team {
+            id
+            name
+            key
+            states {
+              nodes { id name type color }
+            }
+          }
+        }
+      }
+    }`,
+    { query: normalized },
+  );
+
+  const issue = data.issueSearch.nodes.find(
+    (node) => node.identifier.toUpperCase() === normalized,
+  );
+  if (!issue) {
+    throw new Error(`Linear issue ${normalized} was not found`);
+  }
+  return issue;
+}
+
+export async function createLinearIssue(args: {
+  apiKey: string;
+  teamId: string;
+  title: string;
+  description?: string;
+  cycleId?: string;
+}): Promise<LinearIssueListItem> {
+  const input: Record<string, unknown> = {
+    teamId: args.teamId,
+    title: args.title,
+  };
+  if (args.description?.trim()) {
+    input.description = args.description.trim();
+  }
+  if (args.cycleId) {
+    input.cycleId = args.cycleId;
+  }
+
+  const data = await linearGraphql<{
+    issueCreate: {
+      success: boolean;
+      issue: LinearIssueListItem | null;
+    };
+  }>(
+    args.apiKey,
+    `mutation IssueCreate($input: IssueCreateInput!) {
+      issueCreate(input: $input) {
+        success
+        issue {
+          id
+          identifier
+          title
+          url
+          updatedAt
+          state { id name type color }
+          assignee { name }
+          cycle { id name number }
+        }
+      }
+    }`,
+    { input },
+  );
+
+  if (!data.issueCreate.success || !data.issueCreate.issue) {
+    throw new Error("Linear could not create the issue");
+  }
+  return data.issueCreate.issue;
 }
