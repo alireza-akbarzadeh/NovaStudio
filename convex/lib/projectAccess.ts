@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { verifyAuth } from "../auth";
+import { canAccessProjectInOrg } from "./orgContext";
 
 export const projectRoleValidator = {
   owner: "owner",
@@ -67,6 +68,11 @@ export async function resolveProjectAccess(
   const identity = await verifyAuth(ctx);
   const project = await ctx.db.get("projects", projectId);
   if (!project) {
+    return null;
+  }
+
+  // Org-owned projects require the session's active org to match.
+  if (!canAccessProjectInOrg(project, identity)) {
     return null;
   }
 

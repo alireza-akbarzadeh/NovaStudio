@@ -2,6 +2,7 @@
 
 import {
   ActivityIcon,
+  Building2Icon,
   CalendarIcon,
   LayoutDashboardIcon,
   MenuIcon,
@@ -48,6 +49,7 @@ const navGroups = [
     label: "Settings",
     items: [
       { icon: UsersIcon, label: "Team", href: "/projects/team" },
+      { icon: Building2Icon, label: "Organization", href: "/projects/org" },
       { icon: PlugIcon, label: "Integrations", href: "/projects/integrations" },
       { icon: SettingsIcon, label: "Settings", href: "/projects/settings" },
     ],

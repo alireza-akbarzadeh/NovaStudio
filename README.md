@@ -194,8 +194,12 @@ SENTRY_AUTH_TOKEN=
 VAPID_PUBLIC_KEY=                 # Convex env for push
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:you@example.com
-```
 
+# Invite emails (set these in the Convex dashboard — required for invite emails)
+# RESEND_API_KEY=re_...
+# RESEND_FROM="NovaStudio <invites@yourdomain.com>"
+# APP_ORIGIN=http://localhost:3000
+```
 ### 3. Run locally
 
 Use three terminals (or run backend + Inngest as needed):

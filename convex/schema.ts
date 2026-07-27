@@ -44,6 +44,8 @@ export default defineSchema({
     name: v.string(),
     ownerId: v.string(),
     updatedAt: v.number(),
+    /** Clerk organization id when this project belongs to a team tenant. Absent = personal. */
+    orgId: v.optional(v.string()),
     description: v.optional(v.string()),
     visibility: v.optional(
       v.union(v.literal("private"), v.literal("public")),
@@ -100,7 +102,9 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
-    .index("by_visibility_updated", ["visibility", "updatedAt"]),
+    .index("by_visibility_updated", ["visibility", "updatedAt"])
+    .index("by_org", ["orgId"])
+    .index("by_org_updated", ["orgId", "updatedAt"]),
 
   githubConnections: defineTable({
     userId: v.string(),

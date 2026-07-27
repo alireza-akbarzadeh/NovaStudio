@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 
 type Member = {
+  id?: string;
   name: string;
   initials: string;
   color: string;
@@ -23,9 +24,9 @@ export function MemberAvatars({
 
   return (
     <div className="flex items-center -space-x-1.5">
-      {visible.map((member) => (
+      {visible.map((member, index) => (
         <span
-          key={member.name}
+          key={member.id ?? `${member.color}-${member.initials}-${index}`}
           title={member.name}
           className={cn(
             "inline-flex items-center justify-center rounded-full border-2 border-card font-semibold text-white shadow-sm",

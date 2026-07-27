@@ -3,6 +3,7 @@
 import { Manrope } from "next/font/google";
 
 import { NotificationControls } from "@/features/notifications/components/notification-controls";
+import { AppOrganizationSwitcher } from "@/features/billing/components/app-organization-switcher";
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export function HubPageHeader({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {actions}
+        <AppOrganizationSwitcher />
         <NotificationControls />
         <AppUserButton settingsHref="/projects/settings" />
       </div>

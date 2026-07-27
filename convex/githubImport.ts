@@ -7,6 +7,7 @@ import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 import { getClerkGitHubToken, parseRepoUrl } from "./lib/github";
 import { fetchRepoFiles } from "./lib/githubFetch";
+import { getOrgContext } from "./lib/orgContext";
 
 const WRITE_BATCH_SIZE = 40;
 
@@ -41,6 +42,7 @@ export const cloneFromGitHub = action({
 
     const { owner, repo } = parseRepoUrl(args.repoUrl);
     const branch = args.branch?.trim() || "main";
+    const { orgId } = getOrgContext(identity);
 
     return await ctx.runMutation(
       internal.githubImportMutations.createImportProject,
@@ -52,6 +54,7 @@ export const cloneFromGitHub = action({
         email: identity.email ?? undefined,
         displayName: identity.name ?? identity.nickname ?? undefined,
         imageUrl: identity.pictureUrl ?? undefined,
+        ...(orgId ? { orgId } : {}),
       },
     );
   },

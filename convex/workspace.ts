@@ -383,6 +383,7 @@ export const getStorageUsage = query({
   handler: async (ctx) => {
     const identity = await verifyAuth(ctx);
     const userId = identity.subject;
+    // User-scoped billing: count storage across personal + all org-owned projects.
     const ownedIds = await listOwnedProjectIds(ctx, userId);
 
     let usedBytes = 0;
@@ -438,6 +439,7 @@ export const listWorkspaceProjects = query({
         .take(5);
 
       const memberCards = members.map((member) => ({
+        id: member.userId,
         name: member.name ?? member.email ?? "Member",
         initials: initialsFrom(member.name ?? member.email ?? "M"),
         color: member.color,
@@ -446,6 +448,7 @@ export const listWorkspaceProjects = query({
       const owner =
         memberCards.find((_, index) => members[index]?.role === "owner") ??
         memberCards[0] ?? {
+          id: project.ownerId,
           name: "Owner",
           initials: "OW",
           color: colorForUserId(project.ownerId),
@@ -469,6 +472,7 @@ export const listWorkspaceProjects = query({
         tech: techForProject(project),
         status: project.status ?? "in-progress",
         visibility,
+        role: project.role,
         pinned: pinnedIds.has(project._id),
         progress: project.progress ?? (project.status === "shipped" ? 100 : 45),
         lastUpdated: `Updated ${formatRelativeTime(project.updatedAt)}`,

@@ -20,6 +20,8 @@ export const createImportProject = internalMutation({
     email: v.optional(v.string()),
     displayName: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    /** Clerk org id when importing into an active team tenant. */
+    orgId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
@@ -35,6 +37,7 @@ export const createImportProject = internalMutation({
       githubRepoUrl: args.githubRepoUrl,
       githubBranch: args.githubBranch,
       source: "github",
+      ...(args.orgId ? { orgId: args.orgId } : {}),
     });
 
     await ensureOwnerMembership(ctx, projectId, args.ownerId, {

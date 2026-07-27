@@ -11,6 +11,13 @@ import {
   verifyProjectAccess,
   verifyProjectOwnerAccess,
 } from "./lib/projectAccess";
+import {
+  inviteAbsoluteUrl,
+  projectAbsoluteUrl,
+  projectAddedEmail,
+  projectInviteEmail,
+  sendEmail,
+} from "./lib/email";
 
 const inviteRoleValidator = v.union(v.literal("editor"), v.literal("viewer"));
 
@@ -598,7 +605,9 @@ export const leaveProject = mutation({
   },
 });
 
-/** Invite by email: add immediately if Clerk user exists, else pending invite + token. */
+/** Invite by email: add immediately if Clerk user exists, else pending invite + token.
+ * Always attempts to email the recipient when Resend is configured.
+ */
 export const inviteByEmail = action({
   args: {
     projectId: v.id("projects"),
@@ -609,8 +618,20 @@ export const inviteByEmail = action({
     ctx,
     args,
   ): Promise<
-    | { kind: "added"; userId: string }
-    | { kind: "invited"; inviteId: Id<"projectInvites">; token: string }
+    | {
+        kind: "added";
+        userId: string;
+        emailSent: boolean;
+        emailError?: string;
+      }
+    | {
+        kind: "invited";
+        inviteId: Id<"projectInvites">;
+        token: string;
+        inviteUrl: string;
+        emailSent: boolean;
+        emailError?: string;
+      }
   > => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -622,9 +643,15 @@ export const inviteByEmail = action({
       throw new Error("A valid email is required");
     }
 
-    await ctx.runQuery(api.sharing.assertOwner, {
+    const project = await ctx.runQuery(api.sharing.getProjectForInvite, {
       projectId: args.projectId,
     });
+
+    const inviterName =
+      identity.name?.trim() ||
+      identity.nickname?.trim() ||
+      identity.email?.trim() ||
+      "A teammate";
 
     const clerkUser = await lookupClerkUserByEmail(email);
     if (clerkUser) {
@@ -636,7 +663,32 @@ export const inviteByEmail = action({
         name: clerkUser.name,
         imageUrl: clerkUser.imageUrl,
       });
-      return { kind: "added", userId: clerkUser.userId };
+
+      const projectUrl = projectAbsoluteUrl(args.projectId);
+      const template = projectAddedEmail({
+        projectName: project.name,
+        role: args.role,
+        inviterName,
+        projectUrl,
+      });
+      const sent = await sendEmail({
+        to: clerkUser.email || email,
+        ...template,
+      });
+
+      return {
+        kind: "added",
+        userId: clerkUser.userId,
+        emailSent: sent.ok,
+        ...(sent.ok
+          ? {}
+          : {
+              emailError:
+                sent.reason === "not_configured"
+                  ? "Email is not configured (set RESEND_API_KEY in Convex)"
+                  : sent.detail ?? "Failed to send email",
+            }),
+      };
     }
 
     const created: { inviteId: Id<"projectInvites">; token: string } =
@@ -645,11 +697,44 @@ export const inviteByEmail = action({
         email,
         role: args.role,
       });
+
+    const inviteUrl = inviteAbsoluteUrl(created.token);
+    const template = projectInviteEmail({
+      projectName: project.name,
+      role: args.role,
+      inviterName,
+      inviteUrl,
+    });
+    const sent = await sendEmail({
+      to: email,
+      ...template,
+    });
+
     return {
       kind: "invited",
       inviteId: created.inviteId,
       token: created.token,
+      inviteUrl,
+      emailSent: sent.ok,
+      ...(sent.ok
+        ? {}
+        : {
+            emailError:
+              sent.reason === "not_configured"
+                ? "Email is not configured (set RESEND_API_KEY in Convex)"
+                : sent.detail ?? "Failed to send email",
+          }),
     };
+  },
+});
+
+export const getProjectForInvite = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    const { project } = await verifyProjectOwnerAccess(ctx, args.projectId);
+    return { name: project.name, orgId: project.orgId ?? null };
   },
 });
 

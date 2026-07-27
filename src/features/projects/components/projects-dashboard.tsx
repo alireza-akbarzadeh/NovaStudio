@@ -9,6 +9,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
+import { AppOrganizationSwitcher } from "@/features/billing/components/app-organization-switcher";
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
 import { CloneFromGitHubDialog } from "@/features/github/components/clone-from-github-dialog";
@@ -154,7 +155,10 @@ export function ProjectsDashboard({ compact = false }: ProjectsDashboardProps) {
         </div>
 
         <footer className="flex items-center justify-between border-t border-border/60 px-6 py-2.5 text-[11px] text-muted-foreground">
-          <AppUserButton />
+          <div className="flex items-center gap-2">
+            <AppOrganizationSwitcher />
+            <AppUserButton />
+          </div>
           <GitHubConnectionStatus />
           <div className="flex items-center gap-3">
             <button
