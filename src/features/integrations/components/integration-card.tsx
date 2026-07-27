@@ -2,6 +2,7 @@
 
 import { ComingSoonIntegrationCard } from "@/features/integrations/components/coming-soon-integration-card";
 import { GitHubIntegrationCard } from "@/features/integrations/components/github-integration-card";
+import { WebhookIntegrationCard } from "@/features/integrations/components/webhook-integration-card";
 import { DeployIntegrationCard } from "@/features/deploy/components/deploy-integration-card";
 import type { IntegrationMeta } from "@/features/integrations/lib/integrations-catalog";
 
@@ -29,6 +30,14 @@ export function IntegrationCard({ integration }: IntegrationCardProps) {
         integration={integration}
         provider="netlify"
         logoSrc="/netlify.svg"
+      />
+    );
+  }
+  if (integration.id === "slack" || integration.id === "discord") {
+    return (
+      <WebhookIntegrationCard
+        integration={integration}
+        provider={integration.id}
       />
     );
   }

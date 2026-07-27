@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import {
   internalMutation,
   internalQuery,
@@ -332,6 +333,20 @@ export const updateDeployment = internalMutation({
         href,
         projectId: deployment.projectId,
       });
+
+      await ctx.scheduler.runAfter(
+        0,
+        internal.integrationActions.notifyDeployToIntegrations,
+        {
+          userId: deployment.createdBy,
+          projectId: deployment.projectId,
+          deployProvider: deployment.provider,
+          status: next === "ready" ? "ready" : "error",
+          url: args.url ?? deployment.url,
+          inspectorUrl: args.inspectorUrl ?? deployment.inspectorUrl,
+          errorMessage: args.errorMessage ?? deployment.errorMessage,
+        },
+      );
     }
 
     return await ctx.db.get(args.deploymentId);
@@ -342,6 +357,15 @@ export const getDeploymentInternal = internalQuery({
   args: { deploymentId: v.id("deployments") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.deploymentId);
+  },
+});
+
+export const getProjectNameInternal = internalQuery({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+    return { name: project.name };
   },
 });
 

@@ -13,8 +13,8 @@ export function IntegrationsHubView() {
       />
 
       <div className="mb-6 rounded-[22px] border border-border/60 bg-card/60 px-5 py-4 text-sm text-muted-foreground backdrop-blur-xl">
-        Connected apps stay available across your projects. GitHub is live
-        today — Slack and the rest are stubs ready for API wiring later.
+        Connected apps stay available across your projects. GitHub, Vercel,
+        Netlify, Slack, and Discord are live — Linear and Notion are next.
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

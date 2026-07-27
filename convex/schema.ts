@@ -126,6 +126,19 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_provider", ["userId", "provider"]),
 
+  /** Slack / Discord incoming webhooks. URLs are never returned to clients. */
+  integrationConnections: defineTable({
+    userId: v.string(),
+    provider: v.union(v.literal("slack"), v.literal("discord")),
+    webhookUrl: v.string(),
+    channelLabel: v.optional(v.string()),
+    notifyOnDeploy: v.optional(v.boolean()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_provider", ["userId", "provider"]),
+
   /** Linked Vercel project / Netlify site per NovaStudio project. */
   projectDeployTargets: defineTable({
     projectId: v.id("projects"),

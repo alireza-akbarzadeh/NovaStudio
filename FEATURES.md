@@ -59,12 +59,21 @@ These are the biggest daily-friction gaps you called out.
 | 16 | Zen / Focus mode | `done` | Hide chrome, full-size editor. |
 | 16b | **In-editor AI code review** | `review` | Explorer **Quality** tab (next to Project / Changes): review local diffs, Apply / Dismiss in the editor. |
 
-### Sprint E — Hub & navigation (current focus)
+### Sprint E — Hub & navigation
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 21 | **Project File Navigator** | `review` | JetBrains-style dialog: search, browse, create, rename. ⌘P · ⇧⇧ |
 | 22 | **Team hub** | `review` | Members directory + pending access requests (approve / decline) |
+
+### Sprint F — Integrations (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 23 | **Slack integration** | `review` | Incoming webhook · deploy success/failure alerts |
+| 24 | **Discord integration** | `review` | Channel webhook · deploy success/failure alerts |
+| 25 | **Linear integration** | `todo` | Issue linking + status sync |
+| 26 | **Notion integration** | `todo` | Export docs / AI plans to pages |
 
 ### Later / hard infrastructure
 
@@ -260,6 +269,19 @@ These are the biggest daily-friction gaps you called out.
 - Role badges (owner / editor / viewer) and per-project links
 - **Pending access requests** section for project owners: message, links, approve / decline
 - Sidebar widget remains for quick triage from the hub home
+
+### 23. Slack integration — ready for review
+
+- Integrations hub **Slack** card: paste Incoming Webhook URL · test message on connect
+- Webhook stored server-side (never returned to client)
+- Posts to Slack when Vercel / Netlify deploys finish (**ready** or **error**)
+- Disconnect clears the stored webhook
+
+### 24. Discord integration — ready for review
+
+- Same flow as Slack via channel webhook URL
+- Rich embed on connect + deploy alerts with success/error styling
+- Shares notification pipeline with in-app deploy notifications
 
 ### 17. Full Next/Vite host — ready for review
 

@@ -34,7 +34,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     description:
       "Post deploy alerts, AI summaries, and invite links into your team channels.",
     category: "Communication",
-    status: "coming-soon",
+    status: "available",
     accent: "from-[#4A154B] to-[#611f69]",
   },
   {
@@ -52,7 +52,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     description:
       "Notify your community when public projects ship or request access.",
     category: "Communication",
-    status: "coming-soon",
+    status: "available",
     accent: "from-[#5865F2] to-[#404EED]",
   },
   {
