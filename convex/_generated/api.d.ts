@@ -45,6 +45,7 @@ import type * as lib_recordActivity from "../lib/recordActivity.js";
 import type * as lib_vercel from "../lib/vercel.js";
 import type * as presence from "../presence.js";
 import type * as projectFiles from "../projectFiles.js";
+import type * as projectStashes from "../projectStashes.js";
 import type * as projects from "../projects.js";
 import type * as pushSend from "../pushSend.js";
 import type * as pushSubscriptions from "../pushSubscriptions.js";
@@ -100,6 +101,7 @@ declare const fullApi: ApiFromModules<{
   "lib/vercel": typeof lib_vercel;
   presence: typeof presence;
   projectFiles: typeof projectFiles;
+  projectStashes: typeof projectStashes;
   projects: typeof projects;
   pushSend: typeof pushSend;
   pushSubscriptions: typeof pushSubscriptions;

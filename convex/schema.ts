@@ -315,6 +315,23 @@ export default defineSchema({
     afterContent: v.string(),
   }).index("by_activity", ["activityId"]),
 
+  /** Temporary snapshots of local file changes (stash/apply workflow). */
+  projectStashes: defineTable({
+    projectId: v.id("projects"),
+    name: v.string(),
+    createdBy: v.string(),
+    createdAt: v.number(),
+    fileCount: v.number(),
+    files: v.array(
+      v.object({
+        path: v.string(),
+        content: v.string(),
+        syncedContent: v.optional(v.string()),
+        staged: v.boolean(),
+      }),
+    ),
+  }).index("by_project_created", ["projectId", "createdAt"]),
+
   /** Project-level team chat messages (live via Convex subscriptions). */
   projectChatMessages: defineTable({
     projectId: v.id("projects"),

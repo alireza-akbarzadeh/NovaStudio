@@ -22,6 +22,7 @@ import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-c
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
+import { WorkspaceStashPanel } from "@/features/workspace/components/workspace-stash-panel";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import {
   useWorkspaceStore,
@@ -35,6 +36,7 @@ type WorkspaceGitPanelProps = {
 
 const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "changes", label: "Changes" },
+  { id: "stashes", label: "Stashes" },
   { id: "history", label: "History" },
   { id: "info", label: "Info" },
 ];
@@ -294,6 +296,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
             </div>
           ) : null}
         </div>
+      ) : activeTab === "stashes" ? (
+        <WorkspaceStashPanel projectId={projectId} />
       ) : activeTab === "history" ? (
         <WorkspaceGitHistory
           projectId={projectId}

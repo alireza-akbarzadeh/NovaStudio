@@ -82,3 +82,21 @@ export function useSetAllChangedStaged() {
 export function useDiscardFileChanges() {
   return useMutation(api.projectFiles.discardFileChanges);
 }
+
+export function useProjectStashes(projectId: string) {
+  return useQuery(api.projectStashes.listByProject, {
+    projectId: asProjectId(projectId),
+  });
+}
+
+export function useCreateProjectStash() {
+  return useMutation(api.projectStashes.create);
+}
+
+export function useApplyProjectStash() {
+  return useMutation(api.projectStashes.apply);
+}
+
+export function useRemoveProjectStash() {
+  return useMutation(api.projectStashes.remove);
+}
