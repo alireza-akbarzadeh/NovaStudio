@@ -2,10 +2,14 @@
 
 import {
   CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   ExternalLinkIcon,
   FileIcon,
   GitPullRequestIcon,
   Loader2Icon,
+  MessageSquareIcon,
+  MoreHorizontalIcon,
   RefreshCwIcon,
   XIcon,
 } from "lucide-react";
@@ -13,7 +17,12 @@ import { Manrope } from "next/font/google";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -22,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { PullRequestDiffReview } from "@/features/github/components/pull-request-diff-review";
 import {
   GitHubAuthorAvatar,
   GitHubCommentList,
@@ -38,11 +48,9 @@ import {
   type PullRequestMergeMethod,
 } from "@/features/github/hooks/use-github-pull-requests";
 import {
-  diffEditorHeight,
   parseUnifiedPatch,
 } from "@/features/github/lib/parse-unified-patch";
 import { useWorkspaceBreadcrumb } from "@/features/workspace/hooks/use-workspace-breadcrumb";
-import { WorkspaceDiffEditor } from "@/features/workspace/components/workspace-diff-editor";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import { cn } from "@/lib/utils";
 
@@ -125,43 +133,6 @@ function buildReviewCommentBody(comment: string, suggestion?: string) {
   return `${trimmed}\n\n\`\`\`suggestion\n${suggestionTrimmed}\n\`\`\``;
 }
 
-function FileReviewComments({
-  comments,
-}: {
-  comments: GitHubPullRequestReviewComment[];
-}) {
-  if (comments.length === 0) return null;
-
-  return (
-    <ul className="space-y-2 border-t border-ws-border/70 bg-ws-panel/30 p-3">
-      {comments.map((comment) => (
-        <li
-          key={comment.id}
-          className="rounded-md border border-ws-border/70 bg-ws-stage/40 p-3"
-        >
-          <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] text-ws-text-muted">
-            <GitHubAuthorAvatar
-              login={comment.authorLogin}
-              avatarUrl={comment.authorAvatarUrl}
-              size={18}
-            />
-            <span className="font-medium text-ws-text-secondary">
-              {comment.authorLogin}
-            </span>
-            <span className="font-mono text-ws-link">
-              line {comment.line}
-            </span>
-            <span>{formatGitHubDate(comment.createdAt)}</span>
-          </div>
-          <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-            {comment.body}
-          </p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function PullRequestFilePanel({
   file,
   reviewComments,
@@ -184,37 +155,13 @@ function PullRequestFilePanel({
     [file.patch],
   );
 
-  const editorHeight = useMemo(() => {
-    if (!parsed) return diffEditorHeight(16, true);
-    const lines = Math.max(
-      parsed.original.split("\n").length,
-      parsed.modified.split("\n").length,
-    );
-    return diffEditorHeight(lines, true);
-  }, [parsed]);
-
-  const [selectedLine, setSelectedLine] = useState(1);
-  const [commentBody, setCommentBody] = useState("");
-  const [suggestionBody, setSuggestionBody] = useState("");
-
   const fileComments = reviewComments.filter(
     (comment) => comment.path === file.filename,
   );
 
-  const onSubmit = async () => {
-    if (!commentBody.trim()) return;
-    await onSubmitLineComment({
-      line: selectedLine,
-      body: commentBody,
-      suggestion: suggestionBody,
-    });
-    setCommentBody("");
-    setSuggestionBody("");
-  };
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 items-center gap-2 border-b border-ws-border-subtle px-4 py-2">
+      <div className="flex shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3 py-1.5">
         <FileIcon className="size-3.5 shrink-0 text-ws-text-muted" />
         <span className="truncate font-mono text-[12px] text-ws-text">
           {file.filename}
@@ -228,85 +175,22 @@ function PullRequestFilePanel({
       </div>
 
       {file.patch && parsed ? (
-        <div
-          className="min-h-0 shrink-0 overflow-hidden border-b border-ws-border/70"
-          style={{ height: editorHeight }}
-        >
-          <WorkspaceDiffEditor
+        <div className="min-h-0 flex-1">
+          <PullRequestDiffReview
             filePath={file.filename}
-            original={parsed.original}
-            modified={parsed.modified}
-            renderSideBySide
-            height={editorHeight}
-            onModifiedLineChange={setSelectedLine}
+            parsed={parsed}
+            reviewComments={fileComments}
+            canComment={canComment}
+            isSubmitting={isSubmitting}
+            fillHeight
+            onSubmitLineComment={onSubmitLineComment}
           />
         </div>
       ) : (
-        <p className="border-b border-ws-border/70 px-4 py-6 text-[13px] text-ws-text-muted italic">
+        <p className="px-4 py-6 text-[13px] text-ws-text-muted italic">
           No patch available (binary or too large).
         </p>
       )}
-
-      <FileReviewComments comments={fileComments} />
-
-      {canComment ? (
-        <div className="shrink-0 space-y-3 border-t border-ws-border-subtle bg-ws-panel/20 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] font-medium tracking-wide text-ws-text-muted uppercase">
-              Comment on change
-            </p>
-            <span className="text-[11px] text-ws-text-muted">
-              Click a line in the diff or edit the line number
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-[11px] text-ws-text-muted">Line</label>
-            <Input
-              type="number"
-              min={1}
-              value={selectedLine}
-              onChange={(event) =>
-                setSelectedLine(
-                  Math.max(1, Number.parseInt(event.target.value, 10) || 1),
-                )
-              }
-              className="h-8 w-20 border-ws-border bg-ws-bg text-[12px] text-ws-text"
-            />
-          </div>
-          <Textarea
-            value={commentBody}
-            onChange={(event) => setCommentBody(event.target.value)}
-            placeholder="Leave a review comment on this line…"
-            rows={3}
-            disabled={isSubmitting}
-            className="min-h-20 resize-none border-ws-border bg-ws-bg text-[13px] text-ws-text"
-          />
-          <Textarea
-            value={suggestionBody}
-            onChange={(event) => setSuggestionBody(event.target.value)}
-            placeholder="Suggested improvement (optional — becomes a GitHub suggestion block)"
-            rows={3}
-            disabled={isSubmitting}
-            className="min-h-16 resize-none border-ws-border bg-ws-bg font-mono text-[12px] text-ws-text"
-          />
-          <Button
-            type="button"
-            size="sm"
-            disabled={!commentBody.trim() || isSubmitting}
-            onClick={() => void onSubmit()}
-            className="h-8 bg-ws-accent text-[12px] text-white hover:bg-ws-accent-hover"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2Icon className="size-3.5 animate-spin" />
-                Posting…
-              </>
-            ) : (
-              "Add review comment"
-            )}
-          </Button>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -333,6 +217,8 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
   const [reviewBody, setReviewBody] = useState("");
   const [mergeMethod, setMergeMethod] =
     useState<PullRequestMergeMethod>("merge");
+  const [showDetails, setShowDetails] = useState(false);
+  const [showConversation, setShowConversation] = useState(false);
 
   const loadDetail = useCallback(async () => {
     setError(null);
@@ -454,192 +340,288 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
 
   if (!detail) return null;
 
+  const conversationCount =
+    detail.comments.length + detail.reviews.length;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-ws-stage">
-      <header className="shrink-0 border-b border-ws-border-subtle px-6 py-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <GitPullRequestIcon
-                className={cn(
-                  "size-4 shrink-0",
-                  detail.merged
-                    ? "text-violet-500"
-                    : detail.state === "open"
-                      ? "text-emerald-500"
-                      : "text-ws-text-muted",
-                )}
-              />
-              <PullRequestBadge
-                state={detail.state}
-                draft={detail.draft}
-                merged={detail.merged}
-              />
-              <span className="font-mono text-[11px] text-ws-text-muted">
-                {detail.headBranch} → {detail.baseBranch}
-              </span>
-            </div>
-            <h1
-              className={cn(
-                display.className,
-                "text-lg font-semibold tracking-tight text-ws-text",
-              )}
-            >
-              {detail.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-2 text-[12px] text-ws-text-muted">
-              <GitHubAuthorAvatar
-                login={detail.authorLogin}
-                avatarUrl={detail.authorAvatarUrl}
-              />
-              <span>{detail.authorLogin}</span>
-              <span>· {formatGitHubDate(detail.createdAt)}</span>
-              <span className="text-emerald-500">+{detail.additions}</span>
-              <span className="text-red-400">−{detail.deletions}</span>
-              <span>{detail.changedFiles} files</span>
-            </div>
-            {detail.body ? (
-              <p className="max-w-3xl text-[13px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-                {detail.body}
-              </p>
-            ) : null}
-          </div>
+      <header className="shrink-0 border-b border-ws-border-subtle px-4 py-2">
+        <div className="flex items-center gap-2">
+          <GitPullRequestIcon
+            className={cn(
+              "size-4 shrink-0",
+              detail.merged
+                ? "text-violet-500"
+                : detail.state === "open"
+                  ? "text-emerald-500"
+                  : "text-ws-text-muted",
+            )}
+          />
+          <PullRequestBadge
+            state={detail.state}
+            draft={detail.draft}
+            merged={detail.merged}
+          />
+          <span className="shrink-0 font-mono text-[11px] text-ws-link">
+            #{detail.number}
+          </span>
+          <h1
+            className={cn(
+              display.className,
+              "min-w-0 truncate text-sm font-semibold tracking-tight text-ws-text",
+            )}
+            title={detail.title}
+          >
+            {detail.title}
+          </h1>
+          <span className="hidden shrink-0 font-mono text-[10px] text-ws-text-muted sm:inline">
+            {detail.headBranch} → {detail.baseBranch}
+          </span>
+          <span className="hidden shrink-0 text-[10px] text-emerald-500 md:inline">
+            +{detail.additions}
+          </span>
+          <span className="hidden shrink-0 text-[10px] text-red-400 md:inline">
+            −{detail.deletions}
+          </span>
 
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {canReview ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text hover:bg-ws-hover"
+                  >
+                    Review
+                    <ChevronDownIcon className="size-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-80 border-ws-border bg-ws-panel p-3"
+                >
+                  <Textarea
+                    value={reviewBody}
+                    onChange={(event) => setReviewBody(event.target.value)}
+                    placeholder="Overall review comment (required for Request changes)"
+                    rows={3}
+                    disabled={isReviewing}
+                    className="mb-2 min-h-16 resize-none border-ws-border bg-ws-bg text-[12px] text-ws-text"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isReviewing || isMerging}
+                      onClick={() => void onReview("APPROVE")}
+                      className="h-7 flex-1 gap-1 bg-emerald-600 text-[11px] text-white hover:bg-emerald-700"
+                    >
+                      {isReviewing ? (
+                        <Loader2Icon className="size-3 animate-spin" />
+                      ) : (
+                        <CheckIcon className="size-3" />
+                      )}
+                      Approve
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={isReviewing || isMerging}
+                      onClick={() => void onReview("REQUEST_CHANGES")}
+                      className="h-7 flex-1 gap-1 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
+                    >
+                      <XIcon className="size-3" />
+                      Request changes
+                    </Button>
+                  </div>
+                  {canMerge ? (
+                    <>
+                      <DropdownMenuSeparator className="my-2 bg-ws-border" />
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={mergeMethod}
+                          onValueChange={(value) =>
+                            setMergeMethod(value as PullRequestMergeMethod)
+                          }
+                        >
+                          <SelectTrigger
+                            size="sm"
+                            className="h-7 flex-1 border-ws-border bg-ws-bg text-[11px] text-ws-text shadow-none"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent position="popper" className="z-100">
+                            <SelectItem value="merge" className="text-[11px]">
+                              Merge commit
+                            </SelectItem>
+                            <SelectItem value="squash" className="text-[11px]">
+                              Squash and merge
+                            </SelectItem>
+                            <SelectItem value="rebase" className="text-[11px]">
+                              Rebase and merge
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={isMerging || isReviewing}
+                          onClick={() => void onMerge()}
+                          className="h-7 bg-violet-600 text-[11px] text-white hover:bg-violet-700"
+                        >
+                          {isMerging ? (
+                            <Loader2Icon className="size-3 animate-spin" />
+                          ) : (
+                            "Merge"
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : canMerge ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text hover:bg-ws-hover"
+                  >
+                    Merge
+                    <ChevronDownIcon className="size-3 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-72 border-ws-border bg-ws-panel p-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={mergeMethod}
+                      onValueChange={(value) =>
+                        setMergeMethod(value as PullRequestMergeMethod)
+                      }
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className="h-7 flex-1 border-ws-border bg-ws-bg text-[11px] text-ws-text shadow-none"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="z-100">
+                        <SelectItem value="merge" className="text-[11px]">
+                          Merge commit
+                        </SelectItem>
+                        <SelectItem value="squash" className="text-[11px]">
+                          Squash and merge
+                        </SelectItem>
+                        <SelectItem value="rebase" className="text-[11px]">
+                          Rebase and merge
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isMerging}
+                      onClick={() => void onMerge()}
+                      className="h-7 bg-violet-600 text-[11px] text-white hover:bg-violet-700"
+                    >
+                      Merge
+                    </Button>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant={showConversation ? "secondary" : "outline"}
+              onClick={() => setShowConversation((open) => !open)}
+              className="h-7 gap-1 border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text hover:bg-ws-hover"
+            >
+              <MessageSquareIcon className="size-3" />
+              {conversationCount > 0 ? conversationCount : null}
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowDetails((open) => !open)}
+              className="h-7 px-2 text-[11px] text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            >
+              {showDetails ? (
+                <ChevronUpIcon className="size-3.5" />
+              ) : (
+                <MoreHorizontalIcon className="size-3.5" />
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
               onClick={() => void loadDetail()}
               disabled={isLoadingDetail}
-              className="h-8 border-ws-border bg-ws-bg text-[12px] text-ws-text hover:bg-ws-hover"
+              className="size-7 p-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              title="Refresh"
             >
               <RefreshCwIcon
                 className={cn("size-3.5", isLoadingDetail && "animate-spin")}
               />
-              Refresh
             </Button>
+
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="ghost"
               asChild
-              className="h-8 border-ws-border bg-ws-bg text-[12px] text-ws-text hover:bg-ws-hover"
+              className="size-7 p-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+              title="Open on GitHub"
             >
               <a href={detail.url} target="_blank" rel="noreferrer">
                 <ExternalLinkIcon className="size-3.5" />
-                Open on GitHub
               </a>
             </Button>
           </div>
         </div>
 
-        {canReview || canMerge ? (
-          <div className="mt-4 flex flex-wrap gap-4 border-t border-ws-border-subtle pt-4">
-            {canReview ? (
-              <div className="min-w-[280px] flex-1 space-y-2">
-                <p className="text-[11px] font-medium tracking-wide text-ws-text-muted uppercase">
-                  Review
-                </p>
-                <Textarea
-                  value={reviewBody}
-                  onChange={(event) => setReviewBody(event.target.value)}
-                  placeholder="Overall review comment (required for Request changes)"
-                  rows={2}
-                  disabled={isReviewing}
-                  className="min-h-14 resize-none border-ws-border bg-ws-bg text-[13px] text-ws-text"
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isReviewing || isMerging}
-                    onClick={() => void onReview("APPROVE")}
-                    className="h-8 gap-1 bg-emerald-600 text-[12px] text-white hover:bg-emerald-700"
-                  >
-                    {isReviewing ? (
-                      <Loader2Icon className="size-3.5 animate-spin" />
-                    ) : (
-                      <CheckIcon className="size-3.5" />
-                    )}
-                    Approve
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={isReviewing || isMerging}
-                    onClick={() => void onReview("REQUEST_CHANGES")}
-                    className="h-8 gap-1 border-ws-border bg-ws-bg text-[12px] text-ws-text hover:bg-ws-hover"
-                  >
-                    <XIcon className="size-3.5" />
-                    Request changes
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-
-            {canMerge ? (
-              <div className="min-w-[240px] space-y-2">
-                <p className="text-[11px] font-medium tracking-wide text-ws-text-muted uppercase">
-                  Merge
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Select
-                    value={mergeMethod}
-                    onValueChange={(value) =>
-                      setMergeMethod(value as PullRequestMergeMethod)
-                    }
-                  >
-                    <SelectTrigger
-                      size="sm"
-                      className="h-8 w-[180px] border-ws-border bg-ws-bg text-[12px] text-ws-text shadow-none"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper" className="z-[100]">
-                      <SelectItem value="merge" className="text-[12px]">
-                        Merge commit
-                      </SelectItem>
-                      <SelectItem value="squash" className="text-[12px]">
-                        Squash and merge
-                      </SelectItem>
-                      <SelectItem value="rebase" className="text-[12px]">
-                        Rebase and merge
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isMerging || isReviewing}
-                    onClick={() => void onMerge()}
-                    className="h-8 bg-violet-600 text-[12px] text-white hover:bg-violet-700"
-                  >
-                    {isMerging ? (
-                      <>
-                        <Loader2Icon className="size-3.5 animate-spin" />
-                        Merging…
-                      </>
-                    ) : (
-                      "Merge pull request"
-                    )}
-                  </Button>
-                </div>
-              </div>
+        {showDetails ? (
+          <div className="mt-2 space-y-2 border-t border-ws-border-subtle pt-2">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-ws-text-muted">
+              <GitHubAuthorAvatar
+                login={detail.authorLogin}
+                avatarUrl={detail.authorAvatarUrl}
+                size={16}
+              />
+              <span>{detail.authorLogin}</span>
+              <span>· {formatGitHubDate(detail.createdAt)}</span>
+              <span>{detail.changedFiles} files changed</span>
+            </div>
+            {detail.body ? (
+              <p className="text-[12px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
+                {detail.body}
+              </p>
             ) : null}
           </div>
         ) : null}
       </header>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className="flex w-64 shrink-0 flex-col border-r border-ws-border-subtle bg-ws-panel/20">
-          <div className="shrink-0 border-b border-ws-border-subtle px-3 py-2">
-            <p className="text-[11px] font-medium tracking-wide text-ws-text-muted uppercase">
-              Files changed ({detail.files.length})
+        <aside className="flex w-52 shrink-0 flex-col border-r border-ws-border-subtle bg-ws-panel/20">
+          <div className="shrink-0 border-b border-ws-border-subtle px-3 py-1.5">
+            <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
+              Files ({detail.files.length})
             </p>
           </div>
-          <ul className="min-h-0 flex-1 overflow-auto p-1.5">
+          <ul className="min-h-0 flex-1 overflow-auto p-1">
             {detail.files.map((file) => {
               const commentCount = detail.reviewComments.filter(
                 (comment) => comment.path === file.filename,
@@ -652,21 +634,16 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
                     type="button"
                     onClick={() => setSelectedFile(file.filename)}
                     className={cn(
-                      "flex w-full items-start gap-2 rounded-md px-2 py-2 text-left transition-colors",
+                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                       isActive
                         ? "bg-ws-accent/15 text-ws-text"
                         : "text-ws-text-secondary hover:bg-ws-hover",
                     )}
                   >
-                    <FileIcon className="mt-0.5 size-3 shrink-0 opacity-70" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-[11px]">
-                        {fileBaseName(file.filename)}
-                      </p>
-                      <p className="truncate text-[10px] text-ws-text-muted">
-                        {file.filename}
-                      </p>
-                    </div>
+                    <FileIcon className="size-3 shrink-0 opacity-70" />
+                    <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                      {fileBaseName(file.filename)}
+                    </span>
                     {commentCount > 0 ? (
                       <span className="shrink-0 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-medium text-sky-400">
                         {commentCount}
@@ -695,66 +672,78 @@ export function PullRequestView({ projectId, pullNumber }: PullRequestViewProps)
             </div>
           )}
         </main>
-      </div>
 
-      <div className="shrink-0 border-t border-ws-border-subtle">
-        {detail.reviews.length > 0 ? (
-          <div className="space-y-2 border-b border-ws-border-subtle px-6 py-4">
-            <p className="text-[11px] font-medium tracking-wide text-ws-text-muted uppercase">
-              Reviews ({detail.reviews.length})
-            </p>
-            <ul className="space-y-2">
-              {detail.reviews.map((review) => (
-                <li
-                  key={review.id}
-                  className="rounded-md border border-ws-border/70 bg-ws-panel/40 p-3"
-                >
-                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[11px] text-ws-text-muted">
-                    <GitHubAuthorAvatar
-                      login={review.authorLogin}
-                      avatarUrl={review.authorAvatarUrl}
-                      size={18}
-                    />
-                    <span className="font-medium text-ws-text-secondary">
-                      {review.authorLogin}
-                    </span>
-                    <ReviewStateBadge state={review.state} />
-                    <span>{formatGitHubDate(review.submittedAt)}</span>
-                  </div>
-                  {review.body ? (
-                    <p className="text-[13px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-                      {review.body}
-                    </p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        {showConversation ? (
+          <aside className="flex w-72 shrink-0 flex-col border-l border-ws-border-subtle bg-ws-panel/20">
+            <div className="flex shrink-0 items-center justify-between border-b border-ws-border-subtle px-3 py-1.5">
+              <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
+                Conversation
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowConversation(false)}
+                className="inline-flex size-6 items-center justify-center rounded-md text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+                aria-label="Close conversation"
+              >
+                <XIcon className="size-3.5" />
+              </button>
+            </div>
 
-        <div className="max-h-56 overflow-auto px-6 py-4">
-          <GitHubCommentList comments={detail.comments} />
-        </div>
+            <div className="min-h-0 flex-1 overflow-auto px-3 py-2">
+              {detail.reviews.length > 0 ? (
+                <ul className="mb-3 space-y-2">
+                  {detail.reviews.map((review) => (
+                    <li
+                      key={review.id}
+                      className="rounded-md border border-ws-border/70 bg-ws-stage/40 p-2"
+                    >
+                      <div className="mb-1 flex flex-wrap items-center gap-1.5 text-[10px] text-ws-text-muted">
+                        <GitHubAuthorAvatar
+                          login={review.authorLogin}
+                          avatarUrl={review.authorAvatarUrl}
+                          size={16}
+                        />
+                        <span className="font-medium text-ws-text-secondary">
+                          {review.authorLogin}
+                        </span>
+                        <ReviewStateBadge state={review.state} />
+                      </div>
+                      {review.body ? (
+                        <p className="text-[12px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
+                          {review.body}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <GitHubCommentList comments={detail.comments} />
+            </div>
 
-        {detail.state === "open" && !detail.merged ? (
-          <GitHubReplyBox
-            value={replyBody}
-            onChange={setReplyBody}
-            isSubmitting={isCommenting}
-            onSubmit={() => {
-              if (!replyBody.trim()) return;
-              void createComment(detail.number, replyBody.trim()).then(
-                (comment) => {
-                  setReplyBody("");
-                  setDetail((current) =>
-                    current
-                      ? { ...current, comments: [...current.comments, comment] }
-                      : current,
+            {detail.state === "open" && !detail.merged ? (
+              <GitHubReplyBox
+                value={replyBody}
+                onChange={setReplyBody}
+                isSubmitting={isCommenting}
+                onSubmit={() => {
+                  if (!replyBody.trim()) return;
+                  void createComment(detail.number, replyBody.trim()).then(
+                    (comment) => {
+                      setReplyBody("");
+                      setDetail((current) =>
+                        current
+                          ? {
+                              ...current,
+                              comments: [...current.comments, comment],
+                            }
+                          : current,
+                      );
+                    },
                   );
-                },
-              );
-            }}
-          />
+                }}
+              />
+            ) : null}
+          </aside>
         ) : null}
       </div>
     </div>
