@@ -133,6 +133,13 @@ export const commitAndPush = action({
         pushedPaths: changedFiles.map((file) => file.path),
       });
 
+      await ctx.scheduler.runAfter(0, internal.linearActions.syncProjectIssue, {
+        projectId: args.projectId,
+        userId: identity.subject,
+        event: "push",
+        commitSha: newCommit.sha,
+      });
+
       return {
         commitSha: newCommit.sha,
         filesPushed: changedFiles.length,

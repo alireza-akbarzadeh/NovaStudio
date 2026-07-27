@@ -7,13 +7,16 @@ import {
   FileJsonIcon,
   FolderPlusIcon,
   KeyboardIcon,
+  Loader2Icon,
   MoreVerticalIcon,
+  NotebookPenIcon,
   PinIcon,
   PinOffIcon,
   Settings2Icon,
   XIcon,
 } from "lucide-react";
 import Image from "next/image";
+import { useConvex } from "convex/react";
 import {
   type DragEvent,
   type ReactNode,
@@ -44,8 +47,13 @@ import {
 } from "@/components/ui/resizable";
 import { NewProjectForm } from "@/features/projects/components/new-project-form";
 import { ShortcutsPanel } from "@/features/settings/components/shortcuts-panel";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useExportToNotion } from "@/features/integrations/hooks/use-export-to-notion";
+import { deriveMarkdownTitle } from "@/features/integrations/lib/derive-markdown-title";
 import { runCommand } from "@/features/workspace/commands/registry";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
+import { loadFileContentDraft } from "@/features/workspace/lib/file-content-drafts";
 import { useFileDirtyStore } from "@/features/workspace/lib/file-save-controller";
 import {
   type EditorTab,
@@ -90,6 +98,56 @@ const TAB_MENU_SEPARATOR = "mx-0 my-1 bg-ws-border";
 
 const OVERFLOW_ITEM =
   "cursor-default text-[12px] text-ws-text focus:bg-ws-menu-focus focus:text-white";
+
+function isMarkdownPath(path?: string) {
+  if (!path) return false;
+  const lower = path.toLowerCase();
+  return lower.endsWith(".md") || lower.endsWith(".mdx");
+}
+
+function ExportMarkdownTabMenuItem({
+  projectId,
+  path,
+  title,
+}: {
+  projectId: string;
+  path: string;
+  title: string;
+}) {
+  const convex = useConvex();
+  const { exportToNotion, isExporting } = useExportToNotion();
+
+  return (
+    <ContextMenuItem
+      className={TAB_MENU_ITEM}
+      disabled={isExporting}
+      onClick={() => {
+        void (async () => {
+          const draft = loadFileContentDraft(projectId, path)?.content;
+          const remote = draft
+            ? null
+            : await convex.query(api.projectFiles.getByPath, {
+                projectId: projectId as Id<"projects">,
+                path,
+              });
+          const markdown = draft ?? remote?.content ?? "";
+          await exportToNotion({
+            title: deriveMarkdownTitle(markdown, title),
+            markdown,
+            footer: `Exported from ${path} in NovaStudio.`,
+          });
+        })();
+      }}
+    >
+      {isExporting ? (
+        <Loader2Icon className="mr-2 size-3.5 animate-spin opacity-70" />
+      ) : (
+        <NotebookPenIcon className="mr-2 size-3.5 opacity-70" />
+      )}
+      Export to Notion
+    </ContextMenuItem>
+  );
+}
 
 function EditorTabsOverflowMenu({
   hasTabs,
@@ -396,6 +454,13 @@ export function WorkspaceEditorTabs({ projectId }: WorkspaceEditorTabsProps) {
                   <Columns2Icon className="mr-2 size-3.5 opacity-70" />
                   Split Window
                 </ContextMenuItem>
+                {tab.kind === "file" && isMarkdownPath(tab.path) && tab.path ? (
+                  <ExportMarkdownTabMenuItem
+                    projectId={projectId}
+                    path={tab.path}
+                    title={tab.title}
+                  />
+                ) : null}
                 <ContextMenuSeparator className={TAB_MENU_SEPARATOR} />
                 <ContextMenuItem
                   className={TAB_MENU_ITEM}

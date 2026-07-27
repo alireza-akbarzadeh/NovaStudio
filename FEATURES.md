@@ -66,14 +66,20 @@ These are the biggest daily-friction gaps you called out.
 | 21 | **Project File Navigator** | `review` | JetBrains-style dialog: search, browse, create, rename. ⌘P · ⇧⇧ |
 | 22 | **Team hub** | `review` | Members directory + pending access requests (approve / decline) |
 
-### Sprint F — Integrations (current focus)
+### Sprint F — Integrations
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 23 | **Slack integration** | `review` | Incoming webhook · deploy success/failure alerts |
 | 24 | **Discord integration** | `review` | Channel webhook · deploy success/failure alerts |
-| 25 | **Linear integration** | `todo` | Issue linking + status sync |
-| 26 | **Notion integration** | `todo` | Export docs / AI plans to pages |
+| 25 | **Linear integration** | `review` | API key · link issue in Git Info · sync on push / deploy |
+| 26 | **Notion integration** | `review` | Internal integration · export AI plans + markdown docs to pages |
+
+### Sprint G — Git & editor (current focus)
+
+| # | Feature | Status | Notes |
+|---|---------|--------|-------|
+| 27 | **Stash preview / diff** | `review` | Expand stash → file list → diff before apply · Apply & keep |
 
 ### Later / hard infrastructure
 
@@ -282,6 +288,30 @@ These are the biggest daily-friction gaps you called out.
 - Same flow as Slack via channel webhook URL
 - Rich embed on connect + deploy alerts with success/error styling
 - Shares notification pipeline with in-app deploy notifications
+
+### 25. Linear integration — ready for review
+
+- Integrations hub **Linear** card: personal API key · verifies viewer + org on connect
+- Git panel **Info** tab: link an issue by ID (e.g. `ENG-123`) · open in Linear · unlink
+- **Push to GitHub** → comment on linked issue + move to In Review / In Progress when available
+- **Deploy success** → comment + move to Done / Completed when available in team workflow
+- API key stored server-side; never returned to clients
+
+### 26. Notion integration — ready for review
+
+- Integrations hub **Notion** card: internal integration secret + parent page URL
+- Verifies integration access to the parent page on connect
+- **AI plan mode** → Export to Notion on each plan card
+- **Markdown tabs** → right-click tab → Export to Notion (uses draft buffer when unsaved)
+- Creates child pages with headings, lists, paragraphs, and fenced code blocks
+- Integration secret stored server-side; never returned to clients
+
+### 27. Stash preview / diff — ready for review
+
+- Git panel **Stashes** tab: expand a stash to see its files
+- Click a file → inline Monaco diff (current tree vs stashed content)
+- Per-file +/- counts before apply
+- **Apply** removes the stash · **Apply & keep** restores without deleting
 
 ### 17. Full Next/Vite host — ready for review
 

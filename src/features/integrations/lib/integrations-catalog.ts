@@ -43,7 +43,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     description:
       "Link issues to projects and sync status when PRs merge from NovaStudio.",
     category: "Productivity",
-    status: "coming-soon",
+    status: "available",
     accent: "from-indigo-600 to-violet-700",
   },
   {
@@ -79,7 +79,7 @@ export const HUB_INTEGRATIONS: IntegrationMeta[] = [
     description:
       "Export docs, specs, and AI plans into Notion pages your team already uses.",
     category: "Productivity",
-    status: "coming-soon",
+    status: "available",
     accent: "from-neutral-700 to-neutral-900",
   },
 ];

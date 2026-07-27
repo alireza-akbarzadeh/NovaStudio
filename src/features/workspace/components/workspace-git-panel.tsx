@@ -22,6 +22,8 @@ import { useGenerateCommitMessage } from "@/features/github/hooks/use-generate-c
 import { usePullFromGitHub } from "@/features/github/hooks/use-git-sync";
 import { WorkspaceChangeList } from "@/features/workspace/components/workspace-change-list";
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
+import { WorkspaceGitIssues } from "@/features/workspace/components/workspace-git-issues";
+import { WorkspaceLinearLink } from "@/features/workspace/components/workspace-linear-link";
 import { WorkspaceStashPanel } from "@/features/workspace/components/workspace-stash-panel";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import {
@@ -38,6 +40,7 @@ const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "changes", label: "Changes" },
   { id: "stashes", label: "Stashes" },
   { id: "history", label: "History" },
+  { id: "issues", label: "Issues" },
   { id: "info", label: "Info" },
 ];
 
@@ -316,6 +319,11 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           projectId={projectId}
           enabled={Boolean(isGitHub)}
         />
+      ) : activeTab === "issues" ? (
+        <WorkspaceGitIssues
+          projectId={projectId}
+          enabled={Boolean(isGitHub)}
+        />
       ) : (
         <GitInfoTab
           project={project}
@@ -407,9 +415,13 @@ function GitInfoTab({
               <ExternalLinkIcon className="size-3 shrink-0" />
             </a>
           </div>
+          <WorkspaceLinearLink projectId={project._id} />
         </div>
       ) : (
-        <InitializeRepositoryPrompt variant="info" />
+        <div className="space-y-3 p-3">
+          <InitializeRepositoryPrompt variant="info" />
+          <WorkspaceLinearLink projectId={project._id} />
+        </div>
       )}
     </div>
   );

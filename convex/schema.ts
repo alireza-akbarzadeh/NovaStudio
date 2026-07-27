@@ -139,6 +139,42 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_provider", ["userId", "provider"]),
 
+  /** Linear API key per user. Keys are never returned to clients. */
+  linearConnections: defineTable({
+    userId: v.string(),
+    apiKey: v.string(),
+    organizationName: v.optional(v.string()),
+    viewerName: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  /** Linked Linear issue per NovaStudio project. */
+  projectLinearLinks: defineTable({
+    projectId: v.id("projects"),
+    issueId: v.string(),
+    issueIdentifier: v.string(),
+    issueTitle: v.string(),
+    issueUrl: v.string(),
+    linkedBy: v.string(),
+    linkedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_issue", ["issueId"]),
+
+  /** Notion internal integration per user. Token never returned to clients. */
+  notionConnections: defineTable({
+    userId: v.string(),
+    apiKey: v.string(),
+    parentPageId: v.string(),
+    parentPageTitle: v.optional(v.string()),
+    workspaceName: v.optional(v.string()),
+    viewerName: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
   /** Linked Vercel project / Netlify site per NovaStudio project. */
   projectDeployTargets: defineTable({
     projectId: v.id("projects"),

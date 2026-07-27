@@ -347,6 +347,15 @@ export const updateDeployment = internalMutation({
           errorMessage: args.errorMessage ?? deployment.errorMessage,
         },
       );
+
+      if (next === "ready") {
+        await ctx.scheduler.runAfter(0, internal.linearActions.syncProjectIssue, {
+          projectId: deployment.projectId,
+          userId: deployment.createdBy,
+          event: "deploy",
+          detailUrl: args.url ?? deployment.url,
+        });
+      }
     }
 
     return await ctx.db.get(args.deploymentId);

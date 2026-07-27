@@ -2,6 +2,8 @@
 
 import { ComingSoonIntegrationCard } from "@/features/integrations/components/coming-soon-integration-card";
 import { GitHubIntegrationCard } from "@/features/integrations/components/github-integration-card";
+import { LinearIntegrationCard } from "@/features/integrations/components/linear-integration-card";
+import { NotionIntegrationCard } from "@/features/integrations/components/notion-integration-card";
 import { WebhookIntegrationCard } from "@/features/integrations/components/webhook-integration-card";
 import { DeployIntegrationCard } from "@/features/deploy/components/deploy-integration-card";
 import type { IntegrationMeta } from "@/features/integrations/lib/integrations-catalog";
@@ -40,6 +42,12 @@ export function IntegrationCard({ integration }: IntegrationCardProps) {
         provider={integration.id}
       />
     );
+  }
+  if (integration.id === "linear") {
+    return <LinearIntegrationCard integration={integration} />;
+  }
+  if (integration.id === "notion") {
+    return <NotionIntegrationCard integration={integration} />;
   }
   return <ComingSoonIntegrationCard integration={integration} />;
 }

@@ -9,6 +9,8 @@ import {
   PlanTitle,
   PlanTrigger,
 } from "@/components/ai-elements/plan";
+import { ExportToNotionButton } from "@/features/integrations/components/export-to-notion-button";
+import { deriveMarkdownTitle } from "@/features/integrations/lib/derive-markdown-title";
 import { WorkspaceMessageResponse } from "@/features/workspace/components/workspace-message-response";
 import { cn } from "@/lib/utils";
 
@@ -18,23 +20,12 @@ type WorkspaceAiPlanCardProps = {
   className?: string;
 };
 
-function derivePlanTitle(content: string) {
-  const heading = content.match(/^#{1,3}\s+(.+)$/m)?.[1]?.trim();
-  if (heading) return heading.slice(0, 72);
-  const firstLine = content
-    .split("\n")
-    .map((line) => line.trim())
-    .find((line) => line.length > 0);
-  if (!firstLine) return "Implementation plan";
-  return firstLine.replace(/^[*`-]+\s*/, "").slice(0, 72);
-}
-
 export function WorkspaceAiPlanCard({
   content,
   isStreaming = false,
   className,
 }: WorkspaceAiPlanCardProps) {
-  const title = derivePlanTitle(content);
+  const title = deriveMarkdownTitle(content, "Implementation plan");
 
   return (
     <Plan
@@ -54,7 +45,15 @@ export function WorkspaceAiPlanCard({
             Read-only plan — switch to Task mode to execute
           </PlanDescription>
         </div>
-        <PlanAction>
+        <PlanAction className="flex items-center gap-0.5">
+          {!isStreaming ? (
+            <ExportToNotionButton
+              title={title}
+              markdown={content}
+              footer="Exported from NovaStudio AI plan mode."
+              className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+            />
+          ) : null}
           <PlanTrigger className="size-7 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text" />
         </PlanAction>
       </PlanHeader>
