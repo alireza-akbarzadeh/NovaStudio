@@ -3,8 +3,6 @@
 
 import {
   CheckIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   GitPullRequestIcon,
   Loader2Icon,
   PlusIcon,
@@ -15,6 +13,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useGitBranches } from "@/features/github/hooks/use-git-sync";
 import {
@@ -24,6 +29,7 @@ import {
   type PullRequestMergeMethod,
   type PullRequestStateFilter,
 } from "@/features/github/hooks/use-github-pull-requests";
+import { PullRequestFilesSection } from "@/features/github/components/pull-request-file-diff";
 import {
   GitHubAuthorAvatar,
   GitHubCommentList,
@@ -103,69 +109,6 @@ function ReviewStateBadge({ state }: { state: string }) {
     >
       {state.replace(/_/g, " ").toLowerCase()}
     </span>
-  );
-}
-
-function FileStatusBadge({ status }: { status: string }) {
-  const className =
-    status === "added"
-      ? "text-emerald-500"
-      : status === "removed"
-        ? "text-red-400"
-        : status === "renamed"
-          ? "text-violet-400"
-          : "text-ws-text-muted";
-
-  return (
-    <span className={cn("text-[9px] font-medium uppercase", className)}>
-      {status}
-    </span>
-  );
-}
-
-function PullRequestFileRow({
-  file,
-}: {
-  file: GitHubPullRequestDetail["files"][number];
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <li className="rounded-md border border-ws-border/70 bg-ws-panel/40">
-      <button
-        type="button"
-        onClick={() => setExpanded((value) => !value)}
-        className="flex w-full items-center gap-2 px-2.5 py-2 text-left"
-      >
-        {expanded ? (
-          <ChevronDownIcon className="size-3 shrink-0 text-ws-text-muted" />
-        ) : (
-          <ChevronRightIcon className="size-3 shrink-0 text-ws-text-muted" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-mono text-[11px] text-ws-text">
-            {file.filename}
-          </p>
-          {file.previousFilename ? (
-            <p className="truncate font-mono text-[10px] text-ws-text-muted">
-              renamed from {file.previousFilename}
-            </p>
-          ) : null}
-        </div>
-        <FileStatusBadge status={file.status} />
-        <span className="text-[10px] text-emerald-500">+{file.additions}</span>
-        <span className="text-[10px] text-red-400">−{file.deletions}</span>
-      </button>
-      {expanded && file.patch ? (
-        <pre className="max-h-64 overflow-auto border-t border-ws-border/70 bg-ws-bg/80 p-2 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-ws-text-secondary">
-          {file.patch}
-        </pre>
-      ) : expanded ? (
-        <p className="border-t border-ws-border/70 px-2.5 py-2 text-[10px] text-ws-text-muted italic">
-          No patch available (binary or too large).
-        </p>
-      ) : null}
-    </li>
   );
 }
 
@@ -308,6 +251,12 @@ export function WorkspaceGitPullRequests({
   }
 
   if (view.kind === "create") {
+    const headOptions =
+      branches.length > 0 ? branches : [currentBranch];
+    const baseOptions = (
+      branches.length > 0 ? branches : ["main", currentBranch]
+    ).filter((name, index, array) => array.indexOf(name) === index);
+
     return (
       <div className="flex h-full min-h-0 flex-col">
         <GitHubHubToolbar
@@ -320,37 +269,23 @@ export function WorkspaceGitPullRequests({
               <label className="text-[10px] text-ws-text-muted uppercase">
                 Head
               </label>
-              <select
+              <WorkspaceGitSelect
                 value={headBranch}
-                onChange={(event) => setHeadBranch(event.target.value)}
-                className="h-8 w-full rounded-md border border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text"
-              >
-                {(branches.length > 0 ? branches : [currentBranch]).map(
-                  (name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ),
-                )}
-              </select>
+                onValueChange={setHeadBranch}
+                options={headOptions}
+                placeholder="Select head branch"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] text-ws-text-muted uppercase">
                 Base
               </label>
-              <select
+              <WorkspaceGitSelect
                 value={baseBranch}
-                onChange={(event) => setBaseBranch(event.target.value)}
-                className="h-8 w-full rounded-md border border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text"
-              >
-                {(branches.length > 0 ? branches : ["main", currentBranch])
-                  .filter((name, index, array) => array.indexOf(name) === index)
-                  .map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-              </select>
+                onValueChange={setBaseBranch}
+                options={baseOptions}
+                placeholder="Select base branch"
+              />
             </div>
           </div>
           <Input
@@ -529,19 +464,30 @@ export function WorkspaceGitPullRequests({
                     Merge
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
-                    <select
+                    <Select
                       value={mergeMethod}
-                      onChange={(event) =>
-                        setMergeMethod(
-                          event.target.value as PullRequestMergeMethod,
-                        )
+                      onValueChange={(value) =>
+                        setMergeMethod(value as PullRequestMergeMethod)
                       }
-                      className="h-7 rounded-md border border-ws-border bg-ws-bg px-2 text-[11px] text-ws-text"
                     >
-                      <option value="merge">Merge commit</option>
-                      <option value="squash">Squash and merge</option>
-                      <option value="rebase">Rebase and merge</option>
-                    </select>
+                      <SelectTrigger
+                        size="sm"
+                        className="h-7 w-[180px] border-ws-border bg-ws-bg text-[11px] text-ws-text shadow-none"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="z-[100]">
+                        <SelectItem value="merge" className="text-[11px]">
+                          Merge commit
+                        </SelectItem>
+                        <SelectItem value="squash" className="text-[11px]">
+                          Squash and merge
+                        </SelectItem>
+                        <SelectItem value="rebase" className="text-[11px]">
+                          Rebase and merge
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Button
                       type="button"
                       size="sm"
@@ -596,20 +542,10 @@ export function WorkspaceGitPullRequests({
                 </div>
               ) : null}
 
-              <div className="space-y-2 border-t border-ws-border-subtle pt-3">
-                <p className="text-[10px] font-medium tracking-wide text-ws-text-muted uppercase">
-                  Files changed ({detail.files.length})
-                </p>
-                {detail.files.length === 0 ? (
-                  <p className="text-[11px] text-ws-text-muted">No files.</p>
-                ) : (
-                  <ul className="space-y-1.5">
-                    {detail.files.map((file) => (
-                      <PullRequestFileRow key={file.filename} file={file} />
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <PullRequestFilesSection
+                key={detail.number}
+                files={detail.files}
+              />
 
               <GitHubCommentList comments={detail.comments} />
             </div>
@@ -748,5 +684,35 @@ export function WorkspaceGitPullRequests({
         )}
       </div>
     </div>
+  );
+}
+
+function WorkspaceGitSelect({
+  value,
+  onValueChange,
+  options,
+  placeholder,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger
+        size="sm"
+        className="h-8 w-full border-ws-border bg-ws-bg text-[11px] text-ws-text shadow-none"
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent position="popper" className="z-[100]">
+        {options.map((option) => (
+          <SelectItem key={option} value={option} className="font-mono text-[11px]">
+            {option}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

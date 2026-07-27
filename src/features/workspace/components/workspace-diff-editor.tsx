@@ -32,12 +32,16 @@ type WorkspaceDiffEditorProps = {
   filePath: string;
   original: string;
   modified: string;
+  renderSideBySide?: boolean;
+  height?: number | string;
 };
 
 export function WorkspaceDiffEditor({
   filePath,
   original,
   modified,
+  renderSideBySide = true,
+  height = "100%",
 }: WorkspaceDiffEditorProps) {
   const { resolvedTheme } = useTheme();
   const { enabledIds, activeThemeId } = useExtensionsState();
@@ -89,7 +93,7 @@ export function WorkspaceDiffEditor({
     return {
       ...base,
       readOnly: true,
-      renderSideBySide: true,
+      renderSideBySide,
       originalEditable: false,
       enableSplitViewResizing: true,
       renderIndicators: true,
@@ -115,11 +119,12 @@ export function WorkspaceDiffEditor({
     bracketMatching,
     lineHeight,
     monacoOverrides,
+    renderSideBySide,
   ]);
 
   return (
     <DiffEditor
-      height="100%"
+      height={height}
       language={language}
       original={original}
       modified={modified}
