@@ -1,17 +1,15 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import {
   ChevronDownIcon,
   ExternalLinkIcon,
   FileTextIcon,
   Loader2Icon,
-  PencilIcon,
   RefreshCwIcon,
-  SaveIcon,
-  UploadCloudIcon,
+  SquarePenIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,54 +20,40 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useCommitAndPush } from "@/features/github/hooks/use-commit-and-push";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import { toGitHubUrl } from "@/features/github/lib/github-url";
 import { ProjectDocMarkdown } from "@/features/projects/components/project-details/project-doc-markdown";
 import { useProjectDocs } from "@/features/projects/hooks/use-project-docs";
-import type {
-  ProjectDocRecord,
-  ProjectDocSlot,
-} from "@/features/projects/lib/project-details-types";
+import type { ProjectDocSlot } from "@/features/projects/lib/project-details-types";
 import { isProjectLinkedToGitHub } from "@/features/projects/lib/project-details-utils";
 import { cn } from "@/lib/utils";
 
 type ProjectDetailsDocsSectionProps = {
   projectId: string;
+  canOpenStudio?: boolean;
+  openingStudio?: boolean;
+  onOpenStudio?: () => void;
 };
 
 export function ProjectDetailsDocsSection({
   projectId,
+  canOpenStudio = false,
+  openingStudio = false,
+  onOpenStudio,
 }: ProjectDetailsDocsSectionProps) {
   const docsData = useProjectDocs(projectId);
-  const writeFile = useMutation(api.projectFiles.writeFileAtPath);
-  const updateContent = useMutation(api.projectFiles.updateContent);
-  const setFileStaged = useMutation(api.projectFiles.setFileStaged);
   const syncDocs = useAction(api.projectCommunityDocsActions.syncProjectDocsFromGitHub);
-  const { push, isPushing } = useCommitAndPush(projectId);
 
   const [activeSlot, setActiveSlot] = useState<ProjectDocSlot>("readme");
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const activeDoc = useMemo(
-    (): ProjectDocRecord | undefined =>
-      docsData?.docs.find((doc) => doc.slot === activeSlot),
+    () => docsData?.docs.find((doc) => doc.slot === activeSlot),
     [docsData, activeSlot],
   );
-
-  useEffect(() => {
-    if (!activeDoc) return;
-    if (!editing) {
-      setDraft(activeDoc.content);
-    }
-  }, [activeDoc, editing]);
 
   if (docsData === undefined) {
     return (
@@ -89,70 +73,6 @@ export function ProjectDetailsDocsSection({
   );
   const hasGithub = isProjectLinkedToGitHub(docsData);
 
-  async function handleCreate(doc: ProjectDocRecord | undefined = activeDoc) {
-    if (!doc || !docsData?.canEdit) return;
-    setSaving(true);
-    try {
-      await writeFile({
-        projectId: projectId as Id<"projects">,
-        path: doc.defaultPath,
-        content: doc.defaultContent,
-      });
-      toast.success(`${doc.label} created`);
-      setDraft(doc.defaultContent);
-      setEditing(true);
-    } catch (error) {
-      toast.error(parseConvexErrorMessage(error, "Could not create document"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSave(andPush = false) {
-    if (!activeDoc || !docsData?.canEdit) return;
-    const path = activeDoc.path ?? activeDoc.defaultPath;
-    setSaving(true);
-    try {
-      if (activeDoc.exists && activeDoc.path) {
-        await updateContent({
-          projectId: projectId as Id<"projects">,
-          path: activeDoc.path,
-          content: draft,
-          notifyFollowers: true,
-        });
-      } else {
-        await writeFile({
-          projectId: projectId as Id<"projects">,
-          path,
-          content: draft,
-        });
-      }
-
-      await setFileStaged({
-        projectId: projectId as Id<"projects">,
-        path,
-        staged: true,
-      }).catch(() => {
-        /* unchanged vs synced — skip staging */
-      });
-
-      toast.success(`${activeDoc.label} saved`);
-      setEditing(false);
-
-      if (andPush) {
-        if (!hasGithub) {
-          toast.message("Link GitHub to push documentation");
-          return;
-        }
-        await push(`Update ${path}`);
-      }
-    } catch (error) {
-      toast.error(parseConvexErrorMessage(error, "Could not save document"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleSyncFromGitHub() {
     if (!docsData?.canManage || !hasGithub) return;
     setSyncing(true);
@@ -165,7 +85,6 @@ export function ProjectDetailsDocsSection({
           ? `Synced ${result.imported.length} file${result.imported.length === 1 ? "" : "s"} from GitHub`
           : "No documentation files found on GitHub",
       );
-      setEditing(false);
     } catch (error) {
       toast.error(parseConvexErrorMessage(error, "Could not sync from GitHub"));
     } finally {
@@ -203,8 +122,8 @@ export function ProjectDetailsDocsSection({
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      README, contributing guide, and license — synced with your
-                      project files and GitHub.
+                      README, contributing guide, and license — read-only here.
+                      Edit in NovaStudio when you have access.
                     </p>
                   </div>
                 </div>
@@ -212,6 +131,18 @@ export function ProjectDetailsDocsSection({
             </CollapsibleTrigger>
 
             <div className="flex flex-wrap gap-2">
+              {canOpenStudio ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-xl"
+                  disabled={openingStudio}
+                  onClick={onOpenStudio}
+                >
+                  <SquarePenIcon className="size-3.5" />
+                  {openingStudio ? "Opening…" : "Open in Studio"}
+                </Button>
+              ) : null}
               {docsData.canManage && hasGithub ? (
                 <Button
                   type="button"
@@ -257,10 +188,7 @@ export function ProjectDetailsDocsSection({
         <CollapsibleContent>
           <Tabs
             value={activeSlot}
-            onValueChange={(value) => {
-              setActiveSlot(value as ProjectDocSlot);
-              setEditing(false);
-            }}
+            onValueChange={(value) => setActiveSlot(value as ProjectDocSlot)}
             className="pt-5"
           >
             <div className="px-6 md:px-8">
@@ -298,13 +226,16 @@ export function ProjectDetailsDocsSection({
                     <p className="text-sm text-muted-foreground">
                       {doc.defaultPath} has not been added yet.
                     </p>
-                    <Button
-                      className="mt-4 rounded-xl"
-                      disabled={saving}
-                      onClick={() => void handleCreate(doc)}
-                    >
-                      Add {doc.label}
-                    </Button>
+                    {canOpenStudio ? (
+                      <Button
+                        className="mt-4 rounded-xl"
+                        disabled={openingStudio}
+                        onClick={onOpenStudio}
+                      >
+                        <SquarePenIcon className="size-4" />
+                        Open in Studio to add {doc.label}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="project-doc-reader">
@@ -313,74 +244,9 @@ export function ProjectDetailsDocsSection({
                         <FileTextIcon className="size-3.5 shrink-0 opacity-60" />
                         {doc.path}
                       </span>
-                      {docsData.canManage ? (
-                        <div className="flex flex-wrap gap-2">
-                          {!editing ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-8 rounded-lg px-3 text-xs"
-                              onClick={() => setEditing(true)}
-                            >
-                              <PencilIcon className="size-3.5" />
-                              Edit
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                className="h-8 rounded-lg px-3 text-xs"
-                                onClick={() => setEditing(false)}
-                              >
-                                Preview
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="h-8 rounded-lg px-3 text-xs"
-                                disabled={saving}
-                                onClick={() => void handleSave(false)}
-                              >
-                                <SaveIcon className="size-3.5" />
-                                Save
-                              </Button>
-                              {hasGithub ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="h-8 rounded-lg px-3 text-xs"
-                                  disabled={saving || isPushing}
-                                  onClick={() => void handleSave(true)}
-                                >
-                                  {isPushing ? (
-                                    <Loader2Icon className="size-3.5 animate-spin" />
-                                  ) : (
-                                    <UploadCloudIcon className="size-3.5" />
-                                  )}
-                                  Save & push
-                                </Button>
-                              ) : null}
-                            </>
-                          )}
-                        </div>
-                      ) : null}
                     </div>
 
-                    {editing ? (
-                      <div className="px-6 pb-6 md:px-8">
-                        <Textarea
-                          value={draft}
-                          onChange={(event) => setDraft(event.target.value)}
-                          className={cn(
-                            "min-h-[360px] rounded-xl border-border/60 bg-background/60 font-mono text-xs leading-relaxed",
-                            doc.isMarkdown ? "" : "whitespace-pre-wrap",
-                          )}
-                        />
-                      </div>
-                    ) : doc.isMarkdown ? (
+                    {doc.isMarkdown ? (
                       <div className="project-doc-reader-body">
                         <ProjectDocMarkdown content={doc.content} />
                       </div>

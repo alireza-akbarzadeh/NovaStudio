@@ -24,6 +24,16 @@ export function useCommunityProjectActivity(projectId: string | null) {
   );
 }
 
+export function useProjectContributorLeaderboard(projectId: string | null) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projectCommunity.listProjectContributorLeaderboard,
+    isAuthenticated && projectId
+      ? { projectId: projectId as Id<"projects"> }
+      : "skip",
+  );
+}
+
 export function useCommunityDiscussions(projectId: string | null) {
   const { isAuthenticated } = useConvexAuth();
   return useQuery(
@@ -118,4 +128,8 @@ export function useSetProjectDemoVideo() {
 
 export function useRemoveProjectDemoVideo() {
   return useMutation(api.projectCommunity.removeProjectDemoVideo);
+}
+
+export function useForkPublicProject() {
+  return useMutation(api.projectCommunity.forkPublicProject);
 }

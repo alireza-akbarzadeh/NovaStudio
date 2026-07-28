@@ -66,3 +66,6 @@ export const sponsorTierMeta = {
 } as const;
 
 export const sponsorTierOrder = ["feature", "backer", "supporter"] as const;
+
+export const goodFirstIssueBadgeClass =
+  "gap-1 rounded-full border-emerald-500/25 bg-emerald-500/12 text-emerald-800 dark:text-emerald-300";

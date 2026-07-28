@@ -71,9 +71,9 @@ Convert visitors into collaborators.
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
 | 17 | **Owner access-request inbox** | `review` | Approve / deny from community detail page |
-| 18 | **Good first issue tags** | `todo` | Beginner-friendly roadmap items |
-| 19 | **Fork / use template** | `todo` | One-click duplicate public project |
-| 20 | **Contributor leaderboard** | `later` | Commits · reviews · shipped todos |
+| 18 | **Good first issue tags** | `review` | Beginner-friendly roadmap items |
+| 19 | **Fork / use template** | `review` | One-click duplicate public project |
+| 20 | **Contributor leaderboard** | `review` | Commits · reviews · shipped todos |
 
 ---
 
@@ -199,3 +199,22 @@ Convert visitors into collaborators.
 - **Access requests** inbox on community project detail (owners & managers only)
 - Approve or decline pending requests with profile links (GitHub, portfolio, LinkedIn)
 - Owner notifications link to the community detail page for public projects
+
+### 18. Good first issue tags — `review`
+
+- **Good first issue** tag on public roadmap items (`goodFirstIssue` on `projectPublicTodos`)
+- Emerald badge and highlighted row for beginner-friendly open items
+- Owners/managers toggle **Mark good first issue** inline; tagged items sort near the top
+
+### 19. Fork / use template — `review`
+
+- **Use template** on community project detail copies files into a new private workspace
+- Community cards on `/projects` open the detail page (not the editor)
+- Members with access use **Open in Studio** to enter the workspace editor
+- Fork count increments on the source project; activity recorded on the community feed
+
+### 20. Contributor leaderboard — `review`
+
+- **Contributor leaderboard** section ranks team members by activity score
+- Points: commits (+1), reviews/merges (+3), comments (+2), shipped roadmap items (+5)
+- Repository docs on the detail page are read-only; **Open in Studio** to edit files

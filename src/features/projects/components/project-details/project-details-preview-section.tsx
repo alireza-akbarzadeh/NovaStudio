@@ -166,7 +166,7 @@ export function ProjectDetailsPreviewSection({
                 >
                   <a href={`/projects/${details.id}`}>
                     <RocketIcon className="size-3.5" />
-                    Open workspace to deploy
+                    Open in Studio to deploy
                   </a>
                 </Button>
               ) : null}

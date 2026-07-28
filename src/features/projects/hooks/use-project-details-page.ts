@@ -18,6 +18,7 @@ import {
   useToggleFeatureUpvote,
   useToggleProjectFollow,
   useToggleProjectStar,
+  useForkPublicProject,
 } from "@/features/projects/hooks/use-project-details";
 import type { ProjectDetailsData } from "@/features/projects/lib/project-details-types";
 
@@ -32,12 +33,14 @@ export function useProjectDetailsPage(projectId: string) {
   const joinAsSponsor = useJoinAsSponsor();
   const toggleFeatureUpvote = useToggleFeatureUpvote();
   const seedContent = useSeedDefaultPublicContent();
+  const forkPublicProject = useForkPublicProject();
   const { openProject, isPending: opening } = useOpenWorkspaceProject();
   const viewedRef = useRef(false);
   const seededRef = useRef(false);
 
   const [starPending, setStarPending] = useState(false);
   const [followPending, setFollowPending] = useState(false);
+  const [forkPending, setForkPending] = useState(false);
   const [localStars, setLocalStars] = useState<number | null>(null);
   const [localStarred, setLocalStarred] = useState<boolean | null>(null);
   const [localFollowers, setLocalFollowers] = useState<number | null>(null);
@@ -82,6 +85,26 @@ export function useProjectDetailsPage(projectId: string) {
         resolvedDetails.viewer.canEdit ||
         resolvedDetails.viewer.isOwner),
   );
+  const canFork = Boolean(
+    resolvedDetails &&
+      resolvedDetails.visibility === "public" &&
+      !resolvedDetails.viewer.isOwner,
+  );
+
+  async function handleFork() {
+    setForkPending(true);
+    try {
+      const result = await forkPublicProject({
+        projectId: projectId as Id<"projects">,
+      });
+      toast.success(`Copied ${result.name} — opening NovaStudio`);
+      openProject(result.projectId);
+    } catch (error) {
+      toast.error(parseConvexErrorMessage(error, "Could not use this template"));
+    } finally {
+      setForkPending(false);
+    }
+  }
 
   async function handleStar() {
     setStarPending(true);
@@ -188,6 +211,7 @@ export function useProjectDetailsPage(projectId: string) {
     details: resolvedDetails,
     projectId,
     opening,
+    forkPending,
     starPending,
     followPending,
     starred,
@@ -196,7 +220,9 @@ export function useProjectDetailsPage(projectId: string) {
     followers,
     requestStatus,
     canOpen,
+    canFork,
     openProject,
+    handleFork,
     handleStar,
     handleFollow,
     handleDownload,

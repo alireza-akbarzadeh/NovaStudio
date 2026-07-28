@@ -116,6 +116,8 @@ export default defineSchema({
     demoVideoMediaType: v.optional(v.string()),
     /** When set, project is pinned in the community hub featured row. */
     communityFeaturedAt: v.optional(v.number()),
+    /** Source public project when created via community fork / use template. */
+    forkedFromProjectId: v.optional(v.id("projects")),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
@@ -601,6 +603,7 @@ export default defineSchema({
       v.literal("done"),
     ),
     bountyAmount: v.optional(v.string()),
+    goodFirstIssue: v.optional(v.boolean()),
     sortOrder: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),

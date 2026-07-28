@@ -9,7 +9,9 @@ type ProjectDetailsHeaderProps = {
   demo: ProjectDetailsData["demo"];
   canManageDemo: boolean;
   canOpen: boolean;
+  canFork?: boolean;
   opening: boolean;
+  forking?: boolean;
   requestStatus?: "pending" | "approved" | "denied";
   starred: boolean;
   stars: number;
@@ -18,6 +20,7 @@ type ProjectDetailsHeaderProps = {
   followers?: number;
   followPending?: boolean;
   onOpenWorkspace: () => void;
+  onUseTemplate?: () => void;
   onRequestAccess: () => void;
   onStar: () => void;
   onFollow?: () => void;
@@ -35,7 +38,9 @@ export function ProjectDetailsHeader({
   demo,
   canManageDemo,
   canOpen,
+  canFork,
   opening,
+  forking,
   requestStatus,
   starred,
   stars,
@@ -44,6 +49,7 @@ export function ProjectDetailsHeader({
   followers,
   followPending,
   onOpenWorkspace,
+  onUseTemplate,
   onRequestAccess,
   onStar,
   onFollow,
@@ -62,9 +68,12 @@ export function ProjectDetailsHeader({
         demo={demo}
         canManageDemo={canManageDemo}
         canOpen={canOpen}
+        canFork={canFork}
         opening={opening}
+        forking={forking}
         requestStatus={requestStatus}
         onOpenWorkspace={onOpenWorkspace}
+        onUseTemplate={onUseTemplate}
         onRequestAccess={onRequestAccess}
         onBecomeSponsor={onBecomeSponsor}
         canPushToGitHub={canPushToGitHub}

@@ -14,6 +14,7 @@ import {
   ProjectDetailsDocsSection,
   ProjectDetailsFeaturedBanner,
   ProjectDetailsHeader,
+  ProjectDetailsLeaderboardSection,
   ProjectDetailsLoadingState,
   ProjectDetailsNotFound,
   ProjectDetailsPreviewSection,
@@ -66,7 +67,9 @@ export function ProjectDetailsView({
         demo={details.demo}
         canManageDemo={canManageDemo}
         canOpen={page.canOpen}
+        canFork={page.canFork}
         opening={page.opening}
+        forking={page.forkPending}
         requestStatus={page.requestStatus}
         starred={page.starred}
         stars={page.stars}
@@ -75,6 +78,7 @@ export function ProjectDetailsView({
         followers={page.followers}
         followPending={page.followPending}
         onOpenWorkspace={() => page.openProject(projectId)}
+        onUseTemplate={() => void page.handleFork()}
         onRequestAccess={() => page.requestAccess(onRequestAccess)}
         onStar={() => void page.handleStar()}
         onFollow={() => void page.handleFollow()}
@@ -124,6 +128,7 @@ export function ProjectDetailsView({
           contributors={details.contributors}
           contributorCount={details.contributorCount}
         />
+        <ProjectDetailsLeaderboardSection projectId={projectId} />
         <ProjectDetailsAccessInboxSection
           projectId={projectId}
           canManage={details.viewer.isOwner || details.viewer.canManage}
@@ -147,12 +152,20 @@ export function ProjectDetailsView({
           projectId={projectId}
           details={details}
         />
-        <ProjectDetailsDocsSection projectId={projectId} />
+        <ProjectDetailsDocsSection
+          projectId={projectId}
+          canOpenStudio={page.canOpen}
+          openingStudio={page.opening}
+          onOpenStudio={() => page.openProject(projectId)}
+        />
         <ProjectDetailsContributeCta
           canOpen={page.canOpen}
+          canFork={page.canFork}
           opening={page.opening}
+          forking={page.forkPending}
           requestStatus={page.requestStatus}
           onOpenWorkspace={() => page.openProject(projectId)}
+          onUseTemplate={() => void page.handleFork()}
           onRequestAccess={() => page.requestAccess(onRequestAccess)}
         />
       </div>

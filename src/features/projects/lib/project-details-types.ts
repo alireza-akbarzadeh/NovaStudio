@@ -44,6 +44,7 @@ export type ProjectDetailsTodo = {
   title: string;
   status: "todo" | "in-progress" | "done";
   bountyAmount?: string;
+  goodFirstIssue: boolean;
 };
 
 export type ProjectDetailsFeature = {
@@ -84,6 +85,21 @@ export type ProjectCommunityActivity = {
     color: string;
     name: string;
   };
+};
+
+export type ProjectContributorLeaderboardEntry = {
+  rank: number;
+  userId: string;
+  name: string;
+  initials: string;
+  color: string;
+  imageUrl?: string;
+  role: string;
+  commits: number;
+  reviews: number;
+  shipped: number;
+  comments: number;
+  score: number;
 };
 
 export type ProjectCommunityMessage = {

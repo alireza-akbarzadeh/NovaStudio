@@ -1,6 +1,6 @@
 "use client";
 
-import { PlayCircleIcon, SparklesIcon, UploadCloudIcon } from "lucide-react";
+import { GitForkIcon, PlayCircleIcon, SparklesIcon, UploadCloudIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,12 +20,15 @@ type ProjectDetailsHeroProps = {
   demo: ProjectDetailsDemo | null;
   canManageDemo: boolean;
   canOpen: boolean;
+  canFork?: boolean;
   opening: boolean;
+  forking?: boolean;
   requestStatus?: "pending" | "approved" | "denied";
   canPushToGitHub: boolean;
   showDemoButton: boolean;
   hasDemo: boolean;
   onOpenWorkspace: () => void;
+  onUseTemplate?: () => void;
   onRequestAccess: () => void;
   onBecomeSponsor: () => void;
   onPushToGitHub: () => void;
@@ -37,12 +40,15 @@ export function ProjectDetailsHero({
   demo,
   canManageDemo,
   canOpen,
+  canFork = false,
   opening,
+  forking = false,
   requestStatus,
   canPushToGitHub,
   showDemoButton,
   hasDemo,
   onOpenWorkspace,
+  onUseTemplate,
   onRequestAccess,
   onBecomeSponsor,
   onPushToGitHub,
@@ -130,13 +136,28 @@ export function ProjectDetailsHero({
                 <SparklesIcon className="size-4" />
                 Become a sponsor
               </Button>
-              {canOpen ? (
+              {canFork ? (
                 <Button
                   className="rounded-xl"
+                  disabled={forking}
+                  onClick={onUseTemplate}
+                >
+                  <GitForkIcon className="size-4" />
+                  {forking ? "Copying…" : "Use template"}
+                </Button>
+              ) : null}
+              {canOpen ? (
+                <Button
+                  variant={canFork ? "secondary" : "default"}
+                  className={cn(
+                    "rounded-xl",
+                    canFork &&
+                      "bg-white/95 text-slate-900 hover:bg-white",
+                  )}
                   disabled={opening}
                   onClick={onOpenWorkspace}
                 >
-                  {opening ? "Opening…" : "Open workspace"}
+                  {opening ? "Opening…" : "Open in Studio"}
                 </Button>
               ) : requestStatus === "pending" ? (
                 <Button className="rounded-xl" disabled>

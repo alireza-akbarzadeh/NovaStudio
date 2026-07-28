@@ -7,14 +7,22 @@ import {
 } from "./lib/accessibleProjects";
 import {
   colorForUserId,
+  ensureOwnerMembership,
   identityDisplayName,
   identityEmail,
   resolveProjectAccess,
   verifyProjectOwnerAccess,
 } from "./lib/projectAccess";
 import { verifyAuth } from "./auth";
+import { getOrgContext } from "./lib/orgContext";
+import type { GitHubImportFile } from "./lib/github";
+import { insertImportedFiles } from "./lib/importProjectFiles";
 import { notifyProjectFollowers } from "./lib/notifyProjectFollowers";
-import { maybeRecordPublicCommunityActivity } from "./lib/recordActivity";
+import {
+  maybeRecordPublicCommunityActivity,
+  recordProjectActivity,
+} from "./lib/recordActivity";
+import { seedProjectFiles } from "./lib/projectFiles";
 import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
 import {
   PROJECT_DOC_SLOTS,
@@ -422,6 +430,114 @@ export const listCommunityProjectActivity = query({
   },
 });
 
+type LeaderboardAccumulator = {
+  userId: string;
+  name: string;
+  initials: string;
+  color: string;
+  imageUrl?: string;
+  role: string;
+  commits: number;
+  reviews: number;
+  shipped: number;
+  comments: number;
+  score: number;
+};
+
+function scoreActivityRow(
+  row: Doc<"projectActivity">,
+  stats: LeaderboardAccumulator,
+) {
+  switch (row.type) {
+    case "updated":
+      stats.commits += 1;
+      stats.score += 1;
+      break;
+    case "merged":
+      stats.reviews += 1;
+      stats.score += 3;
+      break;
+    case "comment":
+      stats.comments += 1;
+      stats.score += 2;
+      break;
+    case "released":
+      if (row.title.startsWith("Shipped:")) {
+        stats.shipped += 1;
+        stats.score += 5;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+export const listProjectContributorLeaderboard = query({
+  args: {
+    projectId: v.id("projects"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const limit = Math.min(Math.max(args.limit ?? 8, 1), 15);
+
+    const [activities, members] = await Promise.all([
+      ctx.db
+        .query("projectActivity")
+        .withIndex("by_project_created", (q) =>
+          q.eq("projectId", args.projectId),
+        )
+        .order("desc")
+        .take(600),
+      ctx.db
+        .query("projectMembers")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect(),
+    ]);
+
+    const memberByUserId = new Map(members.map((member) => [member.userId, member]));
+    const byUser = new Map<string, LeaderboardAccumulator>();
+
+    for (const row of activities) {
+      let stats = byUser.get(row.actorUserId);
+      if (!stats) {
+        const member = memberByUserId.get(row.actorUserId);
+        const name =
+          member?.name ?? member?.email ?? row.actorName ?? "Contributor";
+        stats = {
+          userId: row.actorUserId,
+          name,
+          initials: initialsFrom(name),
+          color: member?.color ?? row.actorColor ?? colorForUserId(row.actorUserId),
+          imageUrl: member?.imageUrl,
+          role: member?.role ?? "editor",
+          commits: 0,
+          reviews: 0,
+          shipped: 0,
+          comments: 0,
+          score: 0,
+        };
+        byUser.set(row.actorUserId, stats);
+      }
+      scoreActivityRow(row, stats);
+    }
+
+    return [...byUser.values()]
+      .filter((entry) => entry.score > 0)
+      .sort(
+        (a, b) =>
+          b.score - a.score ||
+          b.shipped - a.shipped ||
+          b.commits - a.commits,
+      )
+      .slice(0, limit)
+      .map((entry, index) => ({
+        rank: index + 1,
+        ...entry,
+      }));
+  },
+});
+
 export const listProjectPendingAccessRequests = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
@@ -654,6 +770,7 @@ export const getProjectDetails = query({
           title: todo.title,
           status: todo.status,
           bountyAmount: todo.bountyAmount,
+          goodFirstIssue: todo.goodFirstIssue === true,
         })),
       features: features
         .sort(
@@ -867,6 +984,108 @@ export const recordProjectDownload = mutation({
   },
 });
 
+const MAX_FORK_FILES = 400;
+
+export const forkPublicProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+
+    const source = await ctx.db.get("projects", args.projectId);
+    if (!source) throw new Error("Project not found");
+    if (source.visibility !== "public") {
+      throw new Error("Only public projects can be used as a template");
+    }
+    if (source.ownerId === identity.subject) {
+      throw new Error("Open your project in NovaStudio instead of forking it");
+    }
+
+    const userId = identity.subject;
+    const { orgId } = getOrgContext(identity);
+    const forkName = args.name?.trim() || `${source.name} (fork)`;
+    const now = Date.now();
+
+    const newProjectId = await ctx.db.insert("projects", {
+      name: forkName,
+      description: source.description,
+      ownerId: userId,
+      updatedAt: now,
+      lastOpenedAt: now,
+      source: source.source ?? "template",
+      templateId: source.templateId,
+      tech: source.tech,
+      visibility: "private",
+      status: "in-progress",
+      progress: source.progress ?? 10,
+      forkedFromProjectId: args.projectId,
+      fileContentSplit: true,
+      syncedAt: now,
+      ...(orgId ? { orgId } : {}),
+    });
+
+    const files = await ctx.db
+      .query("projectFiles")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const fileNodes = files.filter((file) => file.kind === "file");
+    if (fileNodes.length > MAX_FORK_FILES) {
+      await ctx.db.delete(newProjectId);
+      throw new Error(
+        `This project has too many files to fork (${fileNodes.length}). Try cloning from GitHub instead.`,
+      );
+    }
+
+    const importFiles: GitHubImportFile[] = [];
+    for (const file of fileNodes) {
+      const body = await readFileContent(ctx, args.projectId, file.path, file);
+      importFiles.push({ path: file.path, content: body.content });
+    }
+
+    if (importFiles.length > 0) {
+      await insertImportedFiles(ctx, newProjectId, importFiles);
+    } else if (source.templateId) {
+      await seedProjectFiles(ctx, newProjectId, source.templateId);
+    }
+
+    await ensureOwnerMembership(ctx, newProjectId, userId, {
+      email: identityEmail(identity) ?? undefined,
+      name: identityDisplayName(identity),
+      imageUrl: identity.pictureUrl,
+    });
+
+    const actorName = identityDisplayName(identity);
+    await recordProjectActivity(ctx, {
+      projectId: newProjectId,
+      actorUserId: userId,
+      actorName,
+      type: "released",
+      title: "Project created from template",
+      detail: `Forked from ${source.name}`,
+    });
+
+    await maybeRecordPublicCommunityActivity(ctx, {
+      projectId: args.projectId,
+      actorUserId: userId,
+      actorName,
+      type: "contributor",
+      title: "New template fork",
+      detail: `${actorName} started ${forkName}`,
+    });
+
+    await ctx.db.patch(args.projectId, {
+      forkCount: (source.forkCount ?? 0) + 1,
+      updatedAt: source.updatedAt,
+    });
+
+    return { projectId: newProjectId, name: forkName };
+  },
+});
+
 export const upsertPublicTodo = mutation({
   args: {
     projectId: v.id("projects"),
@@ -879,6 +1098,7 @@ export const upsertPublicTodo = mutation({
     ),
     sortOrder: v.optional(v.number()),
     bountyAmount: v.optional(v.string()),
+    goodFirstIssue: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId, project } = await verifyProjectOwnerAccess(
@@ -888,6 +1108,7 @@ export const upsertPublicTodo = mutation({
     const title = args.title.trim();
     if (!title) throw new Error("Title is required");
     const bountyAmount = args.bountyAmount?.trim() || undefined;
+    const goodFirstIssue = args.goodFirstIssue === true;
 
     let todoId: typeof args.todoId;
     let isNew = false;
@@ -904,6 +1125,7 @@ export const upsertPublicTodo = mutation({
         status: args.status,
         sortOrder: args.sortOrder ?? existing.sortOrder,
         bountyAmount,
+        goodFirstIssue,
         updatedAt: Date.now(),
       });
       todoId = args.todoId;
@@ -919,6 +1141,7 @@ export const upsertPublicTodo = mutation({
         title,
         status: args.status,
         bountyAmount,
+        goodFirstIssue,
         sortOrder: args.sortOrder ?? siblings.length,
         createdAt: Date.now(),
         updatedAt: Date.now(),

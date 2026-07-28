@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export function CommunityProjectCard({
   index,
   onRequestAccess,
 }: CommunityProjectCardProps) {
+  const router = useRouter();
   const toggleStar = useToggleProjectStar();
   const detailsHref = `/projects/community/${project.id}`;
   const isMember = project.isMember ?? false;
@@ -68,12 +70,29 @@ export function CommunityProjectCard({
     }
   }
 
+  function openDetails(event: MouseEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    if (target.closest("a, button, input, textarea, select, [role='button']")) {
+      return;
+    }
+    router.push(detailsHref);
+  }
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.12 + index * 0.05, duration: 0.35 }}
-      className="group relative overflow-hidden rounded-[24px] border border-border/60 bg-card/90 shadow-[0_18px_50px_-32px_rgba(76,29,149,0.55)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_70px_-34px_rgba(76,29,149,0.6)]"
+      role="link"
+      tabIndex={0}
+      onClick={openDetails}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          router.push(detailsHref);
+        }
+      }}
+      className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-border/60 bg-card/90 shadow-[0_18px_50px_-32px_rgba(76,29,149,0.55)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_30px_70px_-34px_rgba(76,29,149,0.6)]"
     >
       <div className={cn("relative h-44 overflow-hidden", project.coverTone)}>
         <Link

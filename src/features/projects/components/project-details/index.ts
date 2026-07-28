@@ -10,6 +10,7 @@ export { ProjectDocMarkdown } from "./project-doc-markdown";
 export { ProjectDetailsFeaturedBanner } from "./project-details-featured-banner";
 export { ProjectDetailsInlineDemo } from "./project-details-inline-demo";
 export { ProjectDetailsHeader } from "./project-details-header";
+export { ProjectDetailsLeaderboardSection } from "./project-details-leaderboard-section";
 export { ProjectDetailsLoadingState } from "./project-details-loading-state";
 export { ProjectDetailsNotFound } from "./project-details-not-found";
 export { ProjectDetailsPreviewSection } from "./project-details-preview-section";

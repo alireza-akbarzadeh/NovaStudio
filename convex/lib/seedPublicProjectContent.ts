@@ -14,9 +14,15 @@ export async function seedPublicProjectContent(
       title: string;
       status: "todo" | "in-progress" | "done";
       bountyAmount?: string;
+      goodFirstIssue?: boolean;
     }> = [
       { title: "Polish onboarding flow", status: "in-progress" },
-      { title: "Add contributor guidelines", status: "todo", bountyAmount: "$250" },
+      {
+        title: "Add contributor guidelines",
+        status: "todo",
+        bountyAmount: "$250",
+        goodFirstIssue: true,
+      },
       { title: "Ship v1 to production", status: "todo" },
     ];
     for (let i = 0; i < defaults.length; i += 1) {
@@ -26,6 +32,7 @@ export async function seedPublicProjectContent(
         title: item.title,
         status: item.status,
         bountyAmount: item.bountyAmount,
+        goodFirstIssue: item.goodFirstIssue === true,
         sortOrder: i,
         createdAt: Date.now(),
         updatedAt: Date.now(),

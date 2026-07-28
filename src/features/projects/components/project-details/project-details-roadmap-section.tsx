@@ -7,6 +7,7 @@ import {
   CoinsIcon,
   Loader2Icon,
   PencilIcon,
+  SproutIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -18,7 +19,10 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import type { ProjectDetailsTodo } from "@/features/projects/lib/project-details-types";
-import { todoStatusLabel } from "@/features/projects/lib/project-details-utils";
+import {
+  goodFirstIssueBadgeClass,
+  todoStatusLabel,
+} from "@/features/projects/lib/project-details-utils";
 import { cn } from "@/lib/utils";
 
 type ProjectDetailsRoadmapSectionProps = {
@@ -32,6 +36,15 @@ function BountyBadge({ amount }: { amount: string }) {
     <Badge className="gap-1 rounded-full border-amber-500/25 bg-amber-500/12 text-amber-800 dark:text-amber-300">
       <CoinsIcon className="size-3" />
       {amount} bounty
+    </Badge>
+  );
+}
+
+function GoodFirstIssueBadge() {
+  return (
+    <Badge className={goodFirstIssueBadgeClass}>
+      <SproutIcon className="size-3" />
+      Good first issue
     </Badge>
   );
 }
@@ -50,7 +63,10 @@ function RoadmapTodoRow({
   const [draftBounty, setDraftBounty] = useState(todo.bountyAmount ?? "");
   const [saving, setSaving] = useState(false);
 
-  async function saveBounty() {
+  async function saveTodo(patch: {
+    bountyAmount?: string;
+    goodFirstIssue?: boolean;
+  }) {
     setSaving(true);
     try {
       await upsertTodo({
@@ -58,21 +74,57 @@ function RoadmapTodoRow({
         todoId: todo.id as Id<"projectPublicTodos">,
         title: todo.title,
         status: todo.status,
-        bountyAmount: draftBounty.trim() || undefined,
+        bountyAmount:
+          patch.bountyAmount !== undefined
+            ? patch.bountyAmount.trim() || undefined
+            : todo.bountyAmount,
+        goodFirstIssue:
+          patch.goodFirstIssue !== undefined
+            ? patch.goodFirstIssue
+            : todo.goodFirstIssue,
       });
-      setEditingBounty(false);
-      toast.success(
-        draftBounty.trim() ? "Bounty updated" : "Bounty removed",
-      );
     } catch (error) {
-      toast.error(parseConvexErrorMessage(error, "Could not update bounty"));
+      toast.error(parseConvexErrorMessage(error, "Could not update roadmap item"));
+      throw error;
     } finally {
       setSaving(false);
     }
   }
 
+  async function saveBounty() {
+    try {
+      await saveTodo({ bountyAmount: draftBounty });
+      setEditingBounty(false);
+      toast.success(
+        draftBounty.trim() ? "Bounty updated" : "Bounty removed",
+      );
+    } catch {
+      /* toast shown in saveTodo */
+    }
+  }
+
+  async function toggleGoodFirstIssue() {
+    try {
+      await saveTodo({ goodFirstIssue: !todo.goodFirstIssue });
+      toast.success(
+        todo.goodFirstIssue
+          ? "Removed good first issue tag"
+          : "Marked as good first issue",
+      );
+    } catch {
+      /* toast shown in saveTodo */
+    }
+  }
+
   return (
-    <li className="rounded-xl border border-border/50 bg-muted/15 px-3 py-3">
+    <li
+      className={cn(
+        "rounded-xl border px-3 py-3",
+        todo.goodFirstIssue && todo.status !== "done"
+          ? "border-emerald-500/25 bg-emerald-500/5"
+          : "border-border/50 bg-muted/15",
+      )}
+    >
       <div className="flex items-start gap-3">
         {todo.status === "done" ? (
           <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-emerald-500" />
@@ -82,7 +134,9 @@ function RoadmapTodoRow({
               "mt-0.5 size-4 shrink-0",
               todo.status === "in-progress"
                 ? "text-violet-500"
-                : "text-muted-foreground",
+                : todo.goodFirstIssue
+                  ? "text-emerald-500"
+                  : "text-muted-foreground",
             )}
           />
         )}
@@ -97,16 +151,36 @@ function RoadmapTodoRow({
             >
               {todo.title}
             </p>
-            {todo.bountyAmount && !editingBounty ? (
-              <BountyBadge amount={todo.bountyAmount} />
-            ) : null}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {todo.goodFirstIssue ? <GoodFirstIssueBadge /> : null}
+              {todo.bountyAmount && !editingBounty ? (
+                <BountyBadge amount={todo.bountyAmount} />
+              ) : null}
+            </div>
           </div>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
             {todoStatusLabel[todo.status]}
           </p>
 
           {canManage && todo.status !== "done" ? (
-            <div className="mt-3">
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void toggleGoodFirstIssue()}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-medium transition",
+                  todo.goodFirstIssue
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-border/60 text-muted-foreground hover:border-emerald-500/30 hover:text-emerald-700",
+                )}
+              >
+                <SproutIcon className="size-3" />
+                {todo.goodFirstIssue
+                  ? "Good first issue"
+                  : "Mark good first issue"}
+              </button>
+
               {editingBounty ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
@@ -163,6 +237,14 @@ function RoadmapTodoRow({
   );
 }
 
+function roadmapPriority(todo: ProjectDetailsTodo) {
+  if (todo.status === "done") return 0;
+  let score = 0;
+  if (todo.goodFirstIssue) score += 2;
+  if (todo.bountyAmount) score += 1;
+  return score;
+}
+
 export function ProjectDetailsRoadmapSection({
   projectId,
   todos,
@@ -171,19 +253,23 @@ export function ProjectDetailsRoadmapSection({
   const openBounties = useMemo(
     () =>
       todos.filter(
-        (todo) =>
-          todo.bountyAmount &&
-          todo.status !== "done",
+        (todo) => todo.bountyAmount && todo.status !== "done",
+      ),
+    [todos],
+  );
+
+  const goodFirstIssues = useMemo(
+    () =>
+      todos.filter(
+        (todo) => todo.goodFirstIssue && todo.status !== "done",
       ),
     [todos],
   );
 
   const sortedTodos = useMemo(() => {
-    return [...todos].sort((a, b) => {
-      const aOpen = a.bountyAmount && a.status !== "done" ? 1 : 0;
-      const bOpen = b.bountyAmount && b.status !== "done" ? 1 : 0;
-      return bOpen - aOpen;
-    });
+    return [...todos].sort(
+      (a, b) => roadmapPriority(b) - roadmapPriority(a),
+    );
   }, [todos]);
 
   return (
@@ -193,21 +279,32 @@ export function ProjectDetailsRoadmapSection({
           <h2 className="text-lg font-semibold tracking-tight">Public roadmap</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             What the team is building next
+            {goodFirstIssues.length > 0
+              ? ` · ${goodFirstIssues.length} good first ${goodFirstIssues.length === 1 ? "issue" : "issues"}`
+              : ""}
             {openBounties.length > 0
               ? ` · ${openBounties.length} open ${openBounties.length === 1 ? "bounty" : "bounties"}`
               : ""}
             .
           </p>
         </div>
-        {openBounties.length > 0 ? (
-          <Badge
-            variant="outline"
-            className="gap-1 rounded-full border-amber-500/30 bg-amber-500/8 text-amber-800 dark:text-amber-300"
-          >
-            <CoinsIcon className="size-3" />
-            {openBounties.length} funded
-          </Badge>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {goodFirstIssues.length > 0 ? (
+            <Badge variant="outline" className={goodFirstIssueBadgeClass}>
+              <SproutIcon className="size-3" />
+              {goodFirstIssues.length} beginner-friendly
+            </Badge>
+          ) : null}
+          {openBounties.length > 0 ? (
+            <Badge
+              variant="outline"
+              className="gap-1 rounded-full border-amber-500/30 bg-amber-500/8 text-amber-800 dark:text-amber-300"
+            >
+              <CoinsIcon className="size-3" />
+              {openBounties.length} funded
+            </Badge>
+          ) : null}
+        </div>
       </div>
 
       {sortedTodos.length > 0 ? (
