@@ -85,7 +85,8 @@ export function WorkspaceAiHistoryPanel({
                 No agents yet
               </p>
               <p className="text-[11px] text-ws-text-muted">
-                Start a new agent to plan changes, debug, or draft code.
+                Start a new agent to plan changes, debug, or draft code. Threads
+                are shared with your project team.
               </p>
               <Button
                 type="button"
@@ -134,6 +135,11 @@ export function WorkspaceAiHistoryPanel({
                             {session.subtitle ? (
                               <span className="mt-0.5 block truncate text-[10px] text-ws-text-muted">
                                 {session.subtitle}
+                              </span>
+                            ) : null}
+                            {session.createdByName ? (
+                              <span className="mt-0.5 block truncate text-[10px] text-ws-text-muted/80">
+                                {session.createdByName}
                               </span>
                             ) : null}
                           </span>

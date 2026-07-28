@@ -309,6 +309,20 @@ export default defineSchema({
       }),
     ),
     settingsJson: v.optional(v.string()),
+    agentBackend: v.optional(
+      v.union(
+        v.literal("novastudio"),
+        v.literal("cursor-cli"),
+        v.literal("openclaw"),
+        v.literal("cursor-cloud"),
+      ),
+    ),
+    agentBackendConfig: v.optional(
+      v.object({
+        openclawGatewayUrl: v.optional(v.string()),
+        openclawAgentId: v.optional(v.string()),
+      }),
+    ),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
@@ -751,6 +765,69 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_kind", ["userId", "kind"])
     .index("by_user_kind_name", ["userId", "kind", "name"]),
+
+  /** Shared NovaStudio AI chat threads per project (team-visible). */
+  projectAiChatSessions: defineTable({
+    projectId: v.id("projects"),
+    /** Stable client id used by useChat and the sidebar. */
+    clientId: v.string(),
+    title: v.string(),
+    subtitle: v.optional(v.string()),
+    mode: v.union(v.literal("plan"), v.literal("task")),
+    messages: v.any(),
+    createdByUserId: v.string(),
+    createdByName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_updated", ["projectId", "updatedAt"])
+    .index("by_project_client", ["projectId", "clientId"]),
+
+  /** Background NovaStudio AI agent runs (Inngest worker). */
+  projectAiAgentRuns: defineTable({
+    projectId: v.id("projects"),
+    sessionClientId: v.optional(v.string()),
+    jobToken: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+    ),
+    prompt: v.string(),
+    title: v.string(),
+    mode: v.union(v.literal("plan"), v.literal("task")),
+    model: v.string(),
+    backend: v.optional(
+      v.union(
+        v.literal("novastudio"),
+        v.literal("cursor-cli"),
+        v.literal("openclaw"),
+        v.literal("cursor-cloud"),
+      ),
+    ),
+    workspaceSnapshot: v.any(),
+    inputMessages: v.any(),
+    outputText: v.optional(v.string()),
+    pendingWrites: v.optional(
+      v.array(
+        v.object({
+          path: v.string(),
+          content: v.string(),
+        }),
+      ),
+    ),
+    error: v.optional(v.string()),
+    createdByUserId: v.string(),
+    createdByName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_project_updated", ["projectId", "updatedAt"])
+    .index("by_project_status", ["projectId", "status"]),
 
   contactMessages: defineTable({
     name: v.string(),

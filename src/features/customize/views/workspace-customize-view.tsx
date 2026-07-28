@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AgentBackendSettingsPanel } from "@/features/customize/components/agent-backend-settings";
 import { AddMcpServerDialog } from "@/features/customize/components/add-mcp-server-dialog";
 import { CustomMcpServersSection } from "@/features/customize/components/custom-mcp-server-row";
 import { CustomizeConnectionsProvider } from "@/features/customize/components/customize-connections-provider";
@@ -306,7 +307,8 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
       {category === "plugins" || category === "mcps" ? (
         <>
           {category === "mcps" ? (
-            <div className="mb-4">
+            <div className="mb-4 space-y-4">
+              <AgentBackendSettingsPanel />
               <CustomMcpServersSection
                 servers={customMcpServers}
                 ready={mcpReady}

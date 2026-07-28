@@ -11,6 +11,14 @@ import { threeWayMerge } from "./lib/threeWayMerge";
 const WRITE_BATCH_SIZE = 40;
 const DELETE_BATCH_SIZE = 200;
 
+type MergePullFileRow = {
+  path: string;
+  kind: "file" | "folder";
+  content: string;
+  syncedContent: string;
+  changed: boolean;
+};
+
 export const pullFromGitHub = action({
   args: {
     projectId: v.id("projects"),
@@ -158,8 +166,8 @@ export const processMergePullJob = internalAction({
         projectId: args.projectId,
       });
 
-      const localByPath = new Map(
-        mergeContext.files.map((file) => [file.path, file]),
+      const localByPath = new Map<string, MergePullFileRow>(
+        (mergeContext.files as MergePullFileRow[]).map((file) => [file.path, file]),
       );
       const remoteByPath = new Map(
         remoteFiles.map((file) => [file.path, file.content]),

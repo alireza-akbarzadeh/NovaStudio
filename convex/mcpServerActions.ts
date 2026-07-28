@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { action } from "./_generated/server";
 
 const transportValidator = v.union(v.literal("sse"), v.literal("http"));
@@ -78,7 +79,10 @@ export const connect = action({
     url: v.string(),
     authHeader: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ connected: true; serverId: Id<"userMcpServers"> }> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Sign in to add an MCP server");
@@ -97,13 +101,16 @@ export const connect = action({
 
     await probeMcpUrl(url, authHeader);
 
-    const serverId = await ctx.runMutation(internal.userMcpServers.upsertFromConnect, {
-      userId: identity.subject,
-      name,
-      transport: args.transport,
-      url,
-      authHeader,
-    });
+    const serverId = (await ctx.runMutation(
+      internal.userMcpServers.upsertFromConnect,
+      {
+        userId: identity.subject,
+        name,
+        transport: args.transport,
+        url,
+        authHeader,
+      },
+    )) as Id<"userMcpServers">;
 
     return { connected: true as const, serverId };
   },

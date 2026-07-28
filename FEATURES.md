@@ -202,8 +202,8 @@ Finish the Customize hub and make AI a first-class team surface.
 | 43 | **Semantic codebase search** | `review` | Ctrl+Alt+S · natural-language search · cited snippets · jump to line |
 | 44 | **Custom MCP server connections** | `review` | Customize → MCPs · add SSE/HTTP URL · auth header · enable/disable |
 | 45 | **Subagents & hooks manager** | `review` | Finish Customize placeholders: subagents, rules, pre/post AI hooks |
-| 46 | **Shared AI chat sessions** | `todo` | Team-visible, persisted AI threads per project (not per-browser) |
-| 47 | **Background agent runs** | `todo` | Queue long AI tasks that continue while the user edits elsewhere |
+| 46 | **Shared AI chat sessions** | `review` | Team-visible, persisted AI threads per project (not per-browser) |
+| 47 | **Background agent runs** | `review` | Queue long AI tasks that continue while the user edits elsewhere |
 | 48 | **AI PR description generator** | `todo` | Draft PR title/body from branch diff (commit-message gen exists) |
 
 ### Sprint N — True collab runtime
