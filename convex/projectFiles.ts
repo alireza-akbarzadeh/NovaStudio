@@ -509,7 +509,7 @@ export const getContentsByPaths = query({
   handler: async (ctx, args) => {
     await verifyProjectAccess(ctx, args.projectId);
 
-    const uniquePaths = [...new Set(args.paths.filter(Boolean))].slice(0, 300);
+    const uniquePaths = [...new Set(args.paths.filter(Boolean))].slice(0, 64);
     const rows: { path: string; content: string }[] = [];
 
     for (const path of uniquePaths) {

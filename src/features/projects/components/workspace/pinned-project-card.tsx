@@ -2,14 +2,18 @@
 
 import { MoreHorizontalIcon, StarIcon } from "lucide-react";
 import { motion } from "motion/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+import { Button } from "@/components/ui/button";
 import type { Id } from "@/convex/_generated/dataModel";
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
 import { TechBadge } from "@/features/projects/components/workspace/tech-badge";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import { useTogglePin } from "@/features/projects/hooks/use-workspace";
+import { communityProjectPath } from "@/features/projects/lib/project-details-share-utils";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
 import { cn } from "@/lib/utils";
 
@@ -19,8 +23,11 @@ type PinnedProjectCardProps = {
 };
 
 export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
+  const router = useRouter();
   const togglePin = useTogglePin();
   const { openProject, isPending } = useOpenWorkspaceProject();
+  const isPublic = project.visibility === "public";
+  const detailsHref = communityProjectPath(project.id);
 
   const handleUnpin = async () => {
     try {
@@ -31,6 +38,14 @@ export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
     }
   };
 
+  function handleCardActivate() {
+    if (isPublic) {
+      router.push(detailsHref);
+      return;
+    }
+    openProject(project.id);
+  }
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
@@ -38,13 +53,15 @@ export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
       transition={{ delay: 0.08 + index * 0.05, duration: 0.35 }}
       role="button"
       tabIndex={0}
-      aria-label={`Open ${project.name}`}
+      aria-label={
+        isPublic ? `View ${project.name} details` : `Open ${project.name}`
+      }
       aria-busy={isPending}
-      onClick={() => openProject(project.id)}
+      onClick={handleCardActivate}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          openProject(project.id);
+          handleCardActivate();
         }
       }}
       className="group relative flex min-w-[280px] max-w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-[22px] border border-border/60 bg-card/85 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.5)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-30px_rgba(76,29,149,0.55)]"
@@ -71,6 +88,29 @@ export function PinnedProjectCard({ project, index }: PinnedProjectCardProps) {
         >
           <MoreHorizontalIcon className="size-4" />
         </button>
+        {isPublic ? (
+          <div className="absolute inset-x-3 bottom-3 flex translate-y-2 gap-2 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100">
+            <Button
+              size="sm"
+              className="h-8 flex-1 rounded-xl bg-white/95 text-xs text-slate-900 hover:bg-white"
+              asChild
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Link href={detailsHref}>Details</Link>
+            </Button>
+            <Button
+              size="sm"
+              className="h-8 flex-1 rounded-xl text-xs"
+              disabled={isPending}
+              onClick={(event) => {
+                event.stopPropagation();
+                openProject(project.id);
+              }}
+            >
+              {isPending ? "…" : "Studio"}
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">

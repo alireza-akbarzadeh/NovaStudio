@@ -22,7 +22,7 @@ import { registerActiveMonacoEditor } from "@/features/workspace/lib/active-mona
 import { resolveSafeMonacoLanguage } from "@/features/workspace/lib/language-support";
 import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-suggestion";
 import { registerAutoImport } from "@/features/workspace/lib/monaco-auto-import";
-import { syncDefinitionModels } from "@/features/workspace/lib/monaco-definition-models";
+import { syncDefinitionModels, clearDefinitionModelsForFile } from "@/features/workspace/lib/monaco-definition-models";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
 import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
@@ -209,6 +209,9 @@ export function CodeEditor({
     });
     return () => {
       cancelled = true;
+      void loader.init().then((monaco) => {
+        clearDefinitionModelsForFile(monaco, filePath);
+      });
     };
   }, [definitionFiles, filePath]);
 

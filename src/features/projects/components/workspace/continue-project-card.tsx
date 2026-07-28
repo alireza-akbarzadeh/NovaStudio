@@ -12,7 +12,9 @@ import {
   Share2Icon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 
 import {
@@ -43,6 +45,7 @@ import {
   IMPORT_TIMEOUT_MS,
 } from "@/features/projects/lib/import-status";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
+import { communityProjectPath } from "@/features/projects/lib/project-details-share-utils";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
@@ -105,6 +108,7 @@ export function ContinueProjectCard({
   project,
   index,
 }: ContinueProjectCardProps) {
+  const router = useRouter();
   const { openProject, isPending } = useOpenWorkspaceProject();
   const { retry, isRetrying } = useRetryGitHubClone();
   const togglePin = useTogglePin();
@@ -116,6 +120,17 @@ export function ContinueProjectCard({
   const [shareOpen, setShareOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archivePending, setArchivePending] = useState(false);
+  const isPublic = project.visibility === "public";
+  const detailsHref = communityProjectPath(project.id);
+
+  function openDetails(event: MouseEvent<HTMLElement>) {
+    if (!isPublic) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("a, button, input, textarea, select, [role='button']")) {
+      return;
+    }
+    router.push(detailsHref);
+  }
 
   const handleRetry = async () => {
     try {
@@ -161,8 +176,22 @@ export function ContinueProjectCard({
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 + index * 0.04, duration: 0.32 }}
+      role={isPublic ? "link" : undefined}
+      tabIndex={isPublic ? 0 : undefined}
+      onClick={openDetails}
+      onKeyDown={
+        isPublic
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                router.push(detailsHref);
+              }
+            }
+          : undefined
+      }
       className={cn(
         "group relative overflow-hidden rounded-[22px] border bg-card/85 p-4 shadow-[0_14px_40px_-30px_rgba(76,29,149,0.45)] backdrop-blur-xl transition-all duration-300",
+        isPublic && "cursor-pointer",
         isImporting
           ? "border-violet-500/40"
           : isFailed
@@ -307,14 +336,37 @@ export function ContinueProjectCard({
                 ))}
               </div>
 
-              <Button
-                size="sm"
-                className="rounded-xl"
-                disabled={isPending}
-                onClick={() => openProject(project.id)}
-              >
-                {isPending ? "Opening…" : "Open Project"}
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {isPublic ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      asChild
+                    >
+                      <Link href={detailsHref}>View details</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={isPending}
+                      onClick={() => openProject(project.id)}
+                    >
+                      {isPending ? "Opening…" : "Open in Studio"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={isPending}
+                    onClick={() => openProject(project.id)}
+                  >
+                    {isPending ? "Opening…" : "Open Project"}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 

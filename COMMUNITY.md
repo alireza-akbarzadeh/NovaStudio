@@ -210,6 +210,7 @@ Convert visitors into collaborators.
 
 - **Use template** on community project detail copies files into a new private workspace
 - Community cards on `/projects` open the detail page (not the editor)
+- **Continue Working** and **Pinned** public project cards also open community details; **Open in Studio** is a separate action
 - Members with access use **Open in Studio** to enter the workspace editor
 - Fork count increments on the source project; activity recorded on the community feed
 

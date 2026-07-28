@@ -405,8 +405,8 @@ function FileEditorContent({
   const definitionPathsToLoad = useMemo(
     () =>
       definitionCandidates
-        .map((file) => file.path)
-        .filter((path) => path !== filePath),
+        .filter((file) => file.path !== filePath && !file.content)
+        .map((file) => file.path),
     [definitionCandidates, filePath],
   );
 
