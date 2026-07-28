@@ -43,6 +43,7 @@ export type ProjectDetailsTodo = {
   id: string;
   title: string;
   status: "todo" | "in-progress" | "done";
+  bountyAmount?: string;
 };
 
 export type ProjectDetailsFeature = {
@@ -119,6 +120,21 @@ export type ProjectDetailsRelatedProject = {
   matchedTech: string[];
 };
 
+export type SponsorTier = "supporter" | "backer" | "feature";
+
+export type ProjectDetailsSponsorWallEntry = {
+  userId: string;
+  name: string;
+  initials: string;
+  color: string;
+  tier: SponsorTier;
+  message?: string;
+  amount?: string;
+  featureCount: number;
+  featureTitles: string[];
+  since: string;
+};
+
 export type ProjectDetailsData = {
   id: string;
   name: string;
@@ -154,9 +170,11 @@ export type ProjectDetailsData = {
     canEdit: boolean;
     canManage: boolean;
     accessRequestStatus?: "pending" | "approved" | "denied";
+    sponsorTier?: SponsorTier;
   };
   todos: ProjectDetailsTodo[];
   features: ProjectDetailsFeature[];
+  sponsorWall: ProjectDetailsSponsorWallEntry[];
   demo: ProjectDetailsDemo | null;
   preview: ProjectDetailsPreview | null;
   relatedProjects: ProjectDetailsRelatedProject[];

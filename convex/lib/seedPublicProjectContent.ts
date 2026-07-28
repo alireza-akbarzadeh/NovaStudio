@@ -10,16 +10,22 @@ export async function seedPublicProjectContent(
     .withIndex("by_project", (q) => q.eq("projectId", projectId))
     .first();
   if (!existingTodos) {
-    const defaults = [
-      { title: "Polish onboarding flow", status: "in-progress" as const },
-      { title: "Add contributor guidelines", status: "todo" as const },
-      { title: "Ship v1 to production", status: "todo" as const },
+    const defaults: Array<{
+      title: string;
+      status: "todo" | "in-progress" | "done";
+      bountyAmount?: string;
+    }> = [
+      { title: "Polish onboarding flow", status: "in-progress" },
+      { title: "Add contributor guidelines", status: "todo", bountyAmount: "$250" },
+      { title: "Ship v1 to production", status: "todo" },
     ];
     for (let i = 0; i < defaults.length; i += 1) {
+      const item = defaults[i]!;
       await ctx.db.insert("projectPublicTodos", {
         projectId,
-        title: defaults[i]!.title,
-        status: defaults[i]!.status,
+        title: item.title,
+        status: item.status,
+        bountyAmount: item.bountyAmount,
         sortOrder: i,
         createdAt: Date.now(),
         updatedAt: Date.now(),

@@ -74,6 +74,10 @@ export function useProposeFeature() {
   return useMutation(api.projectCommunity.proposeFeature);
 }
 
+export function useJoinAsSponsor() {
+  return useMutation(api.projectCommunity.joinAsSponsor);
+}
+
 export function useUpsertPublicTodo() {
   return useMutation(api.projectCommunity.upsertPublicTodo);
 }

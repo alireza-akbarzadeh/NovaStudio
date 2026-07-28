@@ -21,6 +21,7 @@ import {
   ProjectDetailsRoadmapSection,
   ProjectDetailsSponsorDialog,
   ProjectDetailsSponsorSection,
+  ProjectDetailsSponsorWallSection,
 } from "@/features/projects/components/project-details";
 import { useProjectDetailsPage } from "@/features/projects/hooks/use-project-details-page";
 import { isProjectLinkedToGitHub } from "@/features/projects/lib/project-details-utils";
@@ -103,6 +104,8 @@ export function ProjectDetailsView({
       <ProjectDetailsSponsorDialog
         open={sponsorDialogOpen}
         onOpenChange={setSponsorDialogOpen}
+        currentTier={details.viewer.sponsorTier}
+        onJoinAsSponsor={page.handleJoinAsSponsor}
         onProposeFeature={page.handleProposeFeature}
       />
 
@@ -121,7 +124,15 @@ export function ProjectDetailsView({
           contributorCount={details.contributorCount}
         />
         <ProjectDetailsActivitySection projectId={projectId} />
-        <ProjectDetailsRoadmapSection todos={details.todos} />
+        <ProjectDetailsRoadmapSection
+          projectId={projectId}
+          todos={details.todos}
+          canManage={details.viewer.isOwner || details.viewer.canManage}
+        />
+        <ProjectDetailsSponsorWallSection
+          sponsors={details.sponsorWall}
+          onBecomeSponsor={() => setSponsorDialogOpen(true)}
+        />
         <ProjectDetailsSponsorSection
           features={details.features}
           onBecomeSponsor={() => setSponsorDialogOpen(true)}

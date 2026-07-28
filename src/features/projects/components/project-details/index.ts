@@ -19,5 +19,6 @@ export { ProjectDetailsPushGitHubDialog } from "./project-details-push-github-di
 export { ProjectDetailsShareBar } from "./project-details-share-bar";
 export { ProjectDetailsSponsorDialog } from "./project-details-sponsor-dialog";
 export { ProjectDetailsSponsorSection } from "./project-details-sponsor-section";
+export { ProjectDetailsSponsorWallSection } from "./project-details-sponsor-wall-section";
 export { ProjectDetailsStatsBar } from "./project-details-stats-bar";
 export { ProjectDetailsTechStack } from "./project-details-tech-stack";

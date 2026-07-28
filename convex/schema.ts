@@ -26,6 +26,12 @@ const activityType = v.union(
   v.literal("sponsored"),
 );
 
+const sponsorTier = v.union(
+  v.literal("supporter"),
+  v.literal("backer"),
+  v.literal("feature"),
+);
+
 const deadlineTone = v.union(
   v.literal("orange"),
   v.literal("blue"),
@@ -594,6 +600,7 @@ export default defineSchema({
       v.literal("in-progress"),
       v.literal("done"),
     ),
+    bountyAmount: v.optional(v.string()),
     sortOrder: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -633,6 +640,7 @@ export default defineSchema({
     sponsorName: v.optional(v.string()),
     sponsorMessage: v.optional(v.string()),
     sponsorAmount: v.optional(v.string()),
+    sponsorTier: v.optional(sponsorTier),
     createdAt: v.number(),
   })
     .index("by_project", ["projectId"])

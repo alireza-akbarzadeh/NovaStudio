@@ -26,6 +26,7 @@ import {
 } from "./lib/projectFileContents";
 import type { Id } from "./_generated/dataModel";
 import type { Doc } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 function initialsFrom(value: string) {
   return (
@@ -52,6 +53,169 @@ function publicStats(project: {
     forks: project.forkCount ?? 0,
     downloads: project.downloadCount ?? 0,
   };
+}
+
+type SponsorTier = "feature" | "backer" | "supporter";
+
+const SPONSOR_TIER_ORDER: Record<SponsorTier, number> = {
+  feature: 0,
+  backer: 1,
+  supporter: 2,
+};
+
+function inferSponsorTier(
+  featureCount: number,
+  hasAmount: boolean,
+): SponsorTier {
+  if (featureCount > 0) return "feature";
+  if (hasAmount) return "backer";
+  return "supporter";
+}
+
+function maxSponsorTier(a: SponsorTier, b: SponsorTier): SponsorTier {
+  return SPONSOR_TIER_ORDER[a] <= SPONSOR_TIER_ORDER[b] ? a : b;
+}
+
+function resolveSponsorTier(
+  explicitTier: SponsorTier | undefined,
+  featureCount: number,
+  hasAmount: boolean,
+): SponsorTier {
+  const inferred = inferSponsorTier(featureCount, hasAmount);
+  if (!explicitTier) return inferred;
+  return maxSponsorTier(explicitTier, inferred);
+}
+
+async function upsertProjectSponsor(
+  ctx: MutationCtx,
+  args: {
+    projectId: Id<"projects">;
+    userId: string;
+    sponsorName: string;
+    tier: SponsorTier;
+    sponsorMessage?: string;
+    sponsorAmount?: string;
+  },
+) {
+  const existing = await ctx.db
+    .query("projectSponsors")
+    .withIndex("by_project_user", (q) =>
+      q.eq("projectId", args.projectId).eq("userId", args.userId),
+    )
+    .unique();
+
+  if (existing) {
+    const nextTier = maxSponsorTier(
+      existing.sponsorTier ?? "supporter",
+      args.tier,
+    );
+    await ctx.db.patch(existing._id, {
+      sponsorName: args.sponsorName,
+      sponsorTier: nextTier,
+      ...(args.sponsorMessage !== undefined
+        ? { sponsorMessage: args.sponsorMessage }
+        : {}),
+      ...(args.sponsorAmount !== undefined
+        ? { sponsorAmount: args.sponsorAmount }
+        : {}),
+    });
+    return { sponsorId: existing._id, isNew: false };
+  }
+
+  const sponsorId = await ctx.db.insert("projectSponsors", {
+    projectId: args.projectId,
+    userId: args.userId,
+    sponsorName: args.sponsorName,
+    sponsorMessage: args.sponsorMessage,
+    sponsorAmount: args.sponsorAmount,
+    sponsorTier: args.tier,
+    createdAt: Date.now(),
+  });
+  return { sponsorId, isNew: true };
+}
+
+function buildSponsorWall(
+  sponsors: Doc<"projectSponsors">[],
+  features: Doc<"projectFeatureIdeas">[],
+) {
+  type SponsorEntry = {
+    userId: string;
+    name: string;
+    message?: string;
+    amount?: string;
+    featureTitles: string[];
+    explicitTier?: SponsorTier;
+    createdAt: number;
+  };
+
+  const byUser = new Map<string, SponsorEntry>();
+
+  for (const row of sponsors) {
+    const existing = byUser.get(row.userId) ?? {
+      userId: row.userId,
+      name: row.sponsorName?.trim() || "Anonymous sponsor",
+      featureTitles: [],
+      createdAt: row.createdAt,
+    };
+    if (row.sponsorName?.trim()) existing.name = row.sponsorName.trim();
+    if (row.sponsorMessage?.trim()) existing.message = row.sponsorMessage.trim();
+    if (row.sponsorAmount?.trim()) existing.amount = row.sponsorAmount.trim();
+    if (row.sponsorTier) {
+      existing.explicitTier = existing.explicitTier
+        ? maxSponsorTier(existing.explicitTier, row.sponsorTier)
+        : row.sponsorTier;
+    }
+    existing.createdAt = Math.min(existing.createdAt, row.createdAt);
+    byUser.set(row.userId, existing);
+  }
+
+  for (const feature of features) {
+    if (!feature.sponsorUserId) continue;
+    const existing = byUser.get(feature.sponsorUserId) ?? {
+      userId: feature.sponsorUserId,
+      name: feature.sponsorName?.trim() || "Anonymous sponsor",
+      featureTitles: [],
+      createdAt: feature.createdAt,
+    };
+    if (feature.sponsorName?.trim()) existing.name = feature.sponsorName.trim();
+    existing.featureTitles.push(feature.title);
+    if (feature.sponsorMessage?.trim() && !existing.message) {
+      existing.message = feature.sponsorMessage.trim();
+    }
+    if (feature.sponsorAmount?.trim() && !existing.amount) {
+      existing.amount = feature.sponsorAmount.trim();
+    }
+    existing.createdAt = Math.min(existing.createdAt, feature.createdAt);
+    byUser.set(feature.sponsorUserId, existing);
+  }
+
+  return [...byUser.values()]
+    .map((entry) => {
+      const tier = resolveSponsorTier(
+        entry.explicitTier,
+        entry.featureTitles.length,
+        Boolean(entry.amount),
+      );
+      return {
+        userId: entry.userId,
+        name: entry.name,
+        initials: initialsFrom(entry.name),
+        color: colorForUserId(entry.userId),
+        tier,
+        message: entry.message,
+        amount: entry.amount,
+        featureCount: entry.featureTitles.length,
+        featureTitles: entry.featureTitles.slice(0, 3),
+        since: formatRelativeTime(entry.createdAt),
+      };
+    })
+    .sort(
+      (a, b) =>
+        SPONSOR_TIER_ORDER[a.tier as SponsorTier] -
+          SPONSOR_TIER_ORDER[b.tier as SponsorTier] ||
+        b.featureCount - a.featureCount ||
+        a.name.localeCompare(b.name),
+    );
 }
 
 function normalizeDeployUrl(url: string | undefined | null) {
@@ -258,6 +422,46 @@ export const listCommunityProjectActivity = query({
   },
 });
 
+export const listProjectPendingAccessRequests = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx);
+    const access = await resolveProjectAccess(ctx, args.projectId);
+    if (!access || (access.role !== "owner" && !access.canManage)) {
+      return null;
+    }
+
+    const requests = await ctx.db
+      .query("projectAccessRequests")
+      .withIndex("by_project_status", (q) =>
+        q.eq("projectId", args.projectId).eq("status", "pending"),
+      )
+      .order("desc")
+      .collect();
+
+    return requests
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .map((request) => {
+        const name = request.requesterName ?? request.requesterEmail ?? "Contributor";
+        return {
+          id: request._id,
+          name,
+          email: request.requesterEmail,
+          role: request.roleLabel ?? "Developer",
+          experienceLevel: request.experienceLevel,
+          message: request.message,
+          github: request.github,
+          linkedin: request.linkedin,
+          portfolioUrl: request.portfolioUrl,
+          createdAt: request.createdAt,
+          time: formatRelativeTime(request.createdAt),
+          initials: initialsFrom(name),
+          color: colorForUserId(request.requesterUserId),
+        };
+      });
+  },
+});
+
 export const getPublicProjectMetadata = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
@@ -387,6 +591,20 @@ export const getProjectDetails = query({
         ? await buildRelatedPublicProjects(ctx, project)
         : [];
 
+    const mySponsorRecord = sponsors.find((row) => row.userId === userId);
+    const myFeatureCount = features.filter(
+      (feature) => feature.sponsorUserId === userId,
+    ).length;
+    const viewerSponsorTier = mySponsorRecord
+      ? resolveSponsorTier(
+          mySponsorRecord.sponsorTier,
+          myFeatureCount,
+          Boolean(mySponsorRecord.sponsorAmount?.trim()),
+        )
+      : myFeatureCount > 0
+        ? "feature"
+        : undefined;
+
     return {
       id: project._id,
       name: project.name,
@@ -428,6 +646,7 @@ export const getProjectDetails = query({
         accessRequestStatus: isMember
           ? undefined
           : accessRequest?.status,
+        sponsorTier: viewerSponsorTier,
       },
       todos: todos
         .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt)
@@ -435,6 +654,7 @@ export const getProjectDetails = query({
           id: todo._id,
           title: todo.title,
           status: todo.status,
+          bountyAmount: todo.bountyAmount,
         })),
       features: features
         .sort(
@@ -454,6 +674,7 @@ export const getProjectDetails = query({
           viewerHasUpvoted: upvotedFeatureIds.has(feature._id),
           createdAt: feature.createdAt,
         })),
+      sponsorWall: buildSponsorWall(sponsors, features),
       demo: demoVideoUrl
         ? {
             url: demoVideoUrl,
@@ -658,6 +879,7 @@ export const upsertPublicTodo = mutation({
       v.literal("done"),
     ),
     sortOrder: v.optional(v.number()),
+    bountyAmount: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { userId, project } = await verifyProjectOwnerAccess(
@@ -666,6 +888,7 @@ export const upsertPublicTodo = mutation({
     );
     const title = args.title.trim();
     if (!title) throw new Error("Title is required");
+    const bountyAmount = args.bountyAmount?.trim() || undefined;
 
     let todoId: typeof args.todoId;
     let isNew = false;
@@ -681,6 +904,7 @@ export const upsertPublicTodo = mutation({
         title,
         status: args.status,
         sortOrder: args.sortOrder ?? existing.sortOrder,
+        bountyAmount,
         updatedAt: Date.now(),
       });
       todoId = args.todoId;
@@ -695,6 +919,7 @@ export const upsertPublicTodo = mutation({
         projectId: args.projectId,
         title,
         status: args.status,
+        bountyAmount,
         sortOrder: args.sortOrder ?? siblings.length,
         createdAt: Date.now(),
         updatedAt: Date.now(),
@@ -753,6 +978,57 @@ export const deletePublicTodo = mutation({
   },
 });
 
+export const joinAsSponsor = mutation({
+  args: {
+    projectId: v.id("projects"),
+    tier: v.union(v.literal("supporter"), v.literal("backer")),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const sponsorName = identityDisplayName(identity);
+    const sponsorMessage = args.sponsorMessage?.trim() || undefined;
+    const sponsorAmount = args.sponsorAmount?.trim() || undefined;
+
+    if (args.tier === "backer" && !sponsorAmount) {
+      throw new Error("Backers must specify a pledge amount");
+    }
+    if (args.tier === "supporter" && !sponsorMessage) {
+      throw new Error("Add a short message when joining as a supporter");
+    }
+
+    const { isNew } = await upsertProjectSponsor(ctx, {
+      projectId: args.projectId,
+      userId: identity.subject,
+      sponsorName,
+      tier: args.tier,
+      sponsorMessage,
+      sponsorAmount,
+    });
+
+    if (project.visibility === "public") {
+      await maybeRecordPublicCommunityActivity(ctx, {
+        projectId: args.projectId,
+        actorUserId: identity.subject,
+        actorName: sponsorName,
+        type: "sponsored",
+        title: isNew
+          ? `${sponsorName} became a ${args.tier}`
+          : `${sponsorName} updated their sponsorship`,
+        detail: sponsorAmount ?? sponsorMessage ?? project.name,
+      });
+    }
+
+    return { tier: args.tier };
+  },
+});
+
 export const proposeFeature = mutation({
   args: {
     projectId: v.id("projects"),
@@ -774,23 +1050,14 @@ export const proposeFeature = mutation({
     const sponsorMessage = args.sponsorMessage?.trim() || undefined;
     const sponsorAmount = args.sponsorAmount?.trim() || undefined;
 
-    const existingSponsor = await ctx.db
-      .query("projectSponsors")
-      .withIndex("by_project_user", (q) =>
-        q.eq("projectId", args.projectId).eq("userId", identity.subject),
-      )
-      .unique();
-
-    if (!existingSponsor) {
-      await ctx.db.insert("projectSponsors", {
-        projectId: args.projectId,
-        userId: identity.subject,
-        sponsorName,
-        sponsorMessage,
-        sponsorAmount,
-        createdAt: Date.now(),
-      });
-    }
+    const { isNew } = await upsertProjectSponsor(ctx, {
+      projectId: args.projectId,
+      userId: identity.subject,
+      sponsorName,
+      tier: "feature",
+      sponsorMessage,
+      sponsorAmount,
+    });
 
     const featureId = await ctx.db.insert("projectFeatureIdeas", {
       projectId: args.projectId,
@@ -818,9 +1085,9 @@ export const proposeFeature = mutation({
         actorUserId: identity.subject,
         actorName: sponsorName,
         type: "sponsored",
-        title: existingSponsor
-          ? `${sponsorName} proposed a feature`
-          : `${sponsorName} became a sponsor`,
+        title: isNew
+          ? `${sponsorName} became a feature sponsor`
+          : `${sponsorName} proposed a feature`,
         detail: sponsorAmount ? `${title} · ${sponsorAmount}` : title,
       });
     }

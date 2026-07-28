@@ -10,6 +10,7 @@ import { toGitHubUrl } from "@/features/github/lib/github-url";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import {
   useProjectDetails,
+  useJoinAsSponsor,
   useProposeFeature,
   useRecordProjectDownload,
   useRecordProjectView,
@@ -28,6 +29,7 @@ export function useProjectDetailsPage(projectId: string) {
   const toggleFollow = useToggleProjectFollow();
   const recordDownload = useRecordProjectDownload();
   const proposeFeature = useProposeFeature();
+  const joinAsSponsor = useJoinAsSponsor();
   const toggleFeatureUpvote = useToggleFeatureUpvote();
   const seedContent = useSeedDefaultPublicContent();
   const { openProject, isPending: opening } = useOpenWorkspaceProject();
@@ -133,6 +135,24 @@ export function useProjectDetailsPage(projectId: string) {
     }
   }
 
+  async function handleJoinAsSponsor(input: {
+    tier: "supporter" | "backer";
+    sponsorMessage?: string;
+    sponsorAmount?: string;
+  }) {
+    await joinAsSponsor({
+      projectId: projectId as Id<"projects">,
+      tier: input.tier,
+      sponsorMessage: input.sponsorMessage,
+      sponsorAmount: input.sponsorAmount,
+    });
+    toast.success(
+      input.tier === "backer"
+        ? "You're on the sponsor wall as a backer"
+        : "You're on the sponsor wall as a supporter",
+    );
+  }
+
   async function handleProposeFeature(input: {
     title: string;
     description?: string;
@@ -181,6 +201,7 @@ export function useProjectDetailsPage(projectId: string) {
     handleFollow,
     handleDownload,
     handleProposeFeature,
+    handleJoinAsSponsor,
     handleUpvoteFeature,
     requestAccess,
   };

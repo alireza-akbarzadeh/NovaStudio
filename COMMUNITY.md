@@ -51,7 +51,7 @@ Keep people coming back.
 | 9 | **Follow project** | `review` | Notify on roadmap / doc / deploy updates |
 | 10 | **Activity feed** | `review` | Shipped items · new sponsors · new contributors |
 | 11 | **Discussion / Q&A tab** | `review` | Lightweight comments on project page |
-| 12 | **Sponsor wall** | `todo` | Show sponsor names / tiers on detail page |
+| 12 | **Sponsor wall** | `review` | Show sponsor names / tiers on detail page |
 
 ### Sprint D — Monetization
 
@@ -59,8 +59,8 @@ Turn sponsorship into real business value.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 13 | **Sponsorship tiers** | `todo` | Supporter / backer / feature sponsor |
-| 14 | **Bounties on roadmap** | `todo` | Attach $ amount to public todos |
+| 13 | **Sponsorship tiers** | `review` | Supporter / backer / feature sponsor |
+| 14 | **Bounties on roadmap** | `review` | Attach $ amount to public todos |
 | 15 | **Tip jar (Stripe / Clerk Billing)** | `later` | One-click support for maintainers |
 | 16 | **Paid feature bounties + escrow** | `later` | Hold funds until status = shipped |
 
@@ -174,3 +174,22 @@ Convert visitors into collaborators.
 - **Discussion & Q&A** section with **All** and **Open Q&A** tabs on community project detail
 - Post questions, thread replies, owner **Answered** badge when the owner replies
 - Owner/moderator can delete messages; project owner notified on new questions
+
+### 12. Sponsor wall — `review`
+
+- **Sponsor wall** section on community project detail, grouped by tier
+- **Feature sponsor**, **Backer**, and **Supporter** tiers inferred from proposals and pledge amounts
+- Avatar cards with message, amount, and proposed features; empty state with **Become a sponsor** CTA
+
+### 13. Sponsorship tiers — `review`
+
+- Explicit **Supporter**, **Backer**, and **Feature sponsor** tiers stored on `projectSponsors`
+- Sponsor dialog tier picker with tier-specific fields (message / pledge / feature proposal)
+- `joinAsSponsor` mutation for supporter & backer; feature proposals upgrade tier automatically
+- Tiers never downgrade when re-sponsoring; wall uses stored tier with legacy fallback
+
+### 14. Bounties on roadmap — `review`
+
+- Optional **bounty amount** on public roadmap items (`bountyAmount` on `projectPublicTodos`)
+- Roadmap shows amber bounty badges; open bounties sorted to the top with a count in the header
+- Project owners/managers can **Add bounty** / **Edit bounty** inline on each open item
