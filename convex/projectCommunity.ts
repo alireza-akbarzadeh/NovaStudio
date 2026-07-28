@@ -14,6 +14,14 @@ import {
 } from "./lib/projectAccess";
 import { verifyAuth } from "./auth";
 import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
+import {
+  PROJECT_DOC_SLOTS,
+  type ProjectDocSlot,
+} from "./lib/projectDocPaths";
+import {
+  isFileDirtyByHash,
+  readFileContent,
+} from "./lib/projectFileContents";
 import type { Id } from "./_generated/dataModel";
 
 function initialsFrom(value: string) {
@@ -118,6 +126,10 @@ export const getProjectDetails = query({
     const isOwner = project.ownerId === userId;
     const isMember = Boolean(access) && access?.role !== undefined;
 
+    const demoVideoUrl = project.demoVideoStorageId
+      ? await ctx.storage.getUrl(project.demoVideoStorageId)
+      : null;
+
     return {
       id: project._id,
       name: project.name,
@@ -129,7 +141,9 @@ export const getProjectDetails = query({
       visibility: project.visibility ?? "private",
       source: project.source,
       templateId: project.templateId,
-      githubRepoUrl: project.githubRepoUrl,
+      githubRepoUrl:
+        project.source === "github" ? project.githubRepoUrl : undefined,
+      githubBranch: project.githubBranch?.trim() || "main",
       progress: project.progress ?? 45,
       updatedAt: project.updatedAt,
       lastUpdated: formatRelativeTime(project.updatedAt),
@@ -175,21 +189,111 @@ export const getProjectDetails = query({
           upvotes: feature.upvotes ?? 0,
           createdAt: feature.createdAt,
         })),
+      demo: demoVideoUrl
+        ? {
+            url: demoVideoUrl,
+            filename: project.demoVideoFilename ?? "demo.mp4",
+            mediaType: project.demoVideoMediaType ?? "video/mp4",
+          }
+        : null,
     };
+  },
+});
+
+export const generateDemoUploadUrl = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+export const setProjectDemoVideo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    storageId: v.id("_storage"),
+    filename: v.string(),
+    mediaType: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const mediaType = args.mediaType.trim();
+    if (!mediaType.startsWith("video/")) {
+      throw new Error("Demo must be a video file");
+    }
+
+    const filename = args.filename.trim();
+    if (!filename) {
+      throw new Error("Filename is required");
+    }
+
+    const previousStorageId = project.demoVideoStorageId;
+
+    await ctx.db.patch(args.projectId, {
+      demoVideoStorageId: args.storageId,
+      demoVideoFilename: filename,
+      demoVideoMediaType: mediaType,
+      updatedAt: project.updatedAt,
+    });
+
+    if (previousStorageId && previousStorageId !== args.storageId) {
+      await ctx.storage.delete(previousStorageId);
+    }
+  },
+});
+
+export const removeProjectDemoVideo = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (!project.demoVideoStorageId) return;
+
+    await ctx.storage.delete(project.demoVideoStorageId);
+    await ctx.db.patch(args.projectId, {
+      demoVideoStorageId: undefined,
+      demoVideoFilename: undefined,
+      demoVideoMediaType: undefined,
+      updatedAt: project.updatedAt,
+    });
   },
 });
 
 export const recordProjectView = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    await verifyAuth(ctx);
+    const identity = await verifyAuth(ctx);
     await assertProjectDiscoverable(ctx, args.projectId);
     const project = await ctx.db.get("projects", args.projectId);
-    if (!project) return;
+    if (!project) return { recorded: false, views: 0 };
+
+    const existing = await ctx.db
+      .query("projectViews")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", identity.subject),
+      )
+      .unique();
+
+    const currentViews = project.viewCount ?? 0;
+    if (existing) {
+      return { recorded: false, views: currentViews };
+    }
+
+    await ctx.db.insert("projectViews", {
+      projectId: args.projectId,
+      userId: identity.subject,
+      createdAt: Date.now(),
+    });
+    const nextViews = currentViews + 1;
     await ctx.db.patch(args.projectId, {
-      viewCount: (project.viewCount ?? 0) + 1,
+      viewCount: nextViews,
       updatedAt: project.updatedAt,
     });
+    return { recorded: true, views: nextViews };
   },
 });
 
@@ -357,5 +461,66 @@ export const seedDefaultPublicContent = mutation({
   handler: async (ctx, args) => {
     await verifyProjectOwnerAccess(ctx, args.projectId);
     await seedPublicProjectContent(ctx, args.projectId);
+  },
+});
+
+export const getProjectDocs = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) return null;
+
+    const access = await resolveProjectAccess(ctx, args.projectId);
+
+    const docs = [];
+    for (const slotDef of PROJECT_DOC_SLOTS) {
+      let matchedPath: string | null = null;
+      let content = "";
+      let exists = false;
+      let isDirty = false;
+      let isStaged = false;
+
+      for (const candidate of slotDef.paths) {
+        const file = await ctx.db
+          .query("projectFiles")
+          .withIndex("by_project_path", (q) =>
+            q.eq("projectId", args.projectId).eq("path", candidate),
+          )
+          .unique();
+        if (!file || file.kind !== "file") continue;
+
+        const body = await readFileContent(ctx, args.projectId, file.path, file);
+        matchedPath = file.path;
+        content = body.content;
+        exists = content.length > 0 || Boolean(body.syncedContent);
+        isDirty = isFileDirtyByHash(file.contentHash, file.syncedContentHash);
+        isStaged = file.staged === true;
+        break;
+      }
+
+      docs.push({
+        slot: slotDef.slot as ProjectDocSlot,
+        label: slotDef.label,
+        path: matchedPath,
+        defaultPath: slotDef.defaultPath,
+        content,
+        exists,
+        isDirty,
+        isStaged,
+        isMarkdown: slotDef.isMarkdown,
+        defaultContent: slotDef.defaultContent,
+      });
+    }
+
+    return {
+      source: project.source,
+      githubRepoUrl:
+        project.source === "github" ? project.githubRepoUrl : undefined,
+      githubBranch: project.githubBranch?.trim() || "main",
+      canEdit: access?.canEdit ?? false,
+      canManage: access?.canManage ?? false,
+      docs,
+    };
   },
 });

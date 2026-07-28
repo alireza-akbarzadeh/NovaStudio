@@ -1,18 +1,24 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   ProjectDetailsAboutSection,
   ProjectDetailsBackLink,
   ProjectDetailsContributeCta,
   ProjectDetailsContributorsSection,
+  ProjectDetailsDemoDialog,
+  ProjectDetailsDocsSection,
   ProjectDetailsHeader,
   ProjectDetailsLoadingState,
   ProjectDetailsNotFound,
-  ProjectDetailsPreviewSection,
+  ProjectDetailsPushGitHubDialog,
   ProjectDetailsRoadmapSection,
+  ProjectDetailsSponsorDialog,
   ProjectDetailsSponsorSection,
 } from "@/features/projects/components/project-details";
 import { useProjectDetailsPage } from "@/features/projects/hooks/use-project-details-page";
+import { isProjectLinkedToGitHub } from "@/features/projects/lib/project-details-utils";
 
 type ProjectDetailsViewProps = {
   projectId: string;
@@ -24,6 +30,9 @@ export function ProjectDetailsView({
   onRequestAccess,
 }: ProjectDetailsViewProps) {
   const page = useProjectDetailsPage(projectId);
+  const [sponsorDialogOpen, setSponsorDialogOpen] = useState(false);
+  const [pushGitHubDialogOpen, setPushGitHubDialogOpen] = useState(false);
+  const [demoDialogOpen, setDemoDialogOpen] = useState(false);
 
   if (page.details === undefined) {
     return <ProjectDetailsLoadingState />;
@@ -34,6 +43,12 @@ export function ProjectDetailsView({
   }
 
   const { details } = page;
+  const isGitHubLinked = isProjectLinkedToGitHub(details);
+  const canPushToGitHub =
+    (details.viewer.isOwner || details.viewer.canManage) && !isGitHubLinked;
+  const hasDemo = Boolean(details.demo?.url);
+  const canManageDemo = details.viewer.isOwner || details.viewer.canManage;
+  const showDemoButton = hasDemo || canManageDemo;
 
   return (
     <div className="mx-auto w-full max-w-6xl pb-16">
@@ -50,16 +65,43 @@ export function ProjectDetailsView({
         onOpenWorkspace={() => page.openProject(projectId)}
         onRequestAccess={() => page.requestAccess(onRequestAccess)}
         onStar={() => void page.handleStar()}
-        onDownload={() => void page.handleDownload(details.githubRepoUrl)}
+        onDownload={() => void page.handleDownload(isGitHubLinked, details.githubRepoUrl, details.githubBranch)}
+        onBecomeSponsor={() => setSponsorDialogOpen(true)}
+        canPushToGitHub={canPushToGitHub}
+        onPushToGitHub={() => setPushGitHubDialogOpen(true)}
+        showDemoButton={showDemoButton}
+        hasDemo={hasDemo}
+        onOpenDemo={() => setDemoDialogOpen(true)}
+      />
+
+      <ProjectDetailsDemoDialog
+        projectId={projectId}
+        demo={details.demo}
+        canManageDemo={canManageDemo}
+        open={demoDialogOpen}
+        onOpenChange={setDemoDialogOpen}
+      />
+
+      <ProjectDetailsPushGitHubDialog
+        projectId={projectId}
+        projectName={details.name}
+        open={pushGitHubDialogOpen}
+        onOpenChange={setPushGitHubDialogOpen}
+      />
+
+      <ProjectDetailsSponsorDialog
+        open={sponsorDialogOpen}
+        onOpenChange={setSponsorDialogOpen}
+        onProposeFeature={page.handleProposeFeature}
       />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-6">
           <ProjectDetailsAboutSection details={details} />
-          <ProjectDetailsPreviewSection details={details} />
+          <ProjectDetailsDocsSection projectId={projectId} />
           <ProjectDetailsSponsorSection
             features={details.features}
-            onProposeFeature={page.handleProposeFeature}
+            onBecomeSponsor={() => setSponsorDialogOpen(true)}
           />
         </div>
 

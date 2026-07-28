@@ -16,6 +16,12 @@ type ProjectDetailsHeaderProps = {
   onRequestAccess: () => void;
   onStar: () => void;
   onDownload: () => void;
+  onBecomeSponsor: () => void;
+  canPushToGitHub: boolean;
+  onPushToGitHub: () => void;
+  showDemoButton: boolean;
+  hasDemo: boolean;
+  onOpenDemo: () => void;
 };
 
 export function ProjectDetailsHeader({
@@ -30,6 +36,12 @@ export function ProjectDetailsHeader({
   onRequestAccess,
   onStar,
   onDownload,
+  onBecomeSponsor,
+  canPushToGitHub,
+  onPushToGitHub,
+  showDemoButton,
+  hasDemo,
+  onOpenDemo,
 }: ProjectDetailsHeaderProps) {
   return (
     <section className="overflow-hidden rounded-[28px] border border-border/60 bg-card/90 shadow-[0_24px_70px_-40px_rgba(76,29,149,0.55)]">
@@ -40,6 +52,12 @@ export function ProjectDetailsHeader({
         requestStatus={requestStatus}
         onOpenWorkspace={onOpenWorkspace}
         onRequestAccess={onRequestAccess}
+        onBecomeSponsor={onBecomeSponsor}
+        canPushToGitHub={canPushToGitHub}
+        onPushToGitHub={onPushToGitHub}
+        showDemoButton={showDemoButton}
+        hasDemo={hasDemo}
+        onOpenDemo={onOpenDemo}
       />
       <ProjectDetailsStatsBar
         details={details}

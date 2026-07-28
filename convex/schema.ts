@@ -103,6 +103,9 @@ export default defineSchema({
     viewCount: v.optional(v.number()),
     forkCount: v.optional(v.number()),
     downloadCount: v.optional(v.number()),
+    demoVideoStorageId: v.optional(v.id("_storage")),
+    demoVideoFilename: v.optional(v.string()),
+    demoVideoMediaType: v.optional(v.string()),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
@@ -538,6 +541,15 @@ export default defineSchema({
     .index("by_requester", ["requesterUserId"]),
 
   projectStars: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectViews: defineTable({
     projectId: v.id("projects"),
     userId: v.string(),
     createdAt: v.number(),

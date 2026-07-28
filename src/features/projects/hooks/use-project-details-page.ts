@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import type { Id } from "@/convex/_generated/dataModel";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { toGitHubUrl } from "@/features/github/lib/github-url";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
 import {
   useProjectDetails,
@@ -84,11 +85,19 @@ export function useProjectDetailsPage(projectId: string) {
     }
   }
 
-  async function handleDownload(githubRepoUrl?: string) {
+  async function handleDownload(
+    isGitHubLinked: boolean,
+    githubRepoUrl?: string,
+    githubBranch?: string,
+  ) {
     try {
       await recordDownload({ projectId: projectId as Id<"projects"> });
-      if (githubRepoUrl) {
-        window.open(githubRepoUrl, "_blank", "noopener,noreferrer");
+      if (isGitHubLinked && githubRepoUrl) {
+        window.open(
+          toGitHubUrl(githubRepoUrl, { branch: githubBranch }),
+          "_blank",
+          "noopener,noreferrer",
+        );
       } else {
         toast.message("No repository linked yet");
       }

@@ -45,3 +45,15 @@ export function useUpdateFeatureStatus() {
 export function useSeedDefaultPublicContent() {
   return useMutation(api.projectCommunity.seedDefaultPublicContent);
 }
+
+export function useGenerateDemoUploadUrl() {
+  return useMutation(api.projectCommunity.generateDemoUploadUrl);
+}
+
+export function useSetProjectDemoVideo() {
+  return useMutation(api.projectCommunity.setProjectDemoVideo);
+}
+
+export function useRemoveProjectDemoVideo() {
+  return useMutation(api.projectCommunity.removeProjectDemoVideo);
+}

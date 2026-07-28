@@ -4,6 +4,15 @@ export function formatProjectCount(value: number) {
   return value.toLocaleString();
 }
 
+export function isProjectLinkedToGitHub(project: {
+  source?: string;
+  githubRepoUrl?: string;
+}) {
+  return (
+    project.source === "github" && Boolean(project.githubRepoUrl?.trim())
+  );
+}
+
 export const todoStatusLabel = {
   todo: "To do",
   "in-progress": "In progress",

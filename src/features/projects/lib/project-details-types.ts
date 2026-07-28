@@ -1,3 +1,27 @@
+export type ProjectDocSlot = "readme" | "contributing" | "license";
+
+export type ProjectDocRecord = {
+  slot: ProjectDocSlot;
+  label: string;
+  path: string | null;
+  defaultPath: string;
+  content: string;
+  exists: boolean;
+  isDirty: boolean;
+  isStaged: boolean;
+  isMarkdown: boolean;
+  defaultContent: string;
+};
+
+export type ProjectDocsData = {
+  source?: "blank" | "github" | "template";
+  githubRepoUrl?: string;
+  githubBranch: string;
+  canEdit: boolean;
+  canManage: boolean;
+  docs: ProjectDocRecord[];
+};
+
 export type ProjectDetailsOwner = {
   name: string;
   initials: string;
@@ -33,6 +57,12 @@ export type ProjectDetailsFeature = {
   createdAt: number;
 };
 
+export type ProjectDetailsDemo = {
+  url: string;
+  filename: string;
+  mediaType: string;
+};
+
 export type ProjectDetailsData = {
   id: string;
   name: string;
@@ -44,6 +74,7 @@ export type ProjectDetailsData = {
   source?: "blank" | "github" | "template";
   templateId?: string;
   githubRepoUrl?: string;
+  githubBranch?: string;
   progress: number;
   updatedAt: number;
   lastUpdated: string;
@@ -66,4 +97,5 @@ export type ProjectDetailsData = {
   };
   todos: ProjectDetailsTodo[];
   features: ProjectDetailsFeature[];
+  demo: ProjectDetailsDemo | null;
 };
