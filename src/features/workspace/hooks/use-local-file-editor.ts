@@ -13,6 +13,7 @@ import type {
   CollaborativeCodeEditorProps,
   CollaborativeEditorViewModel,
 } from "@/features/workspace/lib/collab-editor/types";
+import { replaceMonacoContentPreservingCursor } from "@/features/workspace/lib/collab-editor/content-ops";
 import {
   loadFileContentDraft,
   saveFileContentDraft,
@@ -26,6 +27,10 @@ import { useEditorSettingsStore } from "@/features/settings/store/editor-setting
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 
 const SAVE_DEBOUNCE_MS = 800;
+/** Avoid localStorage writes on every keystroke — they block the main thread. */
+const DRAFT_DEBOUNCE_MS = 300;
+/** Preview / import-index updates don't need to run on every keypress. */
+const CONTENT_NOTIFY_DEBOUNCE_MS = 200;
 
 export function useLocalFileEditor({
   projectId,
@@ -41,6 +46,11 @@ export function useLocalFileEditor({
   const updateContent = useMutation(api.projectFiles.updateContent);
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentNotifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const keepUncontrolledRef = useRef(false);
   const pendingContentRef = useRef<string | null>(null);
   const saveEpochRef = useRef(0);
   const lastSavedContentRef = useRef<string | null>(null);
@@ -55,6 +65,11 @@ export function useLocalFileEditor({
   const [value, setValue] = useState(
     () => draft?.content || initialContent || "",
   );
+  /**
+   * After mount, Monaco owns the buffer (uncontrolled). Controlled React
+   * `value` full-replaces the model each keystroke and makes typing lag.
+   */
+  const [keepUncontrolled, setKeepUncontrolled] = useState(false);
 
   useEffect(() => {
     initialContentRef.current = initialContent;
@@ -68,6 +83,52 @@ export function useLocalFileEditor({
     readOnlyRef.current = readOnly;
   }, [readOnly]);
 
+  const clearDraftTimer = useCallback(() => {
+    if (draftTimerRef.current) {
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = null;
+    }
+  }, []);
+
+  const clearContentNotifyTimer = useCallback(() => {
+    if (contentNotifyTimerRef.current) {
+      clearTimeout(contentNotifyTimerRef.current);
+      contentNotifyTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleDraftSave = useCallback(
+    (content: string) => {
+      clearDraftTimer();
+      draftTimerRef.current = setTimeout(() => {
+        draftTimerRef.current = null;
+        saveFileContentDraft(projectId, filePath, content);
+      }, DRAFT_DEBOUNCE_MS);
+    },
+    [clearDraftTimer, filePath, projectId],
+  );
+
+  const scheduleContentNotify = useCallback(
+    (content: string) => {
+      clearContentNotifyTimer();
+      contentNotifyTimerRef.current = setTimeout(() => {
+        contentNotifyTimerRef.current = null;
+        onContentChangeRef.current?.(content);
+      }, CONTENT_NOTIFY_DEBOUNCE_MS);
+    },
+    [clearContentNotifyTimer],
+  );
+
+  const publishLocal = useCallback(
+    (content: string) => {
+      if (!keepUncontrolledRef.current) {
+        setValue(content);
+      }
+      scheduleContentNotify(content);
+    },
+    [scheduleContentNotify],
+  );
+
   // Reset buffer only when switching files — not on every Convex autosave echo.
   useEffect(() => {
     const next =
@@ -75,6 +136,8 @@ export function useLocalFileEditor({
       initialContent ||
       "";
     setValue(next);
+    keepUncontrolledRef.current = false;
+    setKeepUncontrolled(false);
     lastSavedContentRef.current = initialContent || "";
     saveEpochRef.current += 1;
     pendingContentRef.current = null;
@@ -82,8 +145,10 @@ export function useLocalFileEditor({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    clearDraftTimer();
+    clearContentNotifyTimer();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- file identity only
-  }, [filePath, projectId]);
+  }, [clearContentNotifyTimer, clearDraftTimer, filePath, projectId]);
 
   // Apply remote Convex writes (AI / other device) without clobbering local typing.
   useEffect(() => {
@@ -114,7 +179,13 @@ export function useLocalFileEditor({
       return;
     }
 
-    setValue(initialContent);
+    const ed = editorRef.current;
+    const model = ed?.getModel();
+    if (ed && model && keepUncontrolledRef.current) {
+      replaceMonacoContentPreservingCursor(ed, model, initialContent);
+    } else {
+      setValue(initialContent);
+    }
     lastSavedContentRef.current = initialContent;
     saveEpochRef.current += 1;
     pendingContentRef.current = null;
@@ -122,14 +193,19 @@ export function useLocalFileEditor({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    clearDraftTimer();
+    clearContentNotifyTimer();
+    saveFileContentDraft(projectId, filePath, initialContent);
     markFileDirty(projectId, filePath, false);
     onContentChangeRef.current?.(initialContent);
-  }, [filePath, initialContent, projectId, readOnly]);
-
-  const publishLocal = useCallback((content: string) => {
-    setValue(content);
-    onContentChangeRef.current?.(content);
-  }, []);
+  }, [
+    clearContentNotifyTimer,
+    clearDraftTimer,
+    filePath,
+    initialContent,
+    projectId,
+    readOnly,
+  ]);
 
   const syncDirtyFlag = useCallback(
     (content: string) => {
@@ -189,6 +265,8 @@ export function useLocalFileEditor({
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    clearDraftTimer();
+    clearContentNotifyTimer();
     if (readOnlyRef.current) return false;
 
     const fromEditor = editorRef.current?.getModel()?.getValue();
@@ -203,7 +281,14 @@ export function useLocalFileEditor({
     return persistToServerRef.current(content, saveEpochRef.current, {
       force: true,
     });
-  }, [filePath, projectId, syncDirtyFlag, value]);
+  }, [
+    clearContentNotifyTimer,
+    clearDraftTimer,
+    filePath,
+    projectId,
+    syncDirtyFlag,
+    value,
+  ]);
 
   useEffect(() => {
     if (readOnly) return;
@@ -223,20 +308,24 @@ export function useLocalFileEditor({
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      clearDraftTimer();
+      clearContentNotifyTimer();
     };
-  }, []);
+  }, [clearContentNotifyTimer, clearDraftTimer]);
 
   const onChange = readOnly
     ? undefined
     : (next: string) => {
         if (!next && (initialContentRef.current || value)) return;
         publishLocal(next);
-        saveFileContentDraft(projectId, filePath, next);
+        scheduleDraftSave(next);
         scheduleServerSave(next);
       };
 
   const onCreateEditor = useCallback((ed: editor.IStandaloneCodeEditor) => {
     editorRef.current = ed;
+    keepUncontrolledRef.current = true;
+    setKeepUncontrolled(true);
   }, []);
 
   const draftContent = loadFileContentDraft(projectId, filePath)?.content;
@@ -246,7 +335,7 @@ export function useLocalFileEditor({
     displayValue,
     filePath,
     readOnly,
-    collaborative: false,
+    collaborative: keepUncontrolled,
     connecting: false,
     reconnecting: false,
     definitionFiles,

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BracesIcon,
   FocusIcon,
   PanelBottomIcon,
   PanelLeftIcon,
@@ -33,7 +32,7 @@ import { WorkspaceLiveCollabMenu } from "@/features/workspace/components/workspa
 import { WorkspacePublishMenu } from "@/features/workspace/components/workspace-publish-menu";
 import { useEditorTabs } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
-import { modKeyLabel } from "@/lib/keyboard";
+import { formatModShortcut, modKeyLabel } from "@/lib/keyboard";
 import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
@@ -119,7 +118,6 @@ export function WorkspaceToolbar({
   projectName,
 }: WorkspaceToolbarProps) {
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
-  const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const terminalOpen = useWorkspaceStore((s) => s.terminalOpen);
   const aiPanelOpen = useWorkspaceStore((s) => s.aiPanelOpen);
   const zenMode = useWorkspaceStore((s) => s.zenMode);
@@ -127,6 +125,8 @@ export function WorkspaceToolbar({
   const { openPricing } = usePricingDialog();
   const { openTab } = useEditorTabs(projectId);
   const access = useProjectAccess(projectId);
+  const isApple = useIsApplePlatform();
+  const searchEverywhereShortcut = formatModShortcut("mod+shift+f", isApple);
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -154,14 +154,23 @@ export function WorkspaceToolbar({
             type="button"
             onClick={() => runCommand("openCommandPalette")}
             className="mr-1 hidden h-8 items-center gap-2 rounded-full border border-ws-border-subtle bg-ws-stage px-3 text-[12px] text-ws-text-muted shadow-sm transition-colors hover:border-ws-border hover:bg-ws-hover hover:text-ws-text sm:inline-flex"
-            title="Command palette (⌘⇧P)"
+            title={`Search everywhere (${searchEverywhereShortcut})`}
           >
             <SearchIcon className="size-3.5 opacity-70" />
             <span>Search</span>
             <KbdGroup className="gap-0.5 opacity-70">
               <ModKey />
-              <ShortcutKey>⇧</ShortcutKey>
-              <ShortcutKey>P</ShortcutKey>
+              {isApple ? (
+                <>
+                  <ShortcutKey>⇧</ShortcutKey>
+                  <ShortcutKey>F</ShortcutKey>
+                </>
+              ) : (
+                <>
+                  <ShortcutKey>Shift</ShortcutKey>
+                  <ShortcutKey>F</ShortcutKey>
+                </>
+              )}
             </KbdGroup>
           </button>
 
@@ -177,21 +186,6 @@ export function WorkspaceToolbar({
             }
           >
             <PanelLeftIcon className="size-3.5" strokeWidth={1.75} />
-          </ToolbarTooltipButton>
-
-          <ToolbarTooltipButton
-            label="Environment (.env)"
-            pressed={sidebarOpen && leftPanelView === "env"}
-            onClick={() => runCommand("showEnv")}
-            shortcut={
-              <>
-                <ModKey />
-                <AltKey />
-                <ShortcutKey>E</ShortcutKey>
-              </>
-            }
-          >
-            <BracesIcon className="size-3.5" strokeWidth={1.75} />
           </ToolbarTooltipButton>
 
           <ToolbarTooltipButton

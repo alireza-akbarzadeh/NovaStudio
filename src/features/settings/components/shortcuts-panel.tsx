@@ -4,6 +4,8 @@ import { Manrope } from "next/font/google";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { SHORTCUT_GROUPS } from "@/features/settings/lib/shortcuts";
+import { formatShortcutKeys } from "@/lib/keyboard";
+import { useIsApplePlatform } from "@/lib/use-is-apple-platform";
 import { cn } from "@/lib/utils";
 
 const display = Manrope({
@@ -12,7 +14,8 @@ const display = Manrope({
 });
 
 function ShortcutKeys({ keys }: { keys: string }) {
-  const parts = keys.split(" ").filter(Boolean);
+  const isApple = useIsApplePlatform();
+  const parts = formatShortcutKeys(keys, isApple);
   return (
     <KbdGroup>
       {parts.map((part) => (

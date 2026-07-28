@@ -72,12 +72,18 @@ export function registerJsxSyntaxHighlight(
   );
 
   highlighter();
+  let highlightFrame = 0;
   const contentSub = editorInstance.onDidChangeModelContent(() => {
-    highlighter();
+    if (highlightFrame) cancelAnimationFrame(highlightFrame);
+    highlightFrame = requestAnimationFrame(() => {
+      highlightFrame = 0;
+      highlighter();
+    });
   });
 
   return {
     dispose: () => {
+      if (highlightFrame) cancelAnimationFrame(highlightFrame);
       contentSub.dispose();
       dispose();
       editorCount = Math.max(0, editorCount - 1);

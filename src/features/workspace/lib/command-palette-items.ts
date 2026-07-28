@@ -31,9 +31,9 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
   },
   {
     id: "findInFiles",
-    label: "Find in Files",
-    keywords: "search text workspace",
-    shortcut: "mod+shift+f",
+    label: "Find in Files (sidebar)",
+    keywords: "search text workspace panel",
+    shortcut: "mod+alt+f",
   },
   {
     id: "formatDocument",
@@ -73,7 +73,7 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     id: "showSearch",
     label: "Show Search",
     keywords: "find search panel",
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
     hidden: true,
   },
   {

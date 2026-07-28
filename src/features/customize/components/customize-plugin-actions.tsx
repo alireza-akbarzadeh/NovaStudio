@@ -196,7 +196,10 @@ export function CustomizePluginActions({
                 btnClass,
                 "border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15",
               )}
-              onClick={openConnect}
+              onClick={(event) => {
+                event.stopPropagation();
+                openConnect();
+              }}
             >
               {isConnecting || connectionLoading ? (
                 <Loader2Icon className="size-3 animate-spin" />

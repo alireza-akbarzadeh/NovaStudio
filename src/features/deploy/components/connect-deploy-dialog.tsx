@@ -63,7 +63,10 @@ export function ConnectDeployDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.description}</DialogDescription>
@@ -75,7 +78,8 @@ export function ConnectDeployDialog({
             <Input
               id={`${provider}-token`}
               type="password"
-              autoComplete="off"
+              autoComplete="new-password"
+              autoFocus={open}
               placeholder="Paste token"
               value={token}
               onChange={(event) => setToken(event.target.value)}

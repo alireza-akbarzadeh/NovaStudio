@@ -11,7 +11,12 @@ import {
 } from "@/features/workspace/store/workspace-store";
 import { useEditorSettingsStore } from "@/features/settings/store/editor-settings-store";
 import { isLiveblocksConfigured } from "@/features/workspace/lib/liveblocks-configured";
-import { isApplePlatform } from "@/lib/keyboard";
+import {
+  isApplePlatform,
+  isSearchEverywhereShortcut,
+  normalizeModChord,
+  SEARCH_EVERYWHERE_CHORD,
+} from "@/lib/keyboard";
 import { toast } from "sonner";
 import {
   runFindReferences,
@@ -237,10 +242,10 @@ export const workspaceCommands: Command[] = [
   },
   {
     id: "openCommandPalette",
-    shortcut: "mod+k",
-    aliases: ["mod+shift+p"],
+    shortcut: SEARCH_EVERYWHERE_CHORD,
+    aliases: ["mod+shift+p", "mod+k"],
     allowInInput: true,
-    run: () => store().openCommandPalette(),
+    run: () => store().openCommandPalette({ tab: "text" }),
   },
   {
     id: "closeCommandPalette",
@@ -277,7 +282,7 @@ export const workspaceCommands: Command[] = [
   },
   {
     id: "showSearch",
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
     allowInInput: true,
     run: () => store().openFindInFiles(),
   },
@@ -347,7 +352,7 @@ export const workspaceCommands: Command[] = [
   },
   {
     id: "findInFiles",
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
     allowInInput: true,
     run: () => store().openFindInFiles(),
   },
@@ -476,17 +481,7 @@ export function runCommand(id: CommandId) {
 }
 
 function normalizeEventChord(event: KeyboardEvent): string {
-  const parts: string[] = [];
-  if (event.metaKey || event.ctrlKey) parts.push("mod");
-  if (event.altKey) parts.push("alt");
-  if (event.shiftKey) parts.push("shift");
-
-  const key = event.key.toLowerCase();
-  if (key === "control" || key === "meta" || key === "alt" || key === "shift") {
-    return parts.join("+");
-  }
-  parts.push(key === "," ? "," : key);
-  return parts.join("+");
+  return normalizeModChord(event);
 }
 
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -505,6 +500,17 @@ export function matchShortcut(event: KeyboardEvent): Command | undefined {
 }
 
 export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
+  if (isSearchEverywhereShortcut(event)) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    const chord = normalizeModChord(event);
+    store().openCommandPalette({
+      tab: chord === SEARCH_EVERYWHERE_CHORD ? "text" : "all",
+    });
+    return true;
+  }
+
   const command = matchShortcut(event);
   if (!command) return false;
 
@@ -520,12 +526,13 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
     }
   }
 
-  // ⌘K in the editor → inline AI edit; ⌘⇧P (or ⌘K outside editor) → palette.
+  // Ctrl/Cmd+K in the editor → inline AI edit; Ctrl/Cmd+Shift+F → Search Everywhere.
   if (command.id === "openCommandPalette") {
     const chord = normalizeEventChord(event);
-    const forcePalette = chord === "mod+shift+p";
-    if (!forcePalette && isMonacoEditorTarget(event.target)) {
+    if (chord === "mod+k" && isMonacoEditorTarget(event.target)) {
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       if (!requestInlineAiEdit()) {
         store().openCommandPalette();
       }
@@ -538,6 +545,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
     const closedInline = closeInlineAiEdit();
     if (closedInline) {
       event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
       return true;
     }
     if (s.goToFileOpen && isFileNavigatorEditing()) {
@@ -560,6 +569,8 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
   }
 
   event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
   command.run();
   return true;
 }

@@ -6,11 +6,13 @@ import {
   Link2OffIcon,
   Loader2Icon,
 } from "lucide-react";
-import Link from "next/link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PluginNotInstalledPrompt } from "@/features/customize/components/plugin-not-installed-prompt";
+import { useUserPlugins } from "@/features/customize/hooks/use-user-plugins";
+import { LinearConnectionStatus } from "@/features/integrations/components/linear-connection-status";
 import { useLinearConnection } from "@/features/integrations/hooks/use-linear-connection";
 import { useProjectLinearLink } from "@/features/integrations/hooks/use-project-linear-link";
 
@@ -19,10 +21,33 @@ type WorkspaceLinearLinkProps = {
 };
 
 export function WorkspaceLinearLink({ projectId }: WorkspaceLinearLinkProps) {
+  const { installedIds, ready: pluginsReady } = useUserPlugins();
+  const isLinearInstalled = installedIds.has("linear");
   const { isConnected, isLoading: isConnectionLoading } = useLinearConnection();
   const { link, isLoading, isLinking, isUnlinking, linkIssue, unlinkIssue } =
     useProjectLinearLink(projectId);
   const [issueIdentifier, setIssueIdentifier] = useState("");
+
+  if (!pluginsReady) {
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-ws-text-muted">
+        <Loader2Icon className="size-3.5 animate-spin" />
+        Loading…
+      </div>
+    );
+  }
+
+  if (!isLinearInstalled) {
+    return (
+      <PluginNotInstalledPrompt
+        projectId={projectId}
+        pluginId="linear"
+        pluginName="Linear"
+        description="Install the Linear plugin to link issues and sync status on push or deploy."
+        className="py-6"
+      />
+    );
+  }
 
   if (isConnectionLoading || isLoading) {
     return (
@@ -40,18 +65,7 @@ export function WorkspaceLinearLink({ projectId }: WorkspaceLinearLinkProps) {
           <KanbanSquareIcon className="size-3.5 text-ws-text-muted" />
           <span className="font-medium">Linear</span>
         </div>
-        <p className="text-[11px] leading-relaxed text-ws-text-muted">
-          Connect Linear in Integrations to link an issue and sync status on push
-          or deploy.
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="h-7 w-full border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
-        >
-          <Link href="/projects/integrations">Open Integrations</Link>
-        </Button>
+        <LinearConnectionStatus compact />
       </div>
     );
   }

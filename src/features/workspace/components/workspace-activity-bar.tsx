@@ -98,7 +98,7 @@ const LEFT_ITEMS: ActivityItem[] = [
     view: "search",
     label: "Find in Files",
     icon: <SearchIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
   },
   {
     view: "git",

@@ -54,10 +54,10 @@ export function useWorkspaceShortcuts(enabled = true) {
       event.returnValue = "";
     };
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, { capture: true });
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
       window.removeEventListener("beforeunload", onBeforeUnload);
     };
   }, [enabled]);

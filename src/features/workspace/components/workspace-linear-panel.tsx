@@ -9,17 +9,19 @@ import {
   PlusIcon,
   RefreshCwIcon,
 } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { PluginNotInstalledPrompt } from "@/features/customize/components/plugin-not-installed-prompt";
+import { useUserPlugins } from "@/features/customize/hooks/use-user-plugins";
 import {
   GitHubHubErrorState,
   GitHubHubToolbar,
   GitHubLoadingRow,
 } from "@/features/github/components/github-hub-ui";
+import { LinearConnectionStatus } from "@/features/integrations/components/linear-connection-status";
 import { useLinearConnection } from "@/features/integrations/hooks/use-linear-connection";
 import {
   memberLabel,
@@ -91,6 +93,8 @@ function StateBadge({
 }
 
 export function WorkspaceLinearPanel({ projectId }: WorkspaceLinearPanelProps) {
+  const { installedIds, ready: pluginsReady } = useUserPlugins();
+  const isLinearInstalled = installedIds.has("linear");
   const { isConnected, isLoading: isConnectionLoading } = useLinearConnection();
   const { link } = useProjectLinearLink(projectId);
   const {
@@ -209,6 +213,23 @@ export function WorkspaceLinearPanel({ projectId }: WorkspaceLinearPanelProps) {
     setAddToActiveCycle(Boolean(activeCycle));
   }, [activeCycle]);
 
+  if (!pluginsReady) {
+    return <GitHubLoadingRow label="Loading plugins…" />;
+  }
+
+  if (!isLinearInstalled) {
+    return (
+      <div className="p-3">
+        <PluginNotInstalledPrompt
+          projectId={projectId}
+          pluginId="linear"
+          pluginName="Linear"
+          description="Install the Linear plugin to create tasks, assign teammates, and sync issue status without leaving the editor."
+        />
+      </div>
+    );
+  }
+
   if (isConnectionLoading) {
     return <GitHubLoadingRow label="Loading Linear…" />;
   }
@@ -220,18 +241,7 @@ export function WorkspaceLinearPanel({ projectId }: WorkspaceLinearPanelProps) {
           <KanbanSquareIcon className="size-3.5 text-ws-text-muted" />
           <span className="font-medium">Linear tasks</span>
         </div>
-        <p className="text-[11px] leading-relaxed text-ws-text-muted">
-          Connect Linear in Integrations to create tasks, assign teammates, and
-          move work from Todo → In Progress → Done without leaving the editor.
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="h-7 border-ws-border bg-ws-bg text-[11px] text-ws-text hover:bg-ws-hover"
-        >
-          <Link href="/projects/integrations">Open Integrations</Link>
-        </Button>
+        <LinearConnectionStatus compact />
       </div>
     );
   }

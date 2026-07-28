@@ -24,6 +24,7 @@ import { registerAiInlineCompletions } from "@/features/workspace/lib/monaco-ai-
 import { registerAutoImport } from "@/features/workspace/lib/monaco-auto-import";
 import { syncDefinitionModels, clearDefinitionModelsForFile } from "@/features/workspace/lib/monaco-definition-models";
 import { registerFormatAction } from "@/features/workspace/lib/monaco-format";
+import { registerMonacoWorkspaceShortcuts } from "@/features/workspace/lib/monaco-workspace-shortcuts";
 import { registerInlineAiEdit } from "@/features/workspace/lib/monaco-inline-ai-edit";
 import {
   registerSymbolRefactor,
@@ -296,6 +297,10 @@ export function CodeEditor({
 
       // Ensure model language + URI extension stay aligned for JSX/TSX/CSS.
       safeSetModelLanguage(monaco, ed.getModel(), language);
+
+      disposablesRef.current.push(
+        registerMonacoWorkspaceShortcuts(ed, monaco),
+      );
 
       if (!readOnly) {
         disposablesRef.current.push(

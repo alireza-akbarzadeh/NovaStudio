@@ -156,6 +156,14 @@ type WorkspaceState = WorkspacePrefs & {
   goToFileOpen: boolean;
   goToSymbolOpen: boolean;
   commandPaletteOpen: boolean;
+  commandPaletteInitialTab:
+    | "all"
+    | "types"
+    | "files"
+    | "symbols"
+    | "actions"
+    | "text"
+    | null;
   gitInitDialogOpen: boolean;
   cloneFromGitHubOpen: boolean;
   branchPickerOpen: boolean;
@@ -240,7 +248,9 @@ type WorkspaceState = WorkspacePrefs & {
   closeGoToFile: () => void;
   openGoToSymbol: () => void;
   closeGoToSymbol: () => void;
-  openCommandPalette: () => void;
+  openCommandPalette: (options?: {
+    tab?: "all" | "types" | "files" | "symbols" | "actions" | "text";
+  }) => void;
   closeCommandPalette: () => void;
   openGitInitDialog: () => void;
   closeGitInitDialog: () => void;
@@ -435,6 +445,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   goToFileOpen: false,
   goToSymbolOpen: false,
   commandPaletteOpen: false,
+  commandPaletteInitialTab: null,
   gitInitDialogOpen: false,
   cloneFromGitHubOpen: false,
   branchPickerOpen: false,
@@ -650,14 +661,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   openGoToSymbol: () =>
     set({ goToSymbolOpen: true, goToFileOpen: false }),
   closeGoToSymbol: () => set({ goToSymbolOpen: false }),
-  openCommandPalette: () =>
+  openCommandPalette: (options) =>
     set({
       commandPaletteOpen: true,
+      commandPaletteInitialTab: options?.tab ?? null,
       goToFileOpen: false,
       goToSymbolOpen: false,
       settingsOpen: false,
     }),
-  closeCommandPalette: () => set({ commandPaletteOpen: false }),
+  closeCommandPalette: () =>
+    set({ commandPaletteOpen: false, commandPaletteInitialTab: null }),
   openGitInitDialog: () => set({ gitInitDialogOpen: true }),
   closeGitInitDialog: () => set({ gitInitDialogOpen: false }),
   openCloneFromGitHub: () => set({ cloneFromGitHubOpen: true }),

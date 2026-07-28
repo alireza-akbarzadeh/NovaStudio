@@ -3,6 +3,7 @@
 import { useUser } from "@clerk/nextjs";
 import { ChevronDownIcon, Loader2Icon, PlusIcon, SearchIcon, UserIcon } from "lucide-react";
 import { Manrope } from "next/font/google";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -50,13 +51,16 @@ function filterPlugins(plugins: CustomizePlugin[], query: string) {
 
 export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProps) {
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const { openTab } = useEditorTabs(projectId);
   const { installedIds, ready } = useUserPlugins();
   const editorTabs = useWorkspaceStore((s) => s.editorTabs);
   const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<CustomizeCategory>("plugins");
-  const [view, setView] = useState<"installed" | "marketplace">("installed");
+  const initialView =
+    searchParams.get("view") === "marketplace" ? "marketplace" : "installed";
+  const [view, setView] = useState<"installed" | "marketplace">(initialView);
   const [expandedPluginId, setExpandedPluginId] =
     useState<CustomizePluginId | null>(null);
 
@@ -170,9 +174,21 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
         <div className="relative min-w-0 flex-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-ws-text-muted" />
           <Input
+            id="customize-plugin-search"
+            name="customize-plugin-search"
+            type="search"
+            inputMode="search"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-1p-ignore
+            data-lpignore="true"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search Plugins for ${userName}…`}
+            placeholder="Search plugins…"
+            aria-label="Search plugins"
             className="h-9 border-ws-border-subtle bg-ws-panel pl-8 text-[12px] shadow-none"
           />
         </div>
@@ -284,7 +300,20 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
               {!ready
                 ? "Loading plugins…"
                 : view === "installed"
-                  ? "No plugins installed yet. Browse the marketplace to add one."
+                  ? (
+                      <div className="space-y-3">
+                        <p>No plugins installed yet. Browse the marketplace to add one.</p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 bg-ws-accent px-3 text-[11px] text-white hover:bg-ws-accent-hover"
+                          onClick={() => setView("marketplace")}
+                        >
+                          <PlusIcon className="size-3.5" />
+                          Browse marketplace
+                        </Button>
+                      </div>
+                    )
                   : "No plugins match your search."}
             </div>
           ) : null}
