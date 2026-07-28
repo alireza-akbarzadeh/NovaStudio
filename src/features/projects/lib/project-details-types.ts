@@ -86,6 +86,7 @@ export type ProjectDetailsData = {
     views: number;
     forks: number;
     downloads: number;
+    sponsors: number;
   };
   viewer: {
     hasStarred: boolean;

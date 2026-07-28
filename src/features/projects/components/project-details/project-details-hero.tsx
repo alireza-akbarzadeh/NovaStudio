@@ -124,7 +124,7 @@ export function ProjectDetailsHero({
                 >
                   <Image
                     src="/images/github.png"
-                    alt=""
+                    alt="GitHub"
                     width={20}
                     height={20}
                     className="size-5"

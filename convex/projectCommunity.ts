@@ -121,6 +121,18 @@ export const getProjectDetails = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
+    const sponsors = await ctx.db
+      .query("projectSponsors")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const sponsorIds = new Set(sponsors.map((sponsor) => sponsor.userId));
+    for (const feature of features) {
+      if (feature.sponsorUserId) {
+        sponsorIds.add(feature.sponsorUserId);
+      }
+    }
+
     const stats = publicStats(project);
     const memberCount = members.length;
     const isOwner = project.ownerId === userId;
@@ -158,6 +170,7 @@ export const getProjectDetails = query({
       stats: {
         ...stats,
         forks: Math.max(stats.forks, Math.max(0, memberCount - 1)),
+        sponsors: sponsorIds.size,
       },
       viewer: {
         hasStarred: Boolean(star),
@@ -420,15 +433,37 @@ export const proposeFeature = mutation({
     const title = args.title.trim();
     if (!title) throw new Error("Feature title is required");
 
+    const sponsorName = identityDisplayName(identity);
+    const sponsorMessage = args.sponsorMessage?.trim() || undefined;
+    const sponsorAmount = args.sponsorAmount?.trim() || undefined;
+
+    const existingSponsor = await ctx.db
+      .query("projectSponsors")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", identity.subject),
+      )
+      .unique();
+
+    if (!existingSponsor) {
+      await ctx.db.insert("projectSponsors", {
+        projectId: args.projectId,
+        userId: identity.subject,
+        sponsorName,
+        sponsorMessage,
+        sponsorAmount,
+        createdAt: Date.now(),
+      });
+    }
+
     return await ctx.db.insert("projectFeatureIdeas", {
       projectId: args.projectId,
       title,
       description: args.description?.trim() || undefined,
       status: "open",
       sponsorUserId: identity.subject,
-      sponsorName: identityDisplayName(identity),
-      sponsorMessage: args.sponsorMessage?.trim() || undefined,
-      sponsorAmount: args.sponsorAmount?.trim() || undefined,
+      sponsorName,
+      sponsorMessage,
+      sponsorAmount,
       upvotes: 1,
       createdAt: Date.now(),
     });

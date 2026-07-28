@@ -589,6 +589,17 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_project", ["projectId"]),
 
+  projectSponsors: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    sponsorName: v.optional(v.string()),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
   notifications: defineTable({
     userId: v.string(),
     title: v.string(),

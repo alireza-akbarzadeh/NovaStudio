@@ -166,22 +166,23 @@ export function ProjectDetailsDocsSection({
   }
 
   return (
-    <section className="rounded-[24px] border border-border/60 bg-card/85 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileTextIcon className="size-4 text-primary" />
-            <h2 className="text-lg font-semibold tracking-tight">
-              Repository docs
-            </h2>
+    <section className="overflow-hidden rounded-3xl border border-border/60 bg-card/85">
+      <div className="border-b border-border/50 px-6 py-5 md:px-8">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <FileTextIcon className="size-4 text-primary" />
+              <h2 className="text-lg font-semibold tracking-tight">
+                Repository docs
+              </h2>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              README, contributing guide, and license — synced with your project
+              files and GitHub.
+            </p>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            README, contributing guide, and license — synced with your project
-            files and GitHub.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
           {docsData.canManage && hasGithub ? (
             <Button
               type="button"
@@ -220,6 +221,7 @@ export function ProjectDetailsDocsSection({
               </a>
             </Button>
           ) : null}
+          </div>
         </div>
       </div>
 
@@ -229,9 +231,10 @@ export function ProjectDetailsDocsSection({
           setActiveSlot(value as ProjectDocSlot);
           setEditing(false);
         }}
-        className="mt-5"
+        className="pt-5"
       >
-        <TabsList className="h-auto flex-wrap gap-1 rounded-xl bg-muted/50 p-1">
+        <div className="px-6 md:px-8">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/50 p-1 sm:w-auto">
           {docsData.docs.map((doc) => (
             <TabsTrigger
               key={doc.slot}
@@ -251,16 +254,17 @@ export function ProjectDetailsDocsSection({
               ) : null}
             </TabsTrigger>
           ))}
-        </TabsList>
+          </TabsList>
+        </div>
 
         {docsData.docs.map((doc) => (
           <TabsContent key={doc.slot} value={doc.slot} className="mt-4">
             {!doc.exists && !docsData.canEdit ? (
-              <p className="rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
+              <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
                 No {doc.label.toLowerCase()} file published yet.
               </p>
             ) : !doc.exists ? (
-              <div className="rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center">
+              <div className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center md:mx-8">
                 <p className="text-sm text-muted-foreground">
                   {doc.defaultPath} has not been added yet.
                 </p>
@@ -273,29 +277,40 @@ export function ProjectDetailsDocsSection({
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-mono text-xs text-muted-foreground">
+              <div className="project-doc-reader">
+                <div className="project-doc-reader-toolbar">
+                  <span className="project-doc-reader-path">
+                    <FileTextIcon className="size-3.5 shrink-0 opacity-60" />
                     {doc.path}
-                  </p>
-                  {docsData.canEdit ? (
+                  </span>
+                  {docsData.canManage ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={editing ? "secondary" : "outline"}
-                        className="rounded-xl"
-                        onClick={() => setEditing((value) => !value)}
-                      >
-                        <PencilIcon className="size-3.5" />
-                        {editing ? "Preview" : "Edit"}
-                      </Button>
-                      {editing ? (
+                      {!editing ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-lg px-3 text-xs"
+                          onClick={() => setEditing(true)}
+                        >
+                          <PencilIcon className="size-3.5" />
+                          Edit
+                        </Button>
+                      ) : (
                         <>
                           <Button
                             type="button"
                             size="sm"
-                            className="rounded-xl"
+                            variant="secondary"
+                            className="h-8 rounded-lg px-3 text-xs"
+                            onClick={() => setEditing(false)}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 rounded-lg px-3 text-xs"
                             disabled={saving}
                             onClick={() => void handleSave(false)}
                           >
@@ -306,7 +321,7 @@ export function ProjectDetailsDocsSection({
                             <Button
                               type="button"
                               size="sm"
-                              className="rounded-xl"
+                              className="h-8 rounded-lg px-3 text-xs"
                               disabled={saving || isPushing}
                               onClick={() => void handleSave(true)}
                             >
@@ -319,28 +334,32 @@ export function ProjectDetailsDocsSection({
                             </Button>
                           ) : null}
                         </>
-                      ) : null}
+                      )}
                     </div>
                   ) : null}
                 </div>
 
                 {editing ? (
-                  <Textarea
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    className={cn(
-                      "min-h-[320px] rounded-2xl font-mono text-xs leading-relaxed",
-                      doc.isMarkdown ? "" : "whitespace-pre-wrap",
-                    )}
-                  />
+                  <div className="px-6 pb-6 md:px-8">
+                    <Textarea
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      className={cn(
+                        "min-h-[360px] rounded-xl border-border/60 bg-background/60 font-mono text-xs leading-relaxed",
+                        doc.isMarkdown ? "" : "whitespace-pre-wrap",
+                      )}
+                    />
+                  </div>
                 ) : doc.isMarkdown ? (
-                  <div className="rounded-2xl border border-border/60 bg-muted/15 p-5">
+                  <div className="project-doc-reader-body">
                     <ProjectDocMarkdown content={doc.content} />
                   </div>
                 ) : (
-                  <pre className="overflow-x-auto rounded-2xl border border-border/60 bg-muted/15 p-5 font-mono text-xs leading-relaxed text-foreground/90">
-                    {doc.content}
-                  </pre>
+                  <div className="project-doc-reader-body">
+                    <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-foreground/90">
+                      {doc.content}
+                    </pre>
+                  </div>
                 )}
               </div>
             )}
@@ -349,7 +368,7 @@ export function ProjectDetailsDocsSection({
       </Tabs>
 
       {visibleTabs.length === 0 ? (
-        <p className="mt-4 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
           No repository documentation available.
         </p>
       ) : null}

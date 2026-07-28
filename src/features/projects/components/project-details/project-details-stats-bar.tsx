@@ -1,6 +1,13 @@
 "use client";
 
-import { DownloadIcon, EyeIcon, GitForkIcon, StarIcon, UsersIcon } from "lucide-react";
+import {
+  DownloadIcon,
+  EyeIcon,
+  GitForkIcon,
+  SparklesIcon,
+  StarIcon,
+  UsersIcon,
+} from "lucide-react";
 
 import type { ProjectDetailsData } from "@/features/projects/lib/project-details-types";
 import { formatProjectCount } from "@/features/projects/lib/project-details-utils";
@@ -49,6 +56,11 @@ export function ProjectDetailsStatsBar({
         <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
           <GitForkIcon className="size-4" />
           {formatProjectCount(details.stats.forks)} contributors
+        </span>
+        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+          <SparklesIcon className="size-4" />
+          {formatProjectCount(details.stats.sponsors ?? 0)}{" "}
+          {(details.stats.sponsors ?? 0) === 1 ? "sponsor" : "sponsors"}
         </span>
         <button
           type="button"

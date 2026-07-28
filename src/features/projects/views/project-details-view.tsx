@@ -95,10 +95,9 @@ export function ProjectDetailsView({
         onProposeFeature={page.handleProposeFeature}
       />
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <ProjectDetailsAboutSection details={details} />
-          <ProjectDetailsDocsSection projectId={projectId} />
           <ProjectDetailsSponsorSection
             features={details.features}
             onBecomeSponsor={() => setSponsorDialogOpen(true)}
@@ -119,6 +118,10 @@ export function ProjectDetailsView({
             onRequestAccess={() => page.requestAccess(onRequestAccess)}
           />
         </div>
+      </div>
+
+      <div className="mt-8">
+        <ProjectDetailsDocsSection projectId={projectId} />
       </div>
     </div>
   );
