@@ -707,6 +707,15 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_extension", ["userId", "extensionId"]),
 
+  userPlugins: defineTable({
+    userId: v.string(),
+    pluginId: v.string(),
+    installedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_plugin", ["userId", "pluginId"]),
+
   contactMessages: defineTable({
     name: v.string(),
     email: v.string(),

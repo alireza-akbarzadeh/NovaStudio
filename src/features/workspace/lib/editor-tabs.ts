@@ -1,10 +1,12 @@
 import type { EditorTab, EditorTabKind } from "@/features/workspace/store/workspace-store";
+import { getCustomizePlugin } from "@/features/customize/lib/customize-catalog";
 
 export type EditorTabInput =
   | { kind: "welcome" }
   | { kind: "settings" }
   | { kind: "shortcuts" }
   | { kind: "user-json" }
+  | { kind: "customize"; pluginId?: string }
   | { kind: "new-project" }
   | { kind: "file"; path: string }
   | { kind: "diff"; path: string }
@@ -23,6 +25,7 @@ const SPECIAL_TITLES: Record<
   settings: "Settings",
   shortcuts: "Shortcuts",
   "user-json": "User JSON",
+  customize: "Customize",
   "new-project": "New Project",
 };
 
@@ -37,6 +40,9 @@ export function editorTabId(input: EditorTabInput): string {
   if (input.kind === "activity-diff") return `activity-diff:${input.activityId}`;
   if (input.kind === "pull-request") return `pull-request:${input.pullNumber}`;
   if (input.kind === "merge-conflict") return `merge-conflict:${input.conflictId}`;
+  if (input.kind === "customize") {
+    return input.pluginId ? `customize:${input.pluginId}` : "customize";
+  }
   return input.kind;
 }
 
@@ -55,6 +61,12 @@ export function editorTabTitle(input: EditorTabInput): string {
   }
   if (input.kind === "merge-conflict") {
     return `${fileNameFromPath(input.path)} (Conflict)`;
+  }
+  if (input.kind === "customize") {
+    if (input.pluginId) {
+      return getCustomizePlugin(input.pluginId)?.name ?? input.pluginId;
+    }
+    return SPECIAL_TITLES.customize;
   }
   return SPECIAL_TITLES[input.kind];
 }
@@ -94,6 +106,14 @@ export function createEditorTab(input: EditorTabInput): EditorTab {
       conflictId: input.conflictId,
     };
   }
+  if (input.kind === "customize") {
+    return {
+      id: editorTabId(input),
+      kind: input.kind,
+      title: editorTabTitle(input),
+      pluginId: input.pluginId,
+    };
+  }
   return {
     id: editorTabId(input),
     kind: input.kind,
@@ -111,6 +131,10 @@ export function editorTabHref(projectId: string, tab: EditorTab): string {
       return `/projects/${projectId}/shortcuts`;
     case "user-json":
       return `/projects/${projectId}/user-json`;
+    case "customize":
+      return tab.pluginId
+        ? `/projects/${projectId}/customize/${tab.pluginId}`
+        : `/projects/${projectId}/customize`;
     case "new-project":
       return `/projects/${projectId}/new`;
     case "file":
@@ -143,6 +167,15 @@ export function editorTabFromPathname(
   }
   if (pathname === `${base}/user-json`) {
     return createEditorTab({ kind: "user-json" });
+  }
+  const customizePrefix = `${base}/customize/`;
+  if (pathname.startsWith(customizePrefix)) {
+    const pluginId = decodeURIComponent(pathname.slice(customizePrefix.length));
+    if (!pluginId) return createEditorTab({ kind: "customize" });
+    return createEditorTab({ kind: "customize", pluginId });
+  }
+  if (pathname === `${base}/customize`) {
+    return createEditorTab({ kind: "customize" });
   }
   if (pathname === `${base}/new`) {
     return createEditorTab({ kind: "new-project" });

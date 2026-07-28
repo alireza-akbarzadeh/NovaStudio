@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import { useParams } from "next/navigation";
 
+import { CustomizeIcon } from "@/features/customize/components/customize-icon";
 import {
   CommandDialog,
   CommandEmpty,
@@ -53,7 +54,7 @@ export function WorkspaceSettingsDialog() {
   };
 
   const openEditorPage = (
-    kind: "settings" | "shortcuts" | "user-json" | "new-project",
+    kind: "settings" | "shortcuts" | "user-json" | "customize" | "new-project",
   ) => {
     closeSettings();
     if (!projectId) return;
@@ -95,6 +96,13 @@ export function WorkspaceSettingsDialog() {
           >
             <KeyboardIcon />
             <span>Keyboard Shortcuts</span>
+          </CommandItem>
+          <CommandItem
+            value="customize plugins marketplace mcps skills rules extensions"
+            onSelect={() => openEditorPage("customize")}
+          >
+            <CustomizeIcon className="size-4" strokeWidth={1.75} />
+            <span>Customize</span>
           </CommandItem>
           <CommandItem
             value="format document formatter prettier code style beautify"

@@ -36,6 +36,7 @@ export type CommandId =
   | "toggleSettings"
   | "closeSettings"
   | "openUserJson"
+  | "openCustomize"
   | "openGoToFile"
   | "closeGoToFile"
   | "openGoToSymbol"
@@ -52,6 +53,7 @@ export type CommandId =
   | "showDependencies"
   | "showEnv"
   | "showExtensions"
+  | "showCustomize"
   | "showActivity"
   | "showGitChanges"
   | "showGitHistory"
@@ -184,6 +186,11 @@ export const workspaceCommands: Command[] = [
     run: () => store().requestOpenUserJson(),
   },
   {
+    id: "openCustomize",
+    allowInInput: true,
+    run: () => store().requestOpenCustomize(),
+  },
+  {
     id: "toggleSettings",
     allowInInput: true,
     run: () => store().toggleSettings(),
@@ -309,6 +316,11 @@ export const workspaceCommands: Command[] = [
     shortcut: "mod+shift+x",
     allowInInput: true,
     run: () => showPanel("extensions"),
+  },
+  {
+    id: "showCustomize",
+    allowInInput: true,
+    run: () => store().requestOpenCustomize(),
   },
   {
     id: "showActivity",

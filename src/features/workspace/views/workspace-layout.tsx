@@ -41,7 +41,7 @@ import { ProjectFilesProvider } from "@/features/workspace/components/project-fi
 import { WebContainerProvider } from "@/features/workspace/components/webcontainer-provider";
 import { PreviewServerProvider } from "@/features/workspace/components/preview-server-provider";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
-import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
+import { useEditorTabsSync, useCustomizeTabShortcut, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
 import { usePendingScaffold } from "@/features/workspace/hooks/use-pending-scaffold";
 import { clearMemoryDraftsForOtherProjects } from "@/features/workspace/lib/file-content-drafts";
@@ -81,6 +81,7 @@ function WorkspaceLayoutInner({
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
   useUserJsonTabShortcut(projectId);
+  useCustomizeTabShortcut(projectId);
   usePendingScaffold(projectId);
   useWebContainerAutoInstall(projectId);
 
@@ -172,7 +173,7 @@ function WorkspaceLayoutInner({
           zenMode ? "px-0 pb-0" : "px-1 pb-1.5",
         )}
       >
-        {!zenMode ? <WorkspaceLeftActivityBar /> : null}
+        {!zenMode ? <WorkspaceLeftActivityBar projectId={projectId} /> : null}
 
         <ResizablePanelGroup
           orientation="horizontal"

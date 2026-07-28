@@ -1,6 +1,6 @@
 "use client";
 
-import { PlusIcon, Trash2Icon, XIcon } from "lucide-react";
+import { MinusIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -11,6 +11,7 @@ import {
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { runCommand } from "@/features/workspace/commands/registry";
 import { WorkspaceTerminal } from "@/features/workspace/components/workspace-terminal";
 import {
   getSessionPalette,
@@ -408,6 +409,17 @@ export function WorkspaceTerminalPanel({
           className="size-6 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
         >
           <Trash2Icon className="size-3.5" strokeWidth={1.75} />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          title="Hide terminal"
+          aria-label="Hide terminal"
+          onClick={() => runCommand("toggleTerminal")}
+          className="size-6 shrink-0 text-ws-text-muted hover:bg-ws-hover hover:text-ws-text"
+        >
+          <MinusIcon className="size-3.5" strokeWidth={1.75} />
         </Button>
       </div>
 

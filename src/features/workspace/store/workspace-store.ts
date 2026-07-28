@@ -110,6 +110,7 @@ export type EditorTabKind =
   | "settings"
   | "shortcuts"
   | "user-json"
+  | "customize"
   | "new-project"
   | "pull-request"
   | "merge-conflict";
@@ -125,6 +126,8 @@ export type EditorTab = {
   pullNumber?: number;
   /** Merge conflict row id (for `merge-conflict` tabs). */
   conflictId?: string;
+  /** Customize plugin id (for `customize` detail tabs). */
+  pluginId?: string;
   /** Transient tab — italic; replaced by the next preview open. */
   preview?: boolean;
   /** Sticky tab — stays left; survives preview replacement. */
@@ -168,6 +171,7 @@ type WorkspaceState = WorkspacePrefs & {
   editorSplitTabId: string | null;
   newProjectRequest: number;
   userJsonRequest: number;
+  customizeRequest: number;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
   treeClipboard: TreeClipboard | null;
@@ -276,6 +280,7 @@ type WorkspaceState = WorkspacePrefs & {
   resetEditorTabs: (projectId: string) => void;
   requestOpenNewProject: () => void;
   requestOpenUserJson: () => void;
+  requestOpenCustomize: () => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   setTreeClipboard: (clipboard: TreeClipboard | null) => void;
@@ -444,6 +449,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   editorSplitTabId: null,
   newProjectRequest: 0,
   userJsonRequest: 0,
+  customizeRequest: 0,
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -814,6 +820,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((s) => ({ newProjectRequest: s.newProjectRequest + 1 })),
   requestOpenUserJson: () =>
     set((s) => ({ userJsonRequest: s.userJsonRequest + 1 })),
+  requestOpenCustomize: () =>
+    set((s) => ({ customizeRequest: s.customizeRequest + 1 })),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },

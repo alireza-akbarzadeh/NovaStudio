@@ -113,6 +113,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+shift+x",
   },
   {
+    id: "showCustomize",
+    label: "Open Customize",
+    keywords: "plugins marketplace mcps skills rules extensions customize",
+  },
+  {
     id: "showActivity",
     label: "Show Activity Timeline",
     keywords: "activity timeline collab presence edits history",
@@ -253,6 +258,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Open User JSON",
     keywords: "settings.json monaco",
     shortcut: "mod+shift+j",
+  },
+  {
+    id: "openCustomize",
+    label: "Open Customize",
+    keywords: "plugins marketplace mcps skills rules extensions customize",
   },
   {
     id: "openCloneFromGitHub",
