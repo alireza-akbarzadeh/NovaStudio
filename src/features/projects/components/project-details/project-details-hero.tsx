@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toGitHubUrl } from "@/features/github/lib/github-url";
 import { ProjectDetailsInlineDemo } from "@/features/projects/components/project-details/project-details-inline-demo";
+import { ProjectDetailsTechStack } from "@/features/projects/components/project-details/project-details-tech-stack";
 import type {
   ProjectDetailsData,
   ProjectDetailsDemo,
@@ -91,6 +92,13 @@ export function ProjectDetailsHero({
                 <span className="text-white/50">·</span>
                 Updated {details.lastUpdated}
               </p>
+              {details.tech.length > 0 ? (
+                <ProjectDetailsTechStack
+                  tech={details.tech}
+                  variant="hero"
+                  className="mt-4 max-w-2xl"
+                />
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-2">

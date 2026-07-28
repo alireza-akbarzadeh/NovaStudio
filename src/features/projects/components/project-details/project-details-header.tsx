@@ -14,9 +14,13 @@ type ProjectDetailsHeaderProps = {
   starred: boolean;
   stars: number;
   starPending: boolean;
+  following?: boolean;
+  followers?: number;
+  followPending?: boolean;
   onOpenWorkspace: () => void;
   onRequestAccess: () => void;
   onStar: () => void;
+  onFollow?: () => void;
   onDownload: () => void;
   onBecomeSponsor: () => void;
   canPushToGitHub: boolean;
@@ -36,9 +40,13 @@ export function ProjectDetailsHeader({
   starred,
   stars,
   starPending,
+  following,
+  followers,
+  followPending,
   onOpenWorkspace,
   onRequestAccess,
   onStar,
+  onFollow,
   onDownload,
   onBecomeSponsor,
   canPushToGitHub,
@@ -71,6 +79,11 @@ export function ProjectDetailsHeader({
         stars={stars}
         starPending={starPending}
         onStar={onStar}
+        following={following}
+        followers={followers}
+        followPending={followPending}
+        onFollow={onFollow}
+        showFollow={!details.viewer.isOwner}
         onDownload={onDownload}
       />
     </section>

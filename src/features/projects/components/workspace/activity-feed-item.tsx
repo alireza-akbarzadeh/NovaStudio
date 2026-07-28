@@ -4,6 +4,7 @@ import {
   GitMergeIcon,
   MessageSquareIcon,
   RocketIcon,
+  SparklesIcon,
   UserPlusIcon,
   RefreshCwIcon,
 } from "lucide-react";
@@ -21,6 +22,7 @@ const typeMeta = {
   },
   released: { icon: RocketIcon, tone: "bg-fuchsia-500/15 text-fuchsia-600" },
   joined: { icon: UserPlusIcon, tone: "bg-emerald-500/15 text-emerald-600" },
+  sponsored: { icon: SparklesIcon, tone: "bg-amber-500/15 text-amber-600" },
 } as const;
 
 type ActivityFeedItemProps = {

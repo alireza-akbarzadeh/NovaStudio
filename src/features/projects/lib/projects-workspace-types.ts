@@ -79,7 +79,8 @@ export type WorkspaceActivity = {
     | "merged"
     | "comment"
     | "released"
-    | "joined";
+    | "joined"
+    | "sponsored";
   title: string;
   detail: string;
   time: string;

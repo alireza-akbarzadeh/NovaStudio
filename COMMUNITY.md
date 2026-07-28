@@ -39,8 +39,8 @@ Make the hub usable at scale.
 |---|---------|--------|-------|
 | 5 | **Hub search** | `review` | Filter by name, tech, owner |
 | 6 | **Hub sort & filters** | `review` | Trending · most starred · recently updated · accepting contributors |
-| 7 | **Related projects** | `todo` | Same tech stack or same owner on detail page |
-| 8 | **Share buttons** | `todo` | Copy link · social OG tags |
+| 7 | **Related projects** | `review` | Same tech stack or same owner on detail page |
+| 8 | **Share buttons** | `review` | Copy link · social OG tags |
 
 ### Sprint C — Social & retention
 
@@ -48,9 +48,9 @@ Keep people coming back.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 9 | **Follow project** | `todo` | Notify on roadmap / doc / deploy updates |
-| 10 | **Activity feed** | `todo` | Shipped items · new sponsors · new contributors |
-| 11 | **Discussion / Q&A tab** | `todo` | Lightweight comments on project page |
+| 9 | **Follow project** | `review` | Notify on roadmap / doc / deploy updates |
+| 10 | **Activity feed** | `review` | Shipped items · new sponsors · new contributors |
+| 11 | **Discussion / Q&A tab** | `review` | Lightweight comments on project page |
 | 12 | **Sponsor wall** | `todo` | Show sponsor names / tiers on detail page |
 
 ### Sprint D — Monetization
@@ -144,3 +144,33 @@ Convert visitors into collaborators.
 - **Accepting contributors** toggle filters to projects you are not already on
 - Works together with search; featured row hides when any filter/sort/search is active
 - Result count reflects the combined query
+
+### 7. Related projects — `review`
+
+- Community detail page shows up to 6 related public projects at the bottom
+- Matches by **same owner**, **overlapping tech stack**, or both
+- Horizontal carousel with relation badge, stars, and link to each project page
+
+### 8. Share buttons & tech stack — `review`
+
+- Share bar on project detail: **Copy link**, **Post** (X/Twitter), **LinkedIn**, native share when available
+- Open Graph + Twitter metadata via `getPublicProjectMetadata` for community URLs
+- **Tech stack** shown in hero, stats bar, and About section with a consistent label
+
+### 9. Follow project — `review`
+
+- **Follow** button on community project detail (hidden for owners)
+- Followers receive in-app notifications on roadmap updates, doc saves (README / Contributing / License), and successful deploys
+- `projectFollows` table + `toggleProjectFollow` mutation; follower count on stats bar
+
+### 10. Activity feed — `review`
+
+- **Activity** section on community project detail (right column)
+- Timeline of shipped roadmap items, shipped features, deploys, sponsors, and new team members
+- `listCommunityProjectActivity` query; new `sponsored` activity type; events recorded on public project actions
+
+### 11. Discussion / Q&A — `review`
+
+- **Discussion & Q&A** section with **All** and **Open Q&A** tabs on community project detail
+- Post questions, thread replies, owner **Answered** badge when the owner replies
+- Owner/moderator can delete messages; project owner notified on new questions

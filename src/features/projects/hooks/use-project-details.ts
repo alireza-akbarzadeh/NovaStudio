@@ -14,12 +14,48 @@ export function useProjectDetails(projectId: string | null) {
   );
 }
 
+export function useCommunityProjectActivity(projectId: string | null) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projectCommunity.listCommunityProjectActivity,
+    isAuthenticated && projectId
+      ? { projectId: projectId as Id<"projects"> }
+      : "skip",
+  );
+}
+
+export function useCommunityDiscussions(projectId: string | null) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projectCommunityDiscussion.listCommunityDiscussions,
+    isAuthenticated && projectId
+      ? { projectId: projectId as Id<"projects"> }
+      : "skip",
+  );
+}
+
+export function usePostCommunityDiscussion() {
+  return useMutation(api.projectCommunityDiscussion.postCommunityDiscussion);
+}
+
+export function useReplyToCommunityDiscussion() {
+  return useMutation(api.projectCommunityDiscussion.replyToCommunityDiscussion);
+}
+
+export function useDeleteCommunityDiscussion() {
+  return useMutation(api.projectCommunityDiscussion.deleteCommunityDiscussion);
+}
+
 export function useRecordProjectView() {
   return useMutation(api.projectCommunity.recordProjectView);
 }
 
 export function useToggleProjectStar() {
   return useMutation(api.projectCommunity.toggleProjectStar);
+}
+
+export function useToggleProjectFollow() {
+  return useMutation(api.projectCommunity.toggleProjectFollow);
 }
 
 export function useRecordProjectDownload() {

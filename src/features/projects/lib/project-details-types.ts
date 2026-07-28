@@ -72,6 +72,53 @@ export type ProjectDetailsPreview = {
   updatedLabel: string;
 };
 
+export type ProjectCommunityActivity = {
+  id: string;
+  type: "released" | "sponsored" | "joined" | "contributor";
+  title: string;
+  detail?: string;
+  time: string;
+  avatar: {
+    initials: string;
+    color: string;
+    name: string;
+  };
+};
+
+export type ProjectCommunityMessage = {
+  id: string;
+  body: string;
+  time: string;
+  createdAt: number;
+  isOwner?: boolean;
+  author: {
+    userId: string;
+    name: string;
+    initials: string;
+    color: string;
+    imageUrl?: string;
+  };
+};
+
+export type ProjectCommunityDiscussion = ProjectCommunityMessage & {
+  answered: boolean;
+  replyCount: number;
+  replies: ProjectCommunityMessage[];
+};
+
+export type ProjectDetailsRelatedProject = {
+  id: string;
+  name: string;
+  description: string;
+  coverTone: string;
+  tech: string[];
+  stars: number;
+  lastUpdated: string;
+  owner: ProjectDetailsOwner;
+  relation: "same-owner" | "same-tech" | "both";
+  matchedTech: string[];
+};
+
 export type ProjectDetailsData = {
   id: string;
   name: string;
@@ -93,6 +140,7 @@ export type ProjectDetailsData = {
   contributorCount: number;
   stats: {
     stars: number;
+    followers: number;
     views: number;
     forks: number;
     downloads: number;
@@ -100,6 +148,7 @@ export type ProjectDetailsData = {
   };
   viewer: {
     hasStarred: boolean;
+    isFollowing: boolean;
     isOwner: boolean;
     isMember: boolean;
     canEdit: boolean;
@@ -110,4 +159,5 @@ export type ProjectDetailsData = {
   features: ProjectDetailsFeature[];
   demo: ProjectDetailsDemo | null;
   preview: ProjectDetailsPreview | null;
+  relatedProjects: ProjectDetailsRelatedProject[];
 };

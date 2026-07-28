@@ -4,10 +4,12 @@ import { useState } from "react";
 
 import {
   ProjectDetailsAboutSection,
+  ProjectDetailsActivitySection,
   ProjectDetailsBackLink,
   ProjectDetailsContributeCta,
   ProjectDetailsContributorsSection,
   ProjectDetailsDemoDialog,
+  ProjectDetailsDiscussionSection,
   ProjectDetailsDocsSection,
   ProjectDetailsFeaturedBanner,
   ProjectDetailsHeader,
@@ -15,6 +17,7 @@ import {
   ProjectDetailsNotFound,
   ProjectDetailsPreviewSection,
   ProjectDetailsPushGitHubDialog,
+  ProjectDetailsRelatedSection,
   ProjectDetailsRoadmapSection,
   ProjectDetailsSponsorDialog,
   ProjectDetailsSponsorSection,
@@ -66,9 +69,13 @@ export function ProjectDetailsView({
         starred={page.starred}
         stars={page.stars}
         starPending={page.starPending}
+        following={page.following}
+        followers={page.followers}
+        followPending={page.followPending}
         onOpenWorkspace={() => page.openProject(projectId)}
         onRequestAccess={() => page.requestAccess(onRequestAccess)}
         onStar={() => void page.handleStar()}
+        onFollow={() => void page.handleFollow()}
         onDownload={() => void page.handleDownload(isGitHubLinked, details.githubRepoUrl, details.githubBranch)}
         onBecomeSponsor={() => setSponsorDialogOpen(true)}
         canPushToGitHub={canPushToGitHub}
@@ -107,35 +114,39 @@ export function ProjectDetailsView({
         <ProjectDetailsPreviewSection details={details} />
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <ProjectDetailsAboutSection details={details} />
-          <ProjectDetailsSponsorSection
-            features={details.features}
-            onBecomeSponsor={() => setSponsorDialogOpen(true)}
-            onUpvoteFeature={page.handleUpvoteFeature}
-          />
-        </div>
-
-        <div className="space-y-6">
-          <ProjectDetailsContributorsSection
-            contributors={details.contributors}
-            contributorCount={details.contributorCount}
-          />
-          <ProjectDetailsRoadmapSection todos={details.todos} />
-          <ProjectDetailsContributeCta
-            canOpen={page.canOpen}
-            opening={page.opening}
-            requestStatus={page.requestStatus}
-            onOpenWorkspace={() => page.openProject(projectId)}
-            onRequestAccess={() => page.requestAccess(onRequestAccess)}
-          />
-        </div>
-      </div>
-
-      <div className="mt-8">
+      <div className="mt-8 space-y-6">
+        <ProjectDetailsAboutSection details={details} />
+        <ProjectDetailsContributorsSection
+          contributors={details.contributors}
+          contributorCount={details.contributorCount}
+        />
+        <ProjectDetailsActivitySection projectId={projectId} />
+        <ProjectDetailsRoadmapSection todos={details.todos} />
+        <ProjectDetailsSponsorSection
+          features={details.features}
+          onBecomeSponsor={() => setSponsorDialogOpen(true)}
+          onUpvoteFeature={page.handleUpvoteFeature}
+        />
+        <ProjectDetailsDiscussionSection
+          projectId={projectId}
+          details={details}
+        />
         <ProjectDetailsDocsSection projectId={projectId} />
+        <ProjectDetailsContributeCta
+          canOpen={page.canOpen}
+          opening={page.opening}
+          requestStatus={page.requestStatus}
+          onOpenWorkspace={() => page.openProject(projectId)}
+          onRequestAccess={() => page.requestAccess(onRequestAccess)}
+        />
       </div>
+
+
+      {details.relatedProjects.length > 0 ? (
+        <div className="mt-8">
+          <ProjectDetailsRelatedSection projects={details.relatedProjects} />
+        </div>
+      ) : null}
     </div>
   );
 }

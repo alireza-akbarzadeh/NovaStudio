@@ -8,6 +8,8 @@ import {
   query,
 } from "./_generated/server";
 import { createNotification } from "./lib/createNotification";
+import { notifyProjectFollowers } from "./lib/notifyProjectFollowers";
+import { maybeRecordPublicCommunityActivity } from "./lib/recordActivity";
 const providerValidator = v.union(v.literal("vercel"), v.literal("netlify"));
 
 export const getConnection = query({
@@ -333,6 +335,29 @@ export const updateDeployment = internalMutation({
         href,
         projectId: deployment.projectId,
       });
+
+      if (next === "ready" && project?.visibility === "public") {
+        const liveUrl = args.url ?? deployment.url;
+        await notifyProjectFollowers(ctx, {
+          projectId: deployment.projectId,
+          excludeUserId: deployment.createdBy,
+          title: `${project.name} deployed successfully`,
+          body: liveUrl ?? `"${project.name}" is live.`,
+          href: liveUrl ?? `/projects/community/${deployment.projectId}`,
+          kind: "deploy",
+          tone: "green",
+          soundKind: "success",
+        });
+        await maybeRecordPublicCommunityActivity(ctx, {
+          projectId: deployment.projectId,
+          actorUserId: deployment.createdBy,
+          type: "released",
+          title: `${project.name} deployed`,
+          detail:
+            liveUrl ??
+            `${deployment.provider === "netlify" ? "Netlify" : "Vercel"} production`,
+        });
+      }
 
       await ctx.scheduler.runAfter(
         0,

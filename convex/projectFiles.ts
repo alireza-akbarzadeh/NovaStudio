@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import {
@@ -17,9 +19,9 @@ import {
   verifyProjectAccess,
   verifyProjectWriteAccess,
 } from "./lib/projectFiles";
-import {
-  identityDisplayName,
-} from "./lib/projectAccess";
+import { identityDisplayName } from "./lib/projectAccess";
+import { slotForPath } from "./lib/projectDocPaths";
+import { notifyProjectFollowers } from "./lib/notifyProjectFollowers";
 import { recordProjectActivity } from "./lib/recordActivity";
 import {
   hashContent,
@@ -28,8 +30,30 @@ import {
   deleteFileContent,
   copyFileContent,
 } from "./lib/projectFileContents";
-import type { Id } from "./_generated/dataModel";
-import type { MutationCtx } from "./_generated/server";
+
+async function maybeNotifyProjectDocFollowers(
+  ctx: MutationCtx,
+  args: {
+    projectId: Id<"projects">;
+    path: string;
+    excludeUserId: string;
+  },
+) {
+  const project = await ctx.db.get("projects", args.projectId);
+  if (!project || project.visibility !== "public") return;
+
+  const slot = slotForPath(args.path);
+  if (!slot) return;
+
+  await notifyProjectFollowers(ctx, {
+    projectId: args.projectId,
+    excludeUserId: args.excludeUserId,
+    title: `${project.name} updated ${slot.label}`,
+    body: `Documentation was updated on ${project.name}.`,
+    href: `/projects/community/${args.projectId}`,
+    tone: "blue",
+  });
+}
 
 /** Avoid flooding the timeline while autosave fires every ~800ms. */
 const EDIT_ACTIVITY_COOLDOWN_MS = 2 * 60 * 1000;
@@ -604,7 +628,7 @@ export const writeFileAtPath = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    await verifyProjectWriteAccess(ctx, args.projectId);
+    const access = await verifyProjectWriteAccess(ctx, args.projectId);
 
     const normalized = args.path
       .trim()
@@ -695,6 +719,13 @@ export const writeFileAtPath = mutation({
         staged: stillChanged ? existingFile.staged === true : false,
       });
       await touchProject(ctx, args.projectId);
+      if (body.content !== args.content) {
+        await maybeNotifyProjectDocFollowers(ctx, {
+          projectId: args.projectId,
+          path: filePath,
+          excludeUserId: access.userId,
+        });
+      }
       return { path: filePath, created: false };
     }
 
@@ -714,6 +745,11 @@ export const writeFileAtPath = mutation({
       updatedAt: now,
     });
     await touchProject(ctx, args.projectId);
+    await maybeNotifyProjectDocFollowers(ctx, {
+      projectId: args.projectId,
+      path: filePath,
+      excludeUserId: access.userId,
+    });
     return { path: filePath, created: true };
   },
 });
@@ -723,6 +759,7 @@ export const updateContent = mutation({
     projectId: v.id("projects"),
     path: v.string(),
     content: v.string(),
+    notifyFollowers: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const access = await verifyProjectWriteAccess(ctx, args.projectId);
@@ -781,6 +818,13 @@ export const updateContent = mutation({
         beforeContent: body.content,
         afterContent: nextContent,
       });
+      if (args.notifyFollowers) {
+        await maybeNotifyProjectDocFollowers(ctx, {
+          projectId: args.projectId,
+          path: args.path,
+          excludeUserId: access.userId,
+        });
+      }
     }
   },
 });

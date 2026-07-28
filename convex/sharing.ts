@@ -18,6 +18,7 @@ import {
   projectInviteEmail,
   sendEmail,
 } from "./lib/email";
+import { maybeRecordPublicCommunityActivity } from "./lib/recordActivity";
 
 function emailFailureMessage(sent: {
   reason: "not_configured" | "failed" | "testing_only";
@@ -203,7 +204,7 @@ export const addMember = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("projectMembers", {
+    const memberId = await ctx.db.insert("projectMembers", {
       projectId: args.projectId,
       userId: args.userId,
       role: args.role,
@@ -213,6 +214,19 @@ export const addMember = mutation({
       color: colorForUserId(args.userId),
       createdAt: Date.now(),
     });
+
+    if (project.visibility === "public") {
+      await maybeRecordPublicCommunityActivity(ctx, {
+        projectId: args.projectId,
+        actorUserId: args.userId,
+        actorName: args.name ?? args.email,
+        type: "joined",
+        title: `${args.name ?? args.email ?? "Someone"} joined the team`,
+        detail: project.name,
+      });
+    }
+
+    return memberId;
   },
 });
 
@@ -386,6 +400,16 @@ export const acceptInviteByToken = mutation({
           color: colorForUserId(identity.subject),
           createdAt: Date.now(),
         });
+        if (project.visibility === "public") {
+          await maybeRecordPublicCommunityActivity(ctx, {
+            projectId: invite.projectId,
+            actorUserId: identity.subject,
+            actorName: identityDisplayName(identity),
+            type: "joined",
+            title: `${identityDisplayName(identity)} joined the team`,
+            detail: project.name,
+          });
+        }
       }
     }
 

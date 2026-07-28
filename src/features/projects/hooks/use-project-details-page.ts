@@ -15,6 +15,7 @@ import {
   useRecordProjectView,
   useSeedDefaultPublicContent,
   useToggleFeatureUpvote,
+  useToggleProjectFollow,
   useToggleProjectStar,
 } from "@/features/projects/hooks/use-project-details";
 import type { ProjectDetailsData } from "@/features/projects/lib/project-details-types";
@@ -24,6 +25,7 @@ export function useProjectDetailsPage(projectId: string) {
   const details = useProjectDetails(projectId);
   const recordView = useRecordProjectView();
   const toggleStar = useToggleProjectStar();
+  const toggleFollow = useToggleProjectFollow();
   const recordDownload = useRecordProjectDownload();
   const proposeFeature = useProposeFeature();
   const toggleFeatureUpvote = useToggleFeatureUpvote();
@@ -33,8 +35,11 @@ export function useProjectDetailsPage(projectId: string) {
   const seededRef = useRef(false);
 
   const [starPending, setStarPending] = useState(false);
+  const [followPending, setFollowPending] = useState(false);
   const [localStars, setLocalStars] = useState<number | null>(null);
   const [localStarred, setLocalStarred] = useState<boolean | null>(null);
+  const [localFollowers, setLocalFollowers] = useState<number | null>(null);
+  const [localFollowing, setLocalFollowing] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!projectId || viewedRef.current) return;
@@ -46,6 +51,8 @@ export function useProjectDetailsPage(projectId: string) {
     if (!details) return;
     setLocalStars(details.stats.stars);
     setLocalStarred(details.viewer.hasStarred);
+    setLocalFollowers(details.stats.followers);
+    setLocalFollowing(details.viewer.isFollowing);
   }, [details]);
 
   useEffect(() => {
@@ -64,6 +71,8 @@ export function useProjectDetailsPage(projectId: string) {
 
   const starred = localStarred ?? resolvedDetails?.viewer.hasStarred ?? false;
   const stars = localStars ?? resolvedDetails?.stats.stars ?? 0;
+  const following = localFollowing ?? resolvedDetails?.viewer.isFollowing ?? false;
+  const followers = localFollowers ?? resolvedDetails?.stats.followers ?? 0;
   const requestStatus = resolvedDetails?.viewer.accessRequestStatus;
   const canOpen = Boolean(
     resolvedDetails &&
@@ -84,6 +93,22 @@ export function useProjectDetailsPage(projectId: string) {
       toast.error(parseConvexErrorMessage(error, "Could not update star"));
     } finally {
       setStarPending(false);
+    }
+  }
+
+  async function handleFollow() {
+    setFollowPending(true);
+    try {
+      const result = await toggleFollow({
+        projectId: projectId as Id<"projects">,
+      });
+      setLocalFollowing(result.following);
+      setLocalFollowers(result.followers);
+      toast.success(result.following ? "Following project" : "Unfollowed project");
+    } catch (error) {
+      toast.error(parseConvexErrorMessage(error, "Could not update follow"));
+    } finally {
+      setFollowPending(false);
     }
   }
 
@@ -144,12 +169,16 @@ export function useProjectDetailsPage(projectId: string) {
     projectId,
     opening,
     starPending,
+    followPending,
     starred,
     stars,
+    following,
+    followers,
     requestStatus,
     canOpen,
     openProject,
     handleStar,
+    handleFollow,
     handleDownload,
     handleProposeFeature,
     handleUpvoteFeature,

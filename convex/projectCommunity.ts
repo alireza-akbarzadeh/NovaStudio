@@ -13,6 +13,8 @@ import {
   verifyProjectOwnerAccess,
 } from "./lib/projectAccess";
 import { verifyAuth } from "./auth";
+import { notifyProjectFollowers } from "./lib/notifyProjectFollowers";
+import { maybeRecordPublicCommunityActivity } from "./lib/recordActivity";
 import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
 import {
   PROJECT_DOC_SLOTS,
@@ -23,6 +25,7 @@ import {
   readFileContent,
 } from "./lib/projectFileContents";
 import type { Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 
 function initialsFrom(value: string) {
   return (
@@ -37,12 +40,14 @@ function initialsFrom(value: string) {
 
 function publicStats(project: {
   starCount?: number;
+  followCount?: number;
   viewCount?: number;
   forkCount?: number;
   downloadCount?: number;
 }) {
   return {
     stars: project.starCount ?? 0,
+    followers: project.followCount ?? 0,
     views: project.viewCount ?? 0,
     forks: project.forkCount ?? 0,
     downloads: project.downloadCount ?? 0,
@@ -111,6 +116,91 @@ function resolveProjectLivePreview(
   };
 }
 
+type RelatedProjectCandidate = {
+  candidate: Doc<"projects">;
+  matchedTech: string[];
+  sameOwner: boolean;
+  score: number;
+};
+
+async function buildRelatedPublicProjects(
+  ctx: Parameters<typeof resolveProjectAccess>[0],
+  currentProject: Doc<"projects">,
+  limit = 6,
+) {
+  const currentTech = new Set(
+    techForProject(currentProject).map((tag) => tag.toLowerCase()),
+  );
+
+  const publicProjects = await ctx.db
+    .query("projects")
+    .withIndex("by_visibility_updated", (q) => q.eq("visibility", "public"))
+    .order("desc")
+    .take(80);
+
+  const scored: RelatedProjectCandidate[] = [];
+  for (const candidate of publicProjects) {
+    if (candidate._id === currentProject._id) continue;
+
+    const tech = techForProject(candidate);
+    const matchedTech = tech.filter((tag) =>
+      currentTech.has(tag.toLowerCase()),
+    );
+    const sameOwner = candidate.ownerId === currentProject.ownerId;
+    if (!sameOwner && matchedTech.length === 0) continue;
+
+    const score =
+      (sameOwner ? 100 : 0) +
+      matchedTech.length * 10 +
+      (candidate.starCount ?? 0) * 0.01;
+
+    scored.push({ candidate, matchedTech, sameOwner, score });
+  }
+
+  scored.sort(
+    (a, b) =>
+      b.score - a.score ||
+      b.candidate.updatedAt - a.candidate.updatedAt,
+  );
+
+  const related = [];
+  for (const { candidate, matchedTech, sameOwner } of scored.slice(0, limit)) {
+    const members = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project", (q) => q.eq("projectId", candidate._id))
+      .collect();
+    const ownerMember =
+      members.find((member) => member.role === "owner") ??
+      members.find((member) => member.userId === candidate.ownerId);
+    const ownerName = ownerMember?.name ?? ownerMember?.email ?? "Creator";
+
+    related.push({
+      id: candidate._id,
+      name: candidate.name,
+      description:
+        candidate.description ?? `Public workspace · ${candidate.name}`,
+      coverTone: coverToneForProject(candidate),
+      tech: techForProject(candidate).slice(0, 3),
+      stars: candidate.starCount ?? 0,
+      lastUpdated: formatRelativeTime(candidate.updatedAt),
+      owner: {
+        name: ownerName,
+        initials: initialsFrom(ownerName),
+        color: ownerMember?.color ?? colorForUserId(candidate.ownerId),
+      },
+      relation:
+        sameOwner && matchedTech.length > 0
+          ? ("both" as const)
+          : sameOwner
+            ? ("same-owner" as const)
+            : ("same-tech" as const),
+      matchedTech: matchedTech.slice(0, 3),
+    });
+  }
+
+  return related;
+}
+
 async function assertProjectDiscoverable(
   ctx: Parameters<typeof resolveProjectAccess>[0],
   projectId: Id<"projects">,
@@ -125,6 +215,64 @@ async function assertProjectDiscoverable(
   }
   return null;
 }
+
+const COMMUNITY_ACTIVITY_TYPES = new Set([
+  "released",
+  "sponsored",
+  "joined",
+  "contributor",
+]);
+
+export const listCommunityProjectActivity = query({
+  args: {
+    projectId: v.id("projects"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const limit = Math.min(Math.max(args.limit ?? 20, 1), 50);
+    const rows = await ctx.db
+      .query("projectActivity")
+      .withIndex("by_project_created", (q) =>
+        q.eq("projectId", args.projectId),
+      )
+      .order("desc")
+      .take(limit * 4);
+
+    return rows
+      .filter((row) => COMMUNITY_ACTIVITY_TYPES.has(row.type))
+      .slice(0, limit)
+      .map((row) => ({
+        id: row._id,
+        type: row.type as "released" | "sponsored" | "joined" | "contributor",
+        title: row.title,
+        detail: row.detail,
+        time: formatRelativeTime(row.createdAt),
+        createdAt: row.createdAt,
+        avatar: {
+          initials: initialsFrom(row.actorName ?? "Someone"),
+          color: row.actorColor ?? colorForUserId(row.actorUserId),
+          name: row.actorName ?? "Someone",
+        },
+      }));
+  },
+});
+
+export const getPublicProjectMetadata = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project || project.visibility !== "public") return null;
+
+    return {
+      name: project.name,
+      description:
+        project.description ?? `Public workspace · ${project.name}`,
+      tech: techForProject(project),
+      updatedAt: project.updatedAt,
+    };
+  },
+});
 
 export const getProjectDetails = query({
   args: { projectId: v.id("projects") },
@@ -160,6 +308,13 @@ export const getProjectDetails = query({
 
     const star = await ctx.db
       .query("projectStars")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId),
+      )
+      .unique();
+
+    const follow = await ctx.db
+      .query("projectFollows")
       .withIndex("by_project_user", (q) =>
         q.eq("projectId", args.projectId).eq("userId", userId),
       )
@@ -227,6 +382,11 @@ export const getProjectDetails = query({
 
     const preview = resolveProjectLivePreview(deployments, deployTargets);
 
+    const relatedProjects =
+      project.visibility === "public"
+        ? await buildRelatedPublicProjects(ctx, project)
+        : [];
+
     return {
       id: project._id,
       name: project.name,
@@ -260,6 +420,7 @@ export const getProjectDetails = query({
       },
       viewer: {
         hasStarred: Boolean(star),
+        isFollowing: Boolean(follow),
         isOwner,
         isMember,
         canEdit: access?.canEdit ?? false,
@@ -301,6 +462,7 @@ export const getProjectDetails = query({
           }
         : null,
       preview,
+      relatedProjects,
     };
   },
 });
@@ -435,6 +597,42 @@ export const toggleProjectStar = mutation({
   },
 });
 
+export const toggleProjectFollow = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.ownerId === identity.subject) {
+      throw new Error("You cannot follow your own project");
+    }
+
+    const existing = await ctx.db
+      .query("projectFollows")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", identity.subject),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      const next = Math.max(0, (project.followCount ?? 0) - 1);
+      await ctx.db.patch(args.projectId, { followCount: next });
+      return { following: false, followers: next };
+    }
+
+    await ctx.db.insert("projectFollows", {
+      projectId: args.projectId,
+      userId: identity.subject,
+      createdAt: Date.now(),
+    });
+    const next = (project.followCount ?? 0) + 1;
+    await ctx.db.patch(args.projectId, { followCount: next });
+    return { following: true, followers: next };
+  },
+});
+
 export const recordProjectDownload = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
@@ -462,37 +660,81 @@ export const upsertPublicTodo = mutation({
     sortOrder: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const { userId, project } = await verifyProjectOwnerAccess(
+      ctx,
+      args.projectId,
+    );
     const title = args.title.trim();
     if (!title) throw new Error("Title is required");
+
+    let todoId: typeof args.todoId;
+    let isNew = false;
+    let previousStatus: "todo" | "in-progress" | "done" | undefined;
 
     if (args.todoId) {
       const existing = await ctx.db.get("projectPublicTodos", args.todoId);
       if (!existing || existing.projectId !== args.projectId) {
         throw new Error("Todo not found");
       }
+      previousStatus = existing.status;
       await ctx.db.patch(args.todoId, {
         title,
         status: args.status,
         sortOrder: args.sortOrder ?? existing.sortOrder,
         updatedAt: Date.now(),
       });
-      return args.todoId;
+      todoId = args.todoId;
+    } else {
+      isNew = true;
+      const siblings = await ctx.db
+        .query("projectPublicTodos")
+        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+        .collect();
+
+      todoId = await ctx.db.insert("projectPublicTodos", {
+        projectId: args.projectId,
+        title,
+        status: args.status,
+        sortOrder: args.sortOrder ?? siblings.length,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
     }
 
-    const siblings = await ctx.db
-      .query("projectPublicTodos")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .collect();
+    if (project.visibility === "public") {
+      await notifyProjectFollowers(ctx, {
+        projectId: args.projectId,
+        excludeUserId: userId,
+        title: isNew
+          ? `${project.name} added a roadmap item`
+          : `${project.name} updated its roadmap`,
+        body: isNew ? `New item: ${title}` : `Updated: ${title}`,
+        href: `/projects/community/${args.projectId}`,
+        tone: "violet",
+      });
 
-    return await ctx.db.insert("projectPublicTodos", {
-      projectId: args.projectId,
-      title,
-      status: args.status,
-      sortOrder: args.sortOrder ?? siblings.length,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+      const shippedNow =
+        args.status === "done" &&
+        (isNew || previousStatus !== "done");
+      if (shippedNow) {
+        const ownerMember = await ctx.db
+          .query("projectMembers")
+          .withIndex("by_project_user", (q) =>
+            q.eq("projectId", args.projectId).eq("userId", userId),
+          )
+          .unique();
+        await maybeRecordPublicCommunityActivity(ctx, {
+          projectId: args.projectId,
+          actorUserId: userId,
+          actorName: ownerMember?.name ?? ownerMember?.email,
+          type: "released",
+          title: `Shipped: ${title}`,
+          detail: project.name,
+        });
+      }
+    }
+
+    return todoId;
   },
 });
 
@@ -524,6 +766,9 @@ export const proposeFeature = mutation({
     await assertProjectDiscoverable(ctx, args.projectId);
     const title = args.title.trim();
     if (!title) throw new Error("Feature title is required");
+
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
 
     const sponsorName = identityDisplayName(identity);
     const sponsorMessage = args.sponsorMessage?.trim() || undefined;
@@ -566,6 +811,19 @@ export const proposeFeature = mutation({
       userId: identity.subject,
       createdAt: Date.now(),
     });
+
+    if (project.visibility === "public") {
+      await maybeRecordPublicCommunityActivity(ctx, {
+        projectId: args.projectId,
+        actorUserId: identity.subject,
+        actorName: sponsorName,
+        type: "sponsored",
+        title: existingSponsor
+          ? `${sponsorName} proposed a feature`
+          : `${sponsorName} became a sponsor`,
+        detail: sponsorAmount ? `${title} · ${sponsorAmount}` : title,
+      });
+    }
 
     return featureId;
   },
@@ -647,12 +905,39 @@ export const updateFeatureStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const { userId, project } = await verifyProjectOwnerAccess(
+      ctx,
+      args.projectId,
+    );
     const feature = await ctx.db.get("projectFeatureIdeas", args.featureId);
     if (!feature || feature.projectId !== args.projectId) {
       throw new Error("Feature not found");
     }
+    const wasShipped = feature.status === "shipped";
     await ctx.db.patch(args.featureId, { status: args.status });
+
+    if (
+      project.visibility === "public" &&
+      !wasShipped &&
+      args.status === "shipped"
+    ) {
+      const ownerMember = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project_user", (q) =>
+          q.eq("projectId", args.projectId).eq("userId", userId),
+        )
+        .unique();
+      await maybeRecordPublicCommunityActivity(ctx, {
+        projectId: args.projectId,
+        actorUserId: userId,
+        actorName: ownerMember?.name ?? ownerMember?.email,
+        type: "released",
+        title: `Feature shipped: ${feature.title}`,
+        detail: feature.sponsorName
+          ? `Sponsored by ${feature.sponsorName}`
+          : project.name,
+      });
+    }
   },
 });
 

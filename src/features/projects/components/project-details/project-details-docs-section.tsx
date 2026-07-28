@@ -2,6 +2,7 @@
 
 import { useAction, useMutation } from "convex/react";
 import {
+  ChevronDownIcon,
   ExternalLinkIcon,
   FileTextIcon,
   Loader2Icon,
@@ -15,6 +16,11 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
@@ -50,6 +56,7 @@ export function ProjectDetailsDocsSection({
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const activeDoc = useMemo(
     (): ProjectDocRecord | undefined =>
@@ -111,6 +118,7 @@ export function ProjectDetailsDocsSection({
           projectId: projectId as Id<"projects">,
           path: activeDoc.path,
           content: draft,
+          notifyFollowers: true,
         });
       } else {
         await writeFile({
@@ -166,212 +174,236 @@ export function ProjectDetailsDocsSection({
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-border/60 bg-card/85">
-      <div className="border-b border-border/50 px-6 py-5 md:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <FileTextIcon className="size-4 text-primary" />
-              <h2 className="text-lg font-semibold tracking-tight">
-                Repository docs
-              </h2>
-            </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              README, contributing guide, and license — synced with your project
-              files and GitHub.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-          {docsData.canManage && hasGithub ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="rounded-xl"
-              disabled={syncing}
-              onClick={() => void handleSyncFromGitHub()}
-            >
-              {syncing ? (
-                <Loader2Icon className="size-3.5 animate-spin" />
-              ) : (
-                <RefreshCwIcon className="size-3.5" />
-              )}
-              Sync from GitHub
-            </Button>
-          ) : null}
-          {activeDoc?.path && hasGithub ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="rounded-xl"
-              asChild
-            >
-              <a
-                href={toGitHubUrl(docsData.githubRepoUrl!, {
-                  branch: docsData.githubBranch,
-                  path: activeDoc.path,
-                })}
-                target="_blank"
-                rel="noopener noreferrer"
+    <Collapsible open={expanded} onOpenChange={setExpanded}>
+      <section className="overflow-hidden rounded-3xl border border-border/60 bg-card/85">
+        <div className="border-b border-border/50 px-6 py-5 md:px-8">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="group min-w-0 flex-1 rounded-xl text-left transition hover:bg-muted/30 -mx-2 px-2 py-1"
               >
-                <ExternalLinkIcon className="size-3.5" />
-                View on GitHub
-              </a>
-            </Button>
-          ) : null}
+                <div className="flex items-start gap-3">
+                  <ChevronDownIcon
+                    className={cn(
+                      "mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                      expanded && "rotate-180",
+                    )}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FileTextIcon className="size-4 text-primary" />
+                      <h2 className="text-lg font-semibold tracking-tight">
+                        Repository docs
+                      </h2>
+                      {!expanded && activeDoc ? (
+                        <Badge variant="secondary" className="rounded-full text-[10px]">
+                          {activeDoc.label}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      README, contributing guide, and license — synced with your
+                      project files and GitHub.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </CollapsibleTrigger>
+
+            <div className="flex flex-wrap gap-2">
+              {docsData.canManage && hasGithub ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl"
+                  disabled={syncing}
+                  onClick={() => void handleSyncFromGitHub()}
+                >
+                  {syncing ? (
+                    <Loader2Icon className="size-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCwIcon className="size-3.5" />
+                  )}
+                  Sync from GitHub
+                </Button>
+              ) : null}
+              {activeDoc?.path && hasGithub ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl"
+                  asChild
+                >
+                  <a
+                    href={toGitHubUrl(docsData.githubRepoUrl!, {
+                      branch: docsData.githubBranch,
+                      path: activeDoc.path,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLinkIcon className="size-3.5" />
+                    View on GitHub
+                  </a>
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
 
-      <Tabs
-        value={activeSlot}
-        onValueChange={(value) => {
-          setActiveSlot(value as ProjectDocSlot);
-          setEditing(false);
-        }}
-        className="pt-5"
-      >
-        <div className="px-6 md:px-8">
-          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/50 p-1 sm:w-auto">
-          {docsData.docs.map((doc) => (
-            <TabsTrigger
-              key={doc.slot}
-              value={doc.slot}
-              className="rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-background"
-            >
-              <span>{doc.label}</span>
-              {doc.isDirty ? (
-                <Badge variant="secondary" className="ml-2 rounded-full px-1.5 py-0 text-[10px]">
-                  edited
-                </Badge>
-              ) : null}
-              {doc.isStaged ? (
-                <Badge className="ml-2 rounded-full px-1.5 py-0 text-[10px]">
-                  staged
-                </Badge>
-              ) : null}
-            </TabsTrigger>
-          ))}
-          </TabsList>
-        </div>
+        <CollapsibleContent>
+          <Tabs
+            value={activeSlot}
+            onValueChange={(value) => {
+              setActiveSlot(value as ProjectDocSlot);
+              setEditing(false);
+            }}
+            className="pt-5"
+          >
+            <div className="px-6 md:px-8">
+              <TabsList className="h-auto w-full flex-wrap justify-start gap-1 rounded-xl bg-muted/50 p-1 sm:w-auto">
+                {docsData.docs.map((doc) => (
+                  <TabsTrigger
+                    key={doc.slot}
+                    value={doc.slot}
+                    className="rounded-lg px-3 py-1.5 text-xs data-[state=active]:bg-background"
+                  >
+                    <span>{doc.label}</span>
+                    {doc.isDirty ? (
+                      <Badge variant="secondary" className="ml-2 rounded-full px-1.5 py-0 text-[10px]">
+                        edited
+                      </Badge>
+                    ) : null}
+                    {doc.isStaged ? (
+                      <Badge className="ml-2 rounded-full px-1.5 py-0 text-[10px]">
+                        staged
+                      </Badge>
+                    ) : null}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
 
-        {docsData.docs.map((doc) => (
-          <TabsContent key={doc.slot} value={doc.slot} className="mt-4">
-            {!doc.exists && !docsData.canEdit ? (
-              <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
-                No {doc.label.toLowerCase()} file published yet.
-              </p>
-            ) : !doc.exists ? (
-              <div className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center md:mx-8">
-                <p className="text-sm text-muted-foreground">
-                  {doc.defaultPath} has not been added yet.
-                </p>
-                <Button
-                  className="mt-4 rounded-xl"
-                  disabled={saving}
-                  onClick={() => void handleCreate(doc)}
-                >
-                  Add {doc.label}
-                </Button>
-              </div>
-            ) : (
-              <div className="project-doc-reader">
-                <div className="project-doc-reader-toolbar">
-                  <span className="project-doc-reader-path">
-                    <FileTextIcon className="size-3.5 shrink-0 opacity-60" />
-                    {doc.path}
-                  </span>
-                  {docsData.canManage ? (
-                    <div className="flex flex-wrap gap-2">
-                      {!editing ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-lg px-3 text-xs"
-                          onClick={() => setEditing(true)}
-                        >
-                          <PencilIcon className="size-3.5" />
-                          Edit
-                        </Button>
-                      ) : (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            className="h-8 rounded-lg px-3 text-xs"
-                            onClick={() => setEditing(false)}
-                          >
-                            Preview
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            className="h-8 rounded-lg px-3 text-xs"
-                            disabled={saving}
-                            onClick={() => void handleSave(false)}
-                          >
-                            <SaveIcon className="size-3.5" />
-                            Save
-                          </Button>
-                          {hasGithub ? (
+            {docsData.docs.map((doc) => (
+              <TabsContent key={doc.slot} value={doc.slot} className="mt-4">
+                {!doc.exists && !docsData.canEdit ? (
+                  <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
+                    No {doc.label.toLowerCase()} file published yet.
+                  </p>
+                ) : !doc.exists ? (
+                  <div className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-6 py-10 text-center md:mx-8">
+                    <p className="text-sm text-muted-foreground">
+                      {doc.defaultPath} has not been added yet.
+                    </p>
+                    <Button
+                      className="mt-4 rounded-xl"
+                      disabled={saving}
+                      onClick={() => void handleCreate(doc)}
+                    >
+                      Add {doc.label}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="project-doc-reader">
+                    <div className="project-doc-reader-toolbar">
+                      <span className="project-doc-reader-path">
+                        <FileTextIcon className="size-3.5 shrink-0 opacity-60" />
+                        {doc.path}
+                      </span>
+                      {docsData.canManage ? (
+                        <div className="flex flex-wrap gap-2">
+                          {!editing ? (
                             <Button
                               type="button"
                               size="sm"
+                              variant="outline"
                               className="h-8 rounded-lg px-3 text-xs"
-                              disabled={saving || isPushing}
-                              onClick={() => void handleSave(true)}
+                              onClick={() => setEditing(true)}
                             >
-                              {isPushing ? (
-                                <Loader2Icon className="size-3.5 animate-spin" />
-                              ) : (
-                                <UploadCloudIcon className="size-3.5" />
-                              )}
-                              Save & push
+                              <PencilIcon className="size-3.5" />
+                              Edit
                             </Button>
-                          ) : null}
-                        </>
-                      )}
+                          ) : (
+                            <>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                className="h-8 rounded-lg px-3 text-xs"
+                                onClick={() => setEditing(false)}
+                              >
+                                Preview
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 rounded-lg px-3 text-xs"
+                                disabled={saving}
+                                onClick={() => void handleSave(false)}
+                              >
+                                <SaveIcon className="size-3.5" />
+                                Save
+                              </Button>
+                              {hasGithub ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 rounded-lg px-3 text-xs"
+                                  disabled={saving || isPushing}
+                                  onClick={() => void handleSave(true)}
+                                >
+                                  {isPushing ? (
+                                    <Loader2Icon className="size-3.5 animate-spin" />
+                                  ) : (
+                                    <UploadCloudIcon className="size-3.5" />
+                                  )}
+                                  Save & push
+                                </Button>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
 
-                {editing ? (
-                  <div className="px-6 pb-6 md:px-8">
-                    <Textarea
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      className={cn(
-                        "min-h-[360px] rounded-xl border-border/60 bg-background/60 font-mono text-xs leading-relaxed",
-                        doc.isMarkdown ? "" : "whitespace-pre-wrap",
-                      )}
-                    />
-                  </div>
-                ) : doc.isMarkdown ? (
-                  <div className="project-doc-reader-body">
-                    <ProjectDocMarkdown content={doc.content} />
-                  </div>
-                ) : (
-                  <div className="project-doc-reader-body">
-                    <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-foreground/90">
-                      {doc.content}
-                    </pre>
+                    {editing ? (
+                      <div className="px-6 pb-6 md:px-8">
+                        <Textarea
+                          value={draft}
+                          onChange={(event) => setDraft(event.target.value)}
+                          className={cn(
+                            "min-h-[360px] rounded-xl border-border/60 bg-background/60 font-mono text-xs leading-relaxed",
+                            doc.isMarkdown ? "" : "whitespace-pre-wrap",
+                          )}
+                        />
+                      </div>
+                    ) : doc.isMarkdown ? (
+                      <div className="project-doc-reader-body">
+                        <ProjectDocMarkdown content={doc.content} />
+                      </div>
+                    ) : (
+                      <div className="project-doc-reader-body">
+                        <pre className="overflow-x-auto font-mono text-xs leading-relaxed text-foreground/90">
+                          {doc.content}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+              </TabsContent>
+            ))}
 
-      {visibleTabs.length === 0 ? (
-        <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
-          No repository documentation available.
-        </p>
-      ) : null}
-    </section>
+            {visibleTabs.length === 0 ? (
+              <p className="mx-6 mb-6 rounded-2xl border border-dashed border-border/70 px-4 py-10 text-center text-sm text-muted-foreground md:mx-8">
+                No repository documentation available.
+              </p>
+            ) : null}
+          </Tabs>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }

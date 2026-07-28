@@ -23,6 +23,7 @@ const activityType = v.union(
   v.literal("comment"),
   v.literal("released"),
   v.literal("joined"),
+  v.literal("sponsored"),
 );
 
 const deadlineTone = v.union(
@@ -100,6 +101,7 @@ export default defineSchema({
       ),
     ),
     starCount: v.optional(v.number()),
+    followCount: v.optional(v.number()),
     viewCount: v.optional(v.number()),
     forkCount: v.optional(v.number()),
     downloadCount: v.optional(v.number()),
@@ -551,6 +553,29 @@ export default defineSchema({
     .index("by_project", ["projectId"])
     .index("by_project_user", ["projectId", "userId"])
     .index("by_user", ["userId"]),
+
+  projectFollows: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectCommunityDiscussions: defineTable({
+    projectId: v.id("projects"),
+    parentId: v.optional(v.id("projectCommunityDiscussions")),
+    authorUserId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    authorColor: v.optional(v.string()),
+    body: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_parent", ["parentId"]),
 
   projectViews: defineTable({
     projectId: v.id("projects"),
