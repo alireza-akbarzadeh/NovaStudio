@@ -4,15 +4,21 @@ import { useUser } from "@clerk/nextjs";
 import { ChevronDownIcon, Loader2Icon, PlusIcon, SearchIcon, UserIcon } from "lucide-react";
 import { Manrope } from "next/font/google";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AddMcpServerDialog } from "@/features/customize/components/add-mcp-server-dialog";
+import { CustomMcpServersSection } from "@/features/customize/components/custom-mcp-server-row";
 import { CustomizeConnectionsProvider } from "@/features/customize/components/customize-connections-provider";
 import { CustomizeIcon } from "@/features/customize/components/customize-icon";
 import { CustomizeItemRow } from "@/features/customize/components/customize-item-row";
 import { CustomizePluginRow } from "@/features/customize/components/customize-plugin-row";
+import { CustomizeUserItemsPanel } from "@/features/customize/components/customize-user-items-panel";
+import { useUserCustomizeItems } from "@/features/customize/hooks/use-user-customize-items";
+import { useUserMcpServers } from "@/features/customize/hooks/use-user-mcp-servers";
 import { useUserPlugins } from "@/features/customize/hooks/use-user-plugins";
+import type { CustomizeUserItemKind } from "@/features/customize/lib/customize-user-items";
 import {
   CUSTOMIZE_CATEGORIES,
   CUSTOMIZE_PLUGINS,
@@ -34,6 +40,15 @@ const display = Manrope({
 
 const CUSTOMIZE_BREADCRUMB = [{ label: "Customize" }] as const;
 
+const USER_ITEM_CATEGORY_KIND: Record<
+  "subagents" | "hooks" | "commands",
+  CustomizeUserItemKind
+> = {
+  subagents: "subagent",
+  hooks: "hook",
+  commands: "command",
+};
+
 type WorkspaceCustomizeViewProps = {
   projectId: string;
 };
@@ -54,15 +69,51 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
   const searchParams = useSearchParams();
   const { openTab } = useEditorTabs(projectId);
   const { installedIds, ready } = useUserPlugins();
+  const {
+    servers: customMcpServers,
+    ready: mcpReady,
+    remove: removeMcpServer,
+    setEnabled: setMcpEnabled,
+  } = useUserMcpServers();
+  const { byKind: userCustomizeByKind } = useUserCustomizeItems();
   const editorTabs = useWorkspaceStore((s) => s.editorTabs);
   const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<CustomizeCategory>("plugins");
+  const initialCategory = (() => {
+    const raw = searchParams.get("category");
+    if (
+      raw === "mcps" ||
+      raw === "subagents" ||
+      raw === "hooks" ||
+      raw === "commands" ||
+      raw === "rules" ||
+      raw === "skills"
+    ) {
+      return raw as CustomizeCategory;
+    }
+    return "plugins";
+  })();
+  const [category, setCategory] = useState<CustomizeCategory>(initialCategory);
+
+  useEffect(() => {
+    const raw = searchParams.get("category");
+    if (
+      raw === "mcps" ||
+      raw === "subagents" ||
+      raw === "hooks" ||
+      raw === "commands" ||
+      raw === "rules" ||
+      raw === "skills"
+    ) {
+      setCategory(raw as CustomizeCategory);
+    }
+  }, [searchParams]);
   const initialView =
     searchParams.get("view") === "marketplace" ? "marketplace" : "installed";
   const [view, setView] = useState<"installed" | "marketplace">(initialView);
   const [expandedPluginId, setExpandedPluginId] =
     useState<CustomizePluginId | null>(null);
+  const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
 
   const activePluginTabId = useMemo(() => {
     const activeTab = editorTabs.find((tab) => tab.id === activeEditorTabId);
@@ -146,12 +197,18 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
     category === "plugins"
       ? listPlugins.length
       : category === "mcps"
-        ? mcpPlugins.length
+        ? mcpPlugins.length + customMcpServers.length
         : category === "skills"
           ? filteredSkills.length
           : category === "rules"
-            ? filteredRules.length
-            : 0;
+            ? filteredRules.length + userCustomizeByKind.rule.length
+            : category === "subagents"
+              ? userCustomizeByKind.subagent.length
+              : category === "hooks"
+                ? userCustomizeByKind.hook.length
+                : category === "commands"
+                  ? userCustomizeByKind.command.length
+                  : 0;
 
   return (
     <CustomizeConnectionsProvider>
@@ -187,8 +244,16 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
             data-lpignore="true"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search plugins…"
-            aria-label="Search plugins"
+            placeholder={
+              category === "plugins" || category === "mcps"
+                ? "Search plugins…"
+                : "Search customize items…"
+            }
+            aria-label={
+              category === "plugins" || category === "mcps"
+                ? "Search plugins"
+                : "Search customize items"
+            }
             className="h-9 border-ws-border-subtle bg-ws-panel pl-8 text-[12px] shadow-none"
           />
         </div>
@@ -239,10 +304,22 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
       </div>
 
       {category === "plugins" || category === "mcps" ? (
+        <>
+          {category === "mcps" ? (
+            <div className="mb-4">
+              <CustomMcpServersSection
+                servers={customMcpServers}
+                ready={mcpReady}
+                onRemove={removeMcpServer}
+                onToggleEnabled={setMcpEnabled}
+                onAdd={() => setMcpDialogOpen(true)}
+              />
+            </div>
+          ) : null}
         <section className="overflow-hidden rounded-xl border border-ws-border-subtle bg-ws-panel/40">
           <div className="flex items-center justify-between border-b border-ws-border-subtle px-4 py-3">
             <p className="text-[12px] text-ws-text-muted">
-              {category === "mcps" ? "MCPs" : view === "installed" ? "Installed" : "Marketplace"}{" "}
+              {category === "mcps" ? "Catalog MCPs" : view === "installed" ? "Installed" : "Marketplace"}{" "}
               {!ready ? (
                 <Loader2Icon className="ml-1 inline size-3 animate-spin" />
               ) : (
@@ -260,6 +337,17 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
                 >
                   <PlusIcon className="size-3" />
                   Add
+                </Button>
+              ) : category === "mcps" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 rounded-full border-ws-border-subtle bg-transparent px-3 text-[11px]"
+                  onClick={() => setMcpDialogOpen(true)}
+                >
+                  <PlusIcon className="size-3" />
+                  Add MCP
                 </Button>
               ) : null}
             </div>
@@ -318,11 +406,12 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
             </div>
           ) : null}
         </section>
-      ) : category === "skills" || category === "rules" ? (
+        </>
+      ) : category === "skills" ? (
         <section className="overflow-hidden rounded-xl border border-ws-border-subtle bg-ws-panel/40">
           <div className="border-b border-ws-border-subtle px-4 py-3">
             <p className="text-[12px] text-ws-text-muted">
-              {category === "skills" ? "Skills" : "Rules"}{" "}
+              Skills{" "}
               <span className="text-ws-text">{listCount}</span>
               <span className="ml-2 text-[11px]">
                 from installed plugins
@@ -330,22 +419,59 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
             </p>
           </div>
           <div className="space-y-2 p-3">
-            {(category === "skills" ? filteredSkills : filteredRules).map(
-              (item) => (
-                <CustomizeItemRow
-                  key={`${item.pluginId}-${item.id}`}
-                  item={item}
-                  variant={category === "skills" ? "skill" : "rule"}
-                />
-              ),
-            )}
+            {filteredSkills.map((item) => (
+              <CustomizeItemRow
+                key={`${item.pluginId}-${item.id}`}
+                item={item}
+                variant="skill"
+              />
+            ))}
           </div>
-          {listCount === 0 ? (
+          {filteredSkills.length === 0 ? (
             <div className="px-4 py-10 text-center text-[12px] text-ws-text-muted">
-              Install a plugin to see its {category}.
+              Install a plugin to see its skills.
             </div>
           ) : null}
         </section>
+      ) : category === "rules" ? (
+        <div className="space-y-4">
+          <CustomizeUserItemsPanel
+            projectId={projectId}
+            kind="rule"
+            query={query}
+          />
+          <section className="overflow-hidden rounded-xl border border-ws-border-subtle bg-ws-panel/40">
+            <div className="border-b border-ws-border-subtle px-4 py-3">
+              <p className="text-[12px] text-ws-text-muted">
+                Plugin rules{" "}
+                <span className="text-ws-text">{filteredRules.length}</span>
+                <span className="ml-2 text-[11px]">from installed plugins</span>
+              </p>
+            </div>
+            <div className="space-y-2 p-3">
+              {filteredRules.map((item) => (
+                <CustomizeItemRow
+                  key={`${item.pluginId}-${item.id}`}
+                  item={item}
+                  variant="rule"
+                />
+              ))}
+            </div>
+            {filteredRules.length === 0 ? (
+              <div className="px-4 py-10 text-center text-[12px] text-ws-text-muted">
+                Install a plugin to see its rules.
+              </div>
+            ) : null}
+          </section>
+        </div>
+      ) : category === "subagents" ||
+        category === "hooks" ||
+        category === "commands" ? (
+        <CustomizeUserItemsPanel
+          projectId={projectId}
+          kind={USER_ITEM_CATEGORY_KIND[category]}
+          query={query}
+        />
       ) : (
         <section className="rounded-xl border border-dashed border-ws-border-subtle px-6 py-12 text-center">
           <p className="text-[13px] font-medium text-ws-text">
@@ -358,6 +484,7 @@ export function WorkspaceCustomizeView({ projectId }: WorkspaceCustomizeViewProp
         </section>
       )}
       </div>
+      <AddMcpServerDialog open={mcpDialogOpen} onOpenChange={setMcpDialogOpen} />
     </CustomizeConnectionsProvider>
   );
 }

@@ -26,6 +26,7 @@ import { WorkspaceCommandPalette } from "@/features/workspace/components/workspa
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceGoToSymbolDialog } from "@/features/workspace/components/workspace-go-to-symbol-dialog";
+import { WorkspaceSemanticSearchDialog } from "@/features/workspace/components/workspace-semantic-search-dialog";
 import { RenameSymbolDialog } from "@/features/workspace/components/rename-symbol-dialog";
 import { WorkspaceImportBanner } from "@/features/workspace/components/workspace-import-banner";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
@@ -229,14 +230,15 @@ function WorkspaceLayoutInner({
                 </div>
               </ResizablePanel>
 
-              <ResizableHandle
-                className={cn(
-                  // Match sidebar↔editor gutter (w-1.5). Base handle uses
-                  // aria-[orientation=horizontal]:h-px which would collapse this.
-                  "h-1.5 w-full bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=horizontal]:h-1.5",
-                  !terminalOpen && "pointer-events-none opacity-0",
-                )}
-              />
+              {terminalOpen ? (
+                <ResizableHandle
+                  className={cn(
+                    // Match sidebar↔editor gutter (w-1.5). Base handle uses
+                    // aria-[orientation=horizontal]:h-px which would collapse this.
+                    "h-1.5 w-full bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=horizontal]:h-1.5",
+                  )}
+                />
+              ) : null}
 
               <ResizablePanel
                 id="terminal"
@@ -302,6 +304,7 @@ function WorkspaceLayoutInner({
       <WorkspaceCommandPalette projectId={projectId} />
       <WorkspaceGoToFileDialog projectId={projectId} />
       <WorkspaceGoToSymbolDialog projectId={projectId} />
+      <WorkspaceSemanticSearchDialog projectId={projectId} />
       <RenameSymbolDialog projectId={projectId} />
       <InitializeGitRepositoryDialog projectId={projectId} />
       <CloneFromGitHubDialog

@@ -597,6 +597,26 @@ function PendingChatAttachBridge({
   return null;
 }
 
+function PendingComposerTextBridge() {
+  const controller = usePromptInputController();
+  const pendingAiComposerText = useWorkspaceStore((s) => s.pendingAiComposerText);
+  const clearPendingAiComposerText = useWorkspaceStore(
+    (s) => s.clearPendingAiComposerText,
+  );
+
+  useEffect(() => {
+    if (!pendingAiComposerText) return;
+    controller.textInput.setInput(pendingAiComposerText);
+    clearPendingAiComposerText();
+  }, [
+    clearPendingAiComposerText,
+    controller.textInput,
+    pendingAiComposerText,
+  ]);
+
+  return null;
+}
+
 function PromptInputShell({
   onSubmit,
   ...props
@@ -630,6 +650,7 @@ function PromptInputShell({
         projectId={props.projectId}
         fileContentsRef={fileContentsRef}
       />
+      <PendingComposerTextBridge />
       <PromptInputFields
         {...props}
         mentionOpen={mentionOpen}

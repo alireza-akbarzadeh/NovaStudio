@@ -21,6 +21,18 @@ import {
 } from "@/lib/ai/workspace-context";
 import { toolsForChatMode } from "@/lib/ai/workspace-tools";
 
+const customizeContextSchema = z.object({
+  rules: z.array(z.string()),
+  preHooks: z.array(z.string()),
+  postHooks: z.array(z.string()),
+  subagents: z.array(
+    z.object({
+      name: z.string(),
+      content: z.string(),
+    }),
+  ),
+});
+
 const workspaceContextSchema = z.object({
   projectName: z.string().optional(),
   activeFilePath: z.string().optional(),
@@ -28,6 +40,7 @@ const workspaceContextSchema = z.object({
   openFiles: z.array(z.string()).optional(),
   fileTree: z.array(z.string()).optional(),
   changedFiles: z.array(z.string()).optional(),
+  customize: customizeContextSchema.optional(),
 });
 
 const chatRequestSchema = z.object({
@@ -56,6 +69,7 @@ export async function POST(request: Request) {
       openFiles: body.workspace?.openFiles,
       fileTree: body.workspace?.fileTree,
       changedFiles: body.workspace?.changedFiles,
+      customize: body.workspace?.customize,
     };
 
     const result = streamText({

@@ -43,6 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useAiCustomizeContext } from "@/features/customize/hooks/use-user-customize-items";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
 import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-ai-chat-input";
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
@@ -144,6 +145,7 @@ function WorkspaceAiChatSession({
   const changedFiles = useChangedFiles(projectId);
   const access = useProjectAccess(projectId);
   const canEdit = access?.canEdit ?? false;
+  const aiCustomize = useAiCustomizeContext();
 
   const projectFilePaths = useMemo(
     () =>
@@ -183,6 +185,7 @@ function WorkspaceAiChatSession({
       openFiles,
       fileTree,
       changedFiles: changedFiles?.map((file) => file.path) ?? [],
+      customize: aiCustomize,
     };
   }, [
     projectName,
@@ -191,6 +194,7 @@ function WorkspaceAiChatSession({
     editorTabs,
     projectFiles,
     changedFiles,
+    aiCustomize,
   ]);
 
   const workspaceContextRef = useRef(workspaceContext);

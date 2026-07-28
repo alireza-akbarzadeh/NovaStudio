@@ -14,6 +14,42 @@ export type ShortcutGroup = {
 /** Chords use `mod` (⌘ on Apple, Ctrl on Windows/Linux). */
 export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
+    id: "search",
+    title: "Search & navigation",
+    shortcuts: [
+      {
+        id: "command-palette",
+        label: "Search everywhere",
+        keys: "mod+shift+f",
+        description: "Files, commands, symbols, and text — also Ctrl/Cmd+Shift+P",
+      },
+      {
+        id: "goto",
+        label: "Navigate project files",
+        keys: "mod+p",
+        description: "Also double Shift (⇧⇧)",
+      },
+      {
+        id: "goto-symbol",
+        label: "Go to symbol in workspace",
+        keys: "mod+t",
+        description: "Find functions, classes, and types by name",
+      },
+      {
+        id: "semantic-search",
+        label: "Semantic codebase search",
+        keys: "mod+alt+s",
+        description: "Ask in plain language — AI finds code with cited snippets",
+      },
+      {
+        id: "search",
+        label: "Find in files (sidebar panel)",
+        keys: "mod+alt+f",
+        description: "Exact text search across the project",
+      },
+    ],
+  },
+  {
     id: "workspace",
     title: "Workspace",
     shortcuts: [
@@ -32,21 +68,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { id: "ai", label: "Toggle AI panel", keys: "mod+l" },
       { id: "zen", label: "Toggle zen mode", keys: "mod+alt+z", description: "Hide chrome for a full-size editor" },
       { id: "notifications", label: "Toggle notifications", keys: "mod+shift+n" },
-      {
-        id: "goto",
-        label: "Navigate project files",
-        keys: "mod+p",
-        description: "Also ⇧⇧ — search, create, rename without sidebar",
-      },
-      {
-        id: "command-palette",
-        label: "Search everywhere",
-        keys: "mod+shift+f",
-        description: "Also Ctrl/Cmd+Shift+P · Ctrl/Cmd+K outside the editor",
-      },
       { id: "clone", label: "Clone from GitHub", keys: "mod+i" },
       { id: "explorer", label: "Toggle explorer", keys: "mod+shift+e", description: "Also mod+1" },
-      { id: "search", label: "Find in files (sidebar panel)", keys: "mod+alt+f" },
       { id: "git", label: "Show Git panel", keys: "mod+9" },
       { id: "outline", label: "Show outline", keys: "mod+shift+o" },
       { id: "dependencies", label: "Show dependencies", keys: "mod+shift+d" },

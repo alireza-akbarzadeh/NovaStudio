@@ -30,6 +30,12 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+t",
   },
   {
+    id: "openSemanticSearch",
+    label: "Semantic Codebase Search",
+    keywords: "natural language ai search codebase where how understand find",
+    shortcut: "mod+alt+s",
+  },
+  {
     id: "findInFiles",
     label: "Find in Files (sidebar)",
     keywords: "search text workspace panel",
@@ -221,7 +227,7 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     id: "toggleCommentsPanel",
     label: "Toggle Live Comments",
     keywords: "line comments figma threads review annotate",
-    shortcut: "mod+shift+u",
+    shortcut: "mod+alt+u",
   },
   {
     id: "toggleDeployPanel",

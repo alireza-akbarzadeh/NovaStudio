@@ -14,9 +14,11 @@ import {
   SearchIcon,
   Settings2Icon,
   SettingsIcon,
+  SparklesIcon,
+  TypeIcon,
 } from "lucide-react";
 import Image from "next/image";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { CustomizeIcon } from "@/features/customize/components/customize-icon";
 import {
@@ -38,6 +40,7 @@ import { formatModShortcut } from "@/lib/keyboard";
 
 export function WorkspaceSettingsDialog() {
   const params = useParams<{ projectId?: string }>();
+  const router = useRouter();
   const projectId = params.projectId;
   const { openTab } = useEditorTabs(projectId ?? "");
   const settingsOpen = useWorkspaceStore((s) => s.settingsOpen);
@@ -103,6 +106,28 @@ export function WorkspaceSettingsDialog() {
           >
             <CustomizeIcon className="size-4" strokeWidth={1.75} />
             <span>Customize</span>
+          </CommandItem>
+          <CommandItem
+            value="mcp server connect custom model context protocol remote sse http"
+            onSelect={() => {
+              closeSettings();
+              if (!projectId) return;
+              router.push(`/projects/${projectId}/customize?category=mcps`);
+            }}
+          >
+            <CustomizeIcon className="size-4" strokeWidth={1.75} />
+            <span>Custom MCP Servers</span>
+          </CommandItem>
+          <CommandItem
+            value="subagents hooks commands rules customize ai persona pre post response"
+            onSelect={() => {
+              closeSettings();
+              if (!projectId) return;
+              router.push(`/projects/${projectId}/customize?category=subagents`);
+            }}
+          >
+            <CustomizeIcon className="size-4" strokeWidth={1.75} />
+            <span>Subagents &amp; Hooks</span>
           </CommandItem>
           <CommandItem
             value="format document formatter prettier code style beautify"
@@ -230,7 +255,18 @@ export function WorkspaceSettingsDialog() {
 
         <CommandGroup heading="Navigation">
           <CommandItem
-            value="go to file"
+            value="search everywhere command palette files commands symbols"
+            onSelect={() => {
+              runCommand("openCommandPalette");
+              closeSettings();
+            }}
+          >
+            <SearchIcon />
+            <span>Search Everywhere</span>
+            <CommandShortcut>{formatModShortcut("mod+shift+f")}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="go to file navigate project files double shift"
             onSelect={() => {
               runCommand("openGoToFile");
               closeSettings();
@@ -238,10 +274,32 @@ export function WorkspaceSettingsDialog() {
           >
             <FolderTreeIcon />
             <span>Go to File</span>
-            <CommandShortcut>⌘P</CommandShortcut>
+            <CommandShortcut>{formatModShortcut("mod+p")}</CommandShortcut>
           </CommandItem>
           <CommandItem
-            value="find in files search"
+            value="go to symbol workspace function class type interface"
+            onSelect={() => {
+              runCommand("openGoToSymbol");
+              closeSettings();
+            }}
+          >
+            <TypeIcon />
+            <span>Go to Symbol in Workspace</span>
+            <CommandShortcut>{formatModShortcut("mod+t")}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="semantic codebase search natural language ai where how understand code"
+            onSelect={() => {
+              runCommand("openSemanticSearch");
+              closeSettings();
+            }}
+          >
+            <SparklesIcon />
+            <span>Semantic Codebase Search</span>
+            <CommandShortcut>{formatModShortcut("mod+alt+s")}</CommandShortcut>
+          </CommandItem>
+          <CommandItem
+            value="find in files search text sidebar panel"
             onSelect={() => {
               runCommand("showSearch");
               closeSettings();
@@ -249,7 +307,7 @@ export function WorkspaceSettingsDialog() {
           >
             <SearchIcon />
             <span>Find in Files</span>
-            <CommandShortcut>⌘⇧F</CommandShortcut>
+            <CommandShortcut>{formatModShortcut("mod+alt+f")}</CommandShortcut>
           </CommandItem>
           <CommandItem
             value="show project explorer"
@@ -260,7 +318,7 @@ export function WorkspaceSettingsDialog() {
           >
             <FolderTreeIcon />
             <span>Show Project</span>
-            <CommandShortcut>⌘⇧E</CommandShortcut>
+            <CommandShortcut>{formatModShortcut("mod+shift+e")}</CommandShortcut>
           </CommandItem>
         </CommandGroup>
 

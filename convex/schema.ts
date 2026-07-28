@@ -716,6 +716,42 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_user_plugin", ["userId", "pluginId"]),
 
+  /** User-configured remote MCP servers (SSE / HTTP). Auth header never returned to clients. */
+  userMcpServers: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    transport: v.union(v.literal("sse"), v.literal("http")),
+    url: v.string(),
+    authHeader: v.optional(v.string()),
+    enabled: v.boolean(),
+    lastVerifiedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_name", ["userId", "name"]),
+
+  /** User-defined subagents, hooks, commands, and rules for NovaStudio AI. */
+  userCustomizeItems: defineTable({
+    userId: v.string(),
+    kind: v.union(
+      v.literal("subagent"),
+      v.literal("hook"),
+      v.literal("command"),
+      v.literal("rule"),
+    ),
+    name: v.string(),
+    description: v.string(),
+    content: v.string(),
+    hookPhase: v.optional(v.union(v.literal("pre"), v.literal("post"))),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_name", ["userId", "kind", "name"]),
+
   contactMessages: defineTable({
     name: v.string(),
     email: v.string(),

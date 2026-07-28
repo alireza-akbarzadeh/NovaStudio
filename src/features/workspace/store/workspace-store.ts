@@ -155,6 +155,7 @@ type WorkspaceState = WorkspacePrefs & {
   } | null;
   goToFileOpen: boolean;
   goToSymbolOpen: boolean;
+  semanticSearchOpen: boolean;
   commandPaletteOpen: boolean;
   commandPaletteInitialTab:
     | "all"
@@ -184,6 +185,7 @@ type WorkspaceState = WorkspacePrefs & {
   breadcrumb: BreadcrumbSegment[];
   treeClipboard: TreeClipboard | null;
   pendingChatAttachPaths: string[] | null;
+  pendingAiComposerText: string | null;
   requestNewChat: boolean;
   terminalCwdRequest: string | null;
   terminalCommandRequest: string | null;
@@ -248,6 +250,8 @@ type WorkspaceState = WorkspacePrefs & {
   closeGoToFile: () => void;
   openGoToSymbol: () => void;
   closeGoToSymbol: () => void;
+  openSemanticSearch: () => void;
+  closeSemanticSearch: () => void;
   openCommandPalette: (options?: {
     tab?: "all" | "types" | "files" | "symbols" | "actions" | "text";
   }) => void;
@@ -296,6 +300,8 @@ type WorkspaceState = WorkspacePrefs & {
   setTreeClipboard: (clipboard: TreeClipboard | null) => void;
   clearTreeClipboard: () => void;
   setPendingChatAttachPaths: (paths: string[] | null) => void;
+  insertAiComposerText: (text: string) => void;
+  clearPendingAiComposerText: () => void;
   requestNewAiChat: () => void;
   clearRequestNewChat: () => void;
   requestTerminalCwd: (cwd: string) => void;
@@ -444,6 +450,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   gutterContextMenu: null,
   goToFileOpen: false,
   goToSymbolOpen: false,
+  semanticSearchOpen: false,
   commandPaletteOpen: false,
   commandPaletteInitialTab: null,
   gitInitDialogOpen: false,
@@ -469,6 +476,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ],
   treeClipboard: null,
   pendingChatAttachPaths: null,
+  pendingAiComposerText: null,
   requestNewChat: false,
   terminalCwdRequest: null,
   terminalCommandRequest: null,
@@ -656,17 +664,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
   openGoToFile: () =>
-    set({ goToFileOpen: true, goToSymbolOpen: false }),
+    set({ goToFileOpen: true, goToSymbolOpen: false, semanticSearchOpen: false }),
   closeGoToFile: () => set({ goToFileOpen: false }),
   openGoToSymbol: () =>
-    set({ goToSymbolOpen: true, goToFileOpen: false }),
+    set({ goToSymbolOpen: true, goToFileOpen: false, semanticSearchOpen: false }),
   closeGoToSymbol: () => set({ goToSymbolOpen: false }),
+  openSemanticSearch: () =>
+    set({ semanticSearchOpen: true, goToFileOpen: false, goToSymbolOpen: false }),
+  closeSemanticSearch: () => set({ semanticSearchOpen: false }),
   openCommandPalette: (options) =>
     set({
       commandPaletteOpen: true,
       commandPaletteInitialTab: options?.tab ?? null,
       goToFileOpen: false,
       goToSymbolOpen: false,
+      semanticSearchOpen: false,
       settingsOpen: false,
     }),
   closeCommandPalette: () =>
@@ -844,6 +856,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   clearTreeClipboard: () => set({ treeClipboard: null }),
   setPendingChatAttachPaths: (paths) =>
     set({ pendingChatAttachPaths: paths }),
+  insertAiComposerText: (text) =>
+    set({
+      pendingAiComposerText: text,
+      aiPanelOpen: true,
+    }),
+  clearPendingAiComposerText: () => set({ pendingAiComposerText: null }),
   requestNewAiChat: () => set({ requestNewChat: true }),
   clearRequestNewChat: () => set({ requestNewChat: false }),
   requestTerminalCwd: (cwd) =>

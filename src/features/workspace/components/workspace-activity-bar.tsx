@@ -383,7 +383,7 @@ export function WorkspaceRightActivityBar({
               ? `Live Comments · ${commentsUnreadCount} new`
               : "Live Comments"
           }
-          shortcut={formatModShortcut("mod+shift+u", isApple)}
+          shortcut={formatModShortcut("mod+alt+u", isApple)}
           active={commentsPanelOpen}
           onClick={() => runCommand("toggleCommentsPanel")}
           side="right"

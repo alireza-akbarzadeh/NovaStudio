@@ -46,6 +46,8 @@ export type CommandId =
   | "closeGoToFile"
   | "openGoToSymbol"
   | "closeGoToSymbol"
+  | "openSemanticSearch"
+  | "closeSemanticSearch"
   | "openCommandPalette"
   | "closeCommandPalette"
   | "openCloneFromGitHub"
@@ -168,7 +170,7 @@ export const workspaceCommands: Command[] = [
   },
   {
     id: "toggleCommentsPanel",
-    shortcut: "mod+shift+u",
+    shortcut: "mod+alt+u",
     allowInInput: true,
     run: () => store().toggleCommentsPanel(),
   },
@@ -210,6 +212,7 @@ export const workspaceCommands: Command[] = [
       else if (s.settingsOpen) s.closeSettings();
       else if (s.goToFileOpen) s.closeGoToFile();
       else if (s.goToSymbolOpen) s.closeGoToSymbol();
+      else if (s.semanticSearchOpen) s.closeSemanticSearch();
       else if (s.cloneFromGitHubOpen) s.closeCloneFromGitHub();
       else if (s.notificationsPanelOpen) s.closeNotificationsPanel();
       else if (s.chatPanelOpen) s.closeChatPanel();
@@ -239,6 +242,17 @@ export const workspaceCommands: Command[] = [
     id: "closeGoToSymbol",
     allowInInput: true,
     run: () => store().closeGoToSymbol(),
+  },
+  {
+    id: "openSemanticSearch",
+    shortcut: "mod+alt+s",
+    allowInInput: true,
+    run: () => store().openSemanticSearch(),
+  },
+  {
+    id: "closeSemanticSearch",
+    allowInInput: true,
+    run: () => store().closeSemanticSearch(),
   },
   {
     id: "openCommandPalette",
@@ -557,6 +571,7 @@ export function handleWorkspaceKeydown(event: KeyboardEvent): boolean {
       !s.settingsOpen &&
       !s.goToFileOpen &&
       !s.goToSymbolOpen &&
+      !s.semanticSearchOpen &&
       !s.cloneFromGitHubOpen &&
       !s.notificationsPanelOpen &&
       !s.chatPanelOpen &&
