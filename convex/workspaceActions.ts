@@ -433,7 +433,10 @@ export const createAccessRequest = mutation({
       tone: "violet",
       soundKind: "message",
       projectId: project._id,
-      href: `/projects/${project._id}`,
+      href:
+        project.visibility === "public"
+          ? `/projects/community/${project._id}`
+          : `/projects/${project._id}`,
     });
 
     return requestId;
@@ -489,6 +492,12 @@ export const decideAccessRequest = mutation({
       });
     }
 
+    const project = await ctx.db.get("projects", request.projectId);
+    const communityHref =
+      project?.visibility === "public"
+        ? `/projects/community/${request.projectId}`
+        : `/projects/${request.projectId}`;
+
     await createNotification(ctx, {
       userId: request.requesterUserId,
       title:
@@ -498,7 +507,7 @@ export const decideAccessRequest = mutation({
       tone: args.decision === "approved" ? "green" : "orange",
       soundKind: args.decision === "approved" ? "success" : "warning",
       projectId: request.projectId,
-      href: `/projects/${request.projectId}`,
+      href: communityHref,
     });
   },
 });

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import {
   ProjectDetailsAboutSection,
+  ProjectDetailsAccessInboxSection,
   ProjectDetailsActivitySection,
   ProjectDetailsBackLink,
   ProjectDetailsContributeCta,
@@ -122,6 +123,10 @@ export function ProjectDetailsView({
         <ProjectDetailsContributorsSection
           contributors={details.contributors}
           contributorCount={details.contributorCount}
+        />
+        <ProjectDetailsAccessInboxSection
+          projectId={projectId}
+          canManage={details.viewer.isOwner || details.viewer.canManage}
         />
         <ProjectDetailsActivitySection projectId={projectId} />
         <ProjectDetailsRoadmapSection

@@ -436,7 +436,6 @@ export const listProjectPendingAccessRequests = query({
       .withIndex("by_project_status", (q) =>
         q.eq("projectId", args.projectId).eq("status", "pending"),
       )
-      .order("desc")
       .collect();
 
     return requests

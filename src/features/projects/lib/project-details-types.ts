@@ -107,6 +107,22 @@ export type ProjectCommunityDiscussion = ProjectCommunityMessage & {
   replies: ProjectCommunityMessage[];
 };
 
+export type ProjectAccessRequest = {
+  id: string;
+  name: string;
+  email?: string;
+  role: string;
+  experienceLevel?: string;
+  message?: string;
+  github?: string;
+  linkedin?: string;
+  portfolioUrl?: string;
+  createdAt: number;
+  time: string;
+  initials: string;
+  color: string;
+};
+
 export type ProjectDetailsRelatedProject = {
   id: string;
   name: string;

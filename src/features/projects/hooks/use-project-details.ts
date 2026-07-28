@@ -46,6 +46,20 @@ export function useDeleteCommunityDiscussion() {
   return useMutation(api.projectCommunityDiscussion.deleteCommunityDiscussion);
 }
 
+export function useProjectPendingAccessRequests(projectId: string | null) {
+  const { isAuthenticated } = useConvexAuth();
+  return useQuery(
+    api.projectCommunity.listProjectPendingAccessRequests,
+    isAuthenticated && projectId
+      ? { projectId: projectId as Id<"projects"> }
+      : "skip",
+  );
+}
+
+export function useDecideAccessRequest() {
+  return useMutation(api.workspaceActions.decideAccessRequest);
+}
+
 export function useRecordProjectView() {
   return useMutation(api.projectCommunity.recordProjectView);
 }

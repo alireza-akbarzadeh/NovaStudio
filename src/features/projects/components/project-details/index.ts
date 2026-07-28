@@ -1,4 +1,5 @@
 export { ProjectDetailsAboutSection } from "./project-details-about-section";
+export { ProjectDetailsAccessInboxSection } from "./project-details-access-inbox-section";
 export { ProjectDetailsActivitySection } from "./project-details-activity-section";
 export { ProjectDetailsBackLink } from "./project-details-back-link";
 export { ProjectDetailsContributeCta } from "./project-details-contribute-cta";

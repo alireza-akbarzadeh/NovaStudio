@@ -70,7 +70,7 @@ Convert visitors into collaborators.
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 17 | **Owner access-request inbox** | `todo` | Approve / deny from community detail page |
+| 17 | **Owner access-request inbox** | `review` | Approve / deny from community detail page |
 | 18 | **Good first issue tags** | `todo` | Beginner-friendly roadmap items |
 | 19 | **Fork / use template** | `todo` | One-click duplicate public project |
 | 20 | **Contributor leaderboard** | `later` | Commits · reviews · shipped todos |
@@ -193,3 +193,9 @@ Convert visitors into collaborators.
 - Optional **bounty amount** on public roadmap items (`bountyAmount` on `projectPublicTodos`)
 - Roadmap shows amber bounty badges; open bounties sorted to the top with a count in the header
 - Project owners/managers can **Add bounty** / **Edit bounty** inline on each open item
+
+### 17. Owner access-request inbox — `review`
+
+- **Access requests** inbox on community project detail (owners & managers only)
+- Approve or decline pending requests with profile links (GitHub, portfolio, LinkedIn)
+- Owner notifications link to the community detail page for public projects
