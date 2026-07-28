@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -69,6 +70,7 @@ export function RequestAccessModal({
         github: github.trim() || undefined,
         linkedin: linkedin.trim() || undefined,
       });
+      toast.success("Access request sent — the owner will review it");
       onOpenChange(false);
       setMessage("");
       setPortfolioUrl("");

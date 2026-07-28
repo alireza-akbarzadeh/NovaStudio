@@ -15,6 +15,7 @@ import {
   templateIdValidator,
 } from "./lib/projectTemplates";
 import { recordProjectActivity } from "./lib/recordActivity";
+import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
 import { verifyAuth } from "./auth";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
@@ -254,6 +255,14 @@ export const updateProjectMeta = mutation({
     if (args.visibility !== undefined) patch.visibility = args.visibility;
     if (args.status !== undefined) patch.status = args.status;
     await ctx.db.patch(args.projectId, patch);
+
+    if (
+      args.visibility === "public" &&
+      project.visibility !== "public"
+    ) {
+      await seedPublicProjectContent(ctx, args.projectId);
+    }
+
     await recordProjectActivity(ctx, {
       projectId: args.projectId,
       actorUserId: userId,

@@ -97,6 +97,10 @@ export default defineSchema({
         v.literal("tanstack"),
       ),
     ),
+    starCount: v.optional(v.number()),
+    viewCount: v.optional(v.number()),
+    forkCount: v.optional(v.number()),
+    downloadCount: v.optional(v.number()),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
@@ -514,6 +518,46 @@ export default defineSchema({
   })
     .index("by_project_status", ["projectId", "status"])
     .index("by_requester", ["requesterUserId"]),
+
+  projectStars: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectPublicTodos: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in-progress"),
+      v.literal("done"),
+    ),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_project", ["projectId"]),
+
+  projectFeatureIdeas: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("open"),
+      v.literal("planned"),
+      v.literal("funded"),
+      v.literal("shipped"),
+    ),
+    sponsorUserId: v.optional(v.string()),
+    sponsorName: v.optional(v.string()),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+    upvotes: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId"]),
 
   notifications: defineTable({
     userId: v.string(),

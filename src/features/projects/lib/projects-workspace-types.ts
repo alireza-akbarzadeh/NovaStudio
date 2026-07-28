@@ -37,6 +37,12 @@ export type WorkspaceProject = {
   source?: "blank" | "github" | "template";
   githubRepoUrl?: string;
   githubBranch?: string;
+  /** True when the signed-in user owns this project. */
+  isOwner?: boolean;
+  /** True when the signed-in user is already a collaborator. */
+  isMember?: boolean;
+  /** Latest access-request status for public projects (non-members). */
+  accessRequestStatus?: "pending" | "approved" | "denied";
 };
 
 export type WorkspaceStat = {

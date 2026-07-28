@@ -393,6 +393,16 @@ export const createAccessRequest = mutation({
       throw new Error("You already own this project");
     }
 
+    const existingMember = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", identity.subject),
+      )
+      .unique();
+    if (existingMember) {
+      throw new Error("You already have access to this project");
+    }
+
     const existing = await ctx.db
       .query("projectAccessRequests")
       .withIndex("by_requester", (q) => q.eq("requesterUserId", identity.subject))

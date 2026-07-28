@@ -1,0 +1,361 @@
+import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
+import {
+  coverToneForProject,
+  formatRelativeTime,
+  techForProject,
+} from "./lib/accessibleProjects";
+import {
+  colorForUserId,
+  identityDisplayName,
+  identityEmail,
+  resolveProjectAccess,
+  verifyProjectOwnerAccess,
+} from "./lib/projectAccess";
+import { verifyAuth } from "./auth";
+import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
+import type { Id } from "./_generated/dataModel";
+
+function initialsFrom(value: string) {
+  return (
+    value
+      .split(/[\s@._-]+/)
+      .filter(Boolean)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("")
+      .slice(0, 2) || "?"
+  );
+}
+
+function publicStats(project: {
+  starCount?: number;
+  viewCount?: number;
+  forkCount?: number;
+  downloadCount?: number;
+}) {
+  return {
+    stars: project.starCount ?? 0,
+    views: project.viewCount ?? 0,
+    forks: project.forkCount ?? 0,
+    downloads: project.downloadCount ?? 0,
+  };
+}
+
+async function assertProjectDiscoverable(
+  ctx: Parameters<typeof resolveProjectAccess>[0],
+  projectId: Id<"projects">,
+) {
+  const access = await resolveProjectAccess(ctx, projectId);
+  if (access) return access;
+
+  const project = await ctx.db.get("projects", projectId);
+  if (!project) throw new Error("Project not found");
+  if (project.visibility !== "public") {
+    throw new Error("This project is not public");
+  }
+  return null;
+}
+
+export const getProjectDetails = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const userId = identity.subject;
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) return null;
+
+    const access = await resolveProjectAccess(ctx, args.projectId);
+    const isPublic = project.visibility === "public";
+    if (!access && !isPublic) return null;
+
+    const members = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const ownerMember =
+      members.find((member) => member.role === "owner") ??
+      members.find((member) => member.userId === project.ownerId);
+    const ownerName = ownerMember?.name ?? ownerMember?.email ?? "Creator";
+
+    const contributorCards = members.map((member) => ({
+      id: member._id,
+      userId: member.userId,
+      name: member.name ?? member.email ?? "Member",
+      initials: initialsFrom(member.name ?? member.email ?? "M"),
+      color: member.color,
+      imageUrl: member.imageUrl,
+      role: member.role,
+    }));
+
+    const star = await ctx.db
+      .query("projectStars")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId),
+      )
+      .unique();
+
+    const myRequests = await ctx.db
+      .query("projectAccessRequests")
+      .withIndex("by_requester", (q) => q.eq("requesterUserId", userId))
+      .collect();
+    const accessRequest = myRequests
+      .filter((row) => row.projectId === args.projectId)
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+
+    const todos = await ctx.db
+      .query("projectPublicTodos")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const features = await ctx.db
+      .query("projectFeatureIdeas")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const stats = publicStats(project);
+    const memberCount = members.length;
+    const isOwner = project.ownerId === userId;
+    const isMember = Boolean(access) && access?.role !== undefined;
+
+    return {
+      id: project._id,
+      name: project.name,
+      description:
+        project.description ?? `Public workspace · ${project.name}`,
+      coverTone: coverToneForProject(project),
+      tech: techForProject(project),
+      status: project.status ?? "in-progress",
+      visibility: project.visibility ?? "private",
+      source: project.source,
+      templateId: project.templateId,
+      githubRepoUrl: project.githubRepoUrl,
+      progress: project.progress ?? 45,
+      updatedAt: project.updatedAt,
+      lastUpdated: formatRelativeTime(project.updatedAt),
+      owner: {
+        name: ownerName,
+        initials: initialsFrom(ownerName),
+        color: ownerMember?.color ?? colorForUserId(project.ownerId),
+        imageUrl: ownerMember?.imageUrl,
+      },
+      contributors: contributorCards,
+      contributorCount: memberCount,
+      stats: {
+        ...stats,
+        forks: Math.max(stats.forks, Math.max(0, memberCount - 1)),
+      },
+      viewer: {
+        hasStarred: Boolean(star),
+        isOwner,
+        isMember,
+        canEdit: access?.canEdit ?? false,
+        canManage: access?.canManage ?? false,
+        accessRequestStatus: isMember
+          ? undefined
+          : accessRequest?.status,
+      },
+      todos: todos
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt)
+        .map((todo) => ({
+          id: todo._id,
+          title: todo.title,
+          status: todo.status,
+        })),
+      features: features
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .map((feature) => ({
+          id: feature._id,
+          title: feature.title,
+          description: feature.description,
+          status: feature.status,
+          sponsorName: feature.sponsorName,
+          sponsorMessage: feature.sponsorMessage,
+          sponsorAmount: feature.sponsorAmount,
+          upvotes: feature.upvotes ?? 0,
+          createdAt: feature.createdAt,
+        })),
+    };
+  },
+});
+
+export const recordProjectView = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) return;
+    await ctx.db.patch(args.projectId, {
+      viewCount: (project.viewCount ?? 0) + 1,
+      updatedAt: project.updatedAt,
+    });
+  },
+});
+
+export const toggleProjectStar = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const existing = await ctx.db
+      .query("projectStars")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", identity.subject),
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      const next = Math.max(0, (project.starCount ?? 0) - 1);
+      await ctx.db.patch(args.projectId, { starCount: next });
+      return { starred: false, stars: next };
+    }
+
+    await ctx.db.insert("projectStars", {
+      projectId: args.projectId,
+      userId: identity.subject,
+      createdAt: Date.now(),
+    });
+    const next = (project.starCount ?? 0) + 1;
+    await ctx.db.patch(args.projectId, { starCount: next });
+    return { starred: true, stars: next };
+  },
+});
+
+export const recordProjectDownload = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) return;
+    await ctx.db.patch(args.projectId, {
+      downloadCount: (project.downloadCount ?? 0) + 1,
+      updatedAt: project.updatedAt,
+    });
+  },
+});
+
+export const upsertPublicTodo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    todoId: v.optional(v.id("projectPublicTodos")),
+    title: v.string(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in-progress"),
+      v.literal("done"),
+    ),
+    sortOrder: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const title = args.title.trim();
+    if (!title) throw new Error("Title is required");
+
+    if (args.todoId) {
+      const existing = await ctx.db.get("projectPublicTodos", args.todoId);
+      if (!existing || existing.projectId !== args.projectId) {
+        throw new Error("Todo not found");
+      }
+      await ctx.db.patch(args.todoId, {
+        title,
+        status: args.status,
+        sortOrder: args.sortOrder ?? existing.sortOrder,
+        updatedAt: Date.now(),
+      });
+      return args.todoId;
+    }
+
+    const siblings = await ctx.db
+      .query("projectPublicTodos")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    return await ctx.db.insert("projectPublicTodos", {
+      projectId: args.projectId,
+      title,
+      status: args.status,
+      sortOrder: args.sortOrder ?? siblings.length,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const deletePublicTodo = mutation({
+  args: {
+    projectId: v.id("projects"),
+    todoId: v.id("projectPublicTodos"),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const todo = await ctx.db.get("projectPublicTodos", args.todoId);
+    if (!todo || todo.projectId !== args.projectId) {
+      throw new Error("Todo not found");
+    }
+    await ctx.db.delete(args.todoId);
+  },
+});
+
+export const proposeFeature = mutation({
+  args: {
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+    const title = args.title.trim();
+    if (!title) throw new Error("Feature title is required");
+
+    return await ctx.db.insert("projectFeatureIdeas", {
+      projectId: args.projectId,
+      title,
+      description: args.description?.trim() || undefined,
+      status: "open",
+      sponsorUserId: identity.subject,
+      sponsorName: identityDisplayName(identity),
+      sponsorMessage: args.sponsorMessage?.trim() || undefined,
+      sponsorAmount: args.sponsorAmount?.trim() || undefined,
+      upvotes: 1,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+export const updateFeatureStatus = mutation({
+  args: {
+    projectId: v.id("projects"),
+    featureId: v.id("projectFeatureIdeas"),
+    status: v.union(
+      v.literal("open"),
+      v.literal("planned"),
+      v.literal("funded"),
+      v.literal("shipped"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const feature = await ctx.db.get("projectFeatureIdeas", args.featureId);
+    if (!feature || feature.projectId !== args.projectId) {
+      throw new Error("Feature not found");
+    }
+    await ctx.db.patch(args.featureId, { status: args.status });
+  },
+});
+
+export const seedDefaultPublicContent = mutation({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    await seedPublicProjectContent(ctx, args.projectId);
+  },
+});
