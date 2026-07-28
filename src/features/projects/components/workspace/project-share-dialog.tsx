@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyIcon, GlobeIcon, LockIcon, UsersIcon } from "lucide-react";
+import { CopyIcon, GlobeIcon, LockIcon, SparklesIcon, UsersIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { Id } from "@/convex/_generated/dataModel";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { useSetCommunityFeatured } from "@/features/projects/hooks/use-project-details";
 import { useUpdateProjectMeta } from "@/features/projects/hooks/use-workspace";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
 import { ProjectSharingPanel } from "@/features/settings/components/project-sharing-panel";
@@ -32,12 +33,16 @@ export function ProjectShareDialog({
   onOpenChange,
 }: ProjectShareDialogProps) {
   const updateMeta = useUpdateProjectMeta();
+  const setFeatured = useSetCommunityFeatured();
   const [isPublic, setIsPublic] = useState(false);
+  const [featured, setFeaturedState] = useState(false);
   const [savingVisibility, setSavingVisibility] = useState(false);
+  const [savingFeatured, setSavingFeatured] = useState(false);
 
   useEffect(() => {
     if (!project) return;
     setIsPublic(project.visibility === "public");
+    setFeaturedState(Boolean(project.featured));
   }, [project]);
 
   if (!project) return null;
@@ -60,6 +65,9 @@ export function ProjectShareDialog({
         visibility: checked ? "public" : "private",
       });
       setIsPublic(checked);
+      if (!checked) {
+        setFeaturedState(false);
+      }
       toast.success(
         checked
           ? "Project is now public — developers can discover it and request access"
@@ -71,6 +79,29 @@ export function ProjectShareDialog({
       );
     } finally {
       setSavingVisibility(false);
+    }
+  }
+
+  async function handleFeaturedChange(checked: boolean) {
+    if (!project) return;
+    setSavingFeatured(true);
+    try {
+      await setFeatured({
+        projectId: project.id as Id<"projects">,
+        featured: checked,
+      });
+      setFeaturedState(checked);
+      toast.success(
+        checked
+          ? "Project featured on the community hub"
+          : "Removed from featured projects",
+      );
+    } catch (error) {
+      toast.error(
+        parseConvexErrorMessage(error, "Could not update featured status"),
+      );
+    } finally {
+      setSavingFeatured(false);
     }
   }
 
@@ -125,10 +156,39 @@ export function ProjectShareDialog({
             </div>
 
             {isPublic ? (
-              <div className="mt-4 space-y-2 border-t border-border/50 pt-4">
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  Public links
-                </p>
+              <div className="mt-4 space-y-4 border-t border-border/50 pt-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                      <SparklesIcon className="size-4" />
+                    </span>
+                    <div>
+                      <Label
+                        htmlFor="featured-toggle"
+                        className="text-sm font-semibold"
+                      >
+                        Feature on community hub
+                      </Label>
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        Pin this project to the spotlight row at the top of
+                        Community.
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    id="featured-toggle"
+                    checked={featured}
+                    disabled={savingFeatured || !project.isOwner}
+                    onCheckedChange={(checked) =>
+                      void handleFeaturedChange(checked)
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    Public links
+                  </p>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
                     type="button"
@@ -150,6 +210,7 @@ export function ProjectShareDialog({
                     <CopyIcon className="size-3.5 shrink-0" />
                     Copy community page
                   </Button>
+                </div>
                 </div>
               </div>
             ) : null}

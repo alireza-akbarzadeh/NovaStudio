@@ -14,6 +14,7 @@ import {
   useRecordProjectDownload,
   useRecordProjectView,
   useSeedDefaultPublicContent,
+  useToggleFeatureUpvote,
   useToggleProjectStar,
 } from "@/features/projects/hooks/use-project-details";
 import type { ProjectDetailsData } from "@/features/projects/lib/project-details-types";
@@ -25,6 +26,7 @@ export function useProjectDetailsPage(projectId: string) {
   const toggleStar = useToggleProjectStar();
   const recordDownload = useRecordProjectDownload();
   const proposeFeature = useProposeFeature();
+  const toggleFeatureUpvote = useToggleFeatureUpvote();
   const seedContent = useSeedDefaultPublicContent();
   const { openProject, isPending: opening } = useOpenWorkspaceProject();
   const viewedRef = useRef(false);
@@ -122,6 +124,13 @@ export function useProjectDetailsPage(projectId: string) {
     toast.success("Feature proposal submitted");
   }
 
+  async function handleUpvoteFeature(featureId: string) {
+    return await toggleFeatureUpvote({
+      projectId: projectId as Id<"projects">,
+      featureId: featureId as Id<"projectFeatureIdeas">,
+    });
+  }
+
   function requestAccess(onRequestAccess?: () => void) {
     if (onRequestAccess) {
       onRequestAccess();
@@ -143,6 +152,7 @@ export function useProjectDetailsPage(projectId: string) {
     handleStar,
     handleDownload,
     handleProposeFeature,
+    handleUpvoteFeature,
     requestAccess,
   };
 }

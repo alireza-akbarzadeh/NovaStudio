@@ -5,6 +5,7 @@ import {
   EyeIcon,
   GitForkIcon,
   PinIcon,
+  SparklesIcon,
   StarIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -83,7 +84,12 @@ export function CommunityProjectCard({
           <div className="absolute inset-0 scale-100 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.35),transparent_55%)] transition-transform duration-500 group-hover:scale-110" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-80 transition group-hover:opacity-95" />
         </Link>
-        {project.trending ? (
+        {project.featured ? (
+          <span className="pointer-events-none absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-violet-600/90 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm">
+            <SparklesIcon className="size-3" />
+            Featured
+          </span>
+        ) : project.trending ? (
           <span className="pointer-events-none absolute top-3 left-3 rounded-full bg-orange-500/90 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm">
             Trending
           </span>

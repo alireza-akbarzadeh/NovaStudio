@@ -6,6 +6,8 @@ import { ProjectDetailsStatsBar } from "./project-details-stats-bar";
 
 type ProjectDetailsHeaderProps = {
   details: ProjectDetailsData;
+  demo: ProjectDetailsData["demo"];
+  canManageDemo: boolean;
   canOpen: boolean;
   opening: boolean;
   requestStatus?: "pending" | "approved" | "denied";
@@ -26,6 +28,8 @@ type ProjectDetailsHeaderProps = {
 
 export function ProjectDetailsHeader({
   details,
+  demo,
+  canManageDemo,
   canOpen,
   opening,
   requestStatus,
@@ -47,6 +51,8 @@ export function ProjectDetailsHeader({
     <section className="overflow-hidden rounded-[28px] border border-border/60 bg-card/90 shadow-[0_24px_70px_-40px_rgba(76,29,149,0.55)]">
       <ProjectDetailsHero
         details={details}
+        demo={demo}
+        canManageDemo={canManageDemo}
         canOpen={canOpen}
         opening={opening}
         requestStatus={requestStatus}

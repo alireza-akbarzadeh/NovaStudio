@@ -106,10 +106,13 @@ export default defineSchema({
     demoVideoStorageId: v.optional(v.id("_storage")),
     demoVideoFilename: v.optional(v.string()),
     demoVideoMediaType: v.optional(v.string()),
+    /** When set, project is pinned in the community hub featured row. */
+    communityFeaturedAt: v.optional(v.number()),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
     .index("by_visibility_updated", ["visibility", "updatedAt"])
+    .index("by_community_featured", ["communityFeaturedAt"])
     .index("by_org", ["orgId"])
     .index("by_org_updated", ["orgId", "updatedAt"]),
 
@@ -588,6 +591,16 @@ export default defineSchema({
     upvotes: v.optional(v.number()),
     createdAt: v.number(),
   }).index("by_project", ["projectId"]),
+
+  projectFeatureUpvotes: defineTable({
+    projectId: v.id("projects"),
+    featureId: v.id("projectFeatureIdeas"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_feature", ["featureId"])
+    .index("by_feature_user", ["featureId", "userId"])
+    .index("by_project_user", ["projectId", "userId"]),
 
   projectSponsors: defineTable({
     projectId: v.id("projects"),

@@ -9,9 +9,11 @@ import {
   ProjectDetailsContributorsSection,
   ProjectDetailsDemoDialog,
   ProjectDetailsDocsSection,
+  ProjectDetailsFeaturedBanner,
   ProjectDetailsHeader,
   ProjectDetailsLoadingState,
   ProjectDetailsNotFound,
+  ProjectDetailsPreviewSection,
   ProjectDetailsPushGitHubDialog,
   ProjectDetailsRoadmapSection,
   ProjectDetailsSponsorDialog,
@@ -56,6 +58,8 @@ export function ProjectDetailsView({
 
       <ProjectDetailsHeader
         details={details}
+        demo={details.demo}
+        canManageDemo={canManageDemo}
         canOpen={page.canOpen}
         opening={page.opening}
         requestStatus={page.requestStatus}
@@ -95,12 +99,21 @@ export function ProjectDetailsView({
         onProposeFeature={page.handleProposeFeature}
       />
 
+      {details.viewer.isOwner && details.visibility === "public" ? (
+        <ProjectDetailsFeaturedBanner projectId={projectId} details={details} />
+      ) : null}
+
+      <div className="mt-8">
+        <ProjectDetailsPreviewSection details={details} />
+      </div>
+
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <ProjectDetailsAboutSection details={details} />
           <ProjectDetailsSponsorSection
             features={details.features}
             onBecomeSponsor={() => setSponsorDialogOpen(true)}
+            onUpvoteFeature={page.handleUpvoteFeature}
           />
         </div>
 

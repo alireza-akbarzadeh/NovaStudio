@@ -54,6 +54,7 @@ export type ProjectDetailsFeature = {
   sponsorMessage?: string;
   sponsorAmount?: string;
   upvotes: number;
+  viewerHasUpvoted: boolean;
   createdAt: number;
 };
 
@@ -61,6 +62,14 @@ export type ProjectDetailsDemo = {
   url: string;
   filename: string;
   mediaType: string;
+};
+
+export type ProjectDetailsPreview = {
+  url: string;
+  provider: "vercel" | "netlify";
+  label: string;
+  updatedAt: number;
+  updatedLabel: string;
 };
 
 export type ProjectDetailsData = {
@@ -71,6 +80,7 @@ export type ProjectDetailsData = {
   tech: string[];
   status: string;
   visibility: string;
+  communityFeatured: boolean;
   source?: "blank" | "github" | "template";
   templateId?: string;
   githubRepoUrl?: string;
@@ -99,4 +109,5 @@ export type ProjectDetailsData = {
   todos: ProjectDetailsTodo[];
   features: ProjectDetailsFeature[];
   demo: ProjectDetailsDemo | null;
+  preview: ProjectDetailsPreview | null;
 };

@@ -250,12 +250,18 @@ export const updateProjectMeta = mutation({
       description?: string;
       visibility?: "private" | "public";
       status?: "in-progress" | "review" | "shipped" | "archived";
+      communityFeaturedAt?: number | undefined;
       updatedAt: number;
     } = { updatedAt: Date.now() };
     if (args.description !== undefined) {
       patch.description = args.description.trim();
     }
-    if (args.visibility !== undefined) patch.visibility = args.visibility;
+    if (args.visibility !== undefined) {
+      patch.visibility = args.visibility;
+      if (args.visibility === "private") {
+        patch.communityFeaturedAt = undefined;
+      }
+    }
     if (args.status !== undefined) patch.status = args.status;
     await ctx.db.patch(args.projectId, patch);
 

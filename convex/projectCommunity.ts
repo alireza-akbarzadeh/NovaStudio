@@ -49,6 +49,68 @@ function publicStats(project: {
   };
 }
 
+function normalizeDeployUrl(url: string | undefined | null) {
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
+function resolveProjectLivePreview(
+  deployments: Array<{
+    status: string;
+    url?: string;
+    provider: "vercel" | "netlify";
+    target: "preview" | "production";
+    updatedAt: number;
+  }>,
+  deployTargets: Array<{
+    url?: string;
+    provider: "vercel" | "netlify";
+    name: string;
+    updatedAt: number;
+  }>,
+) {
+  const readyDeployments = deployments.filter(
+    (deployment) =>
+      deployment.status === "ready" && normalizeDeployUrl(deployment.url),
+  );
+  const liveDeployment =
+    readyDeployments.find((deployment) => deployment.target === "production") ??
+    readyDeployments[0];
+
+  if (liveDeployment) {
+    const url = normalizeDeployUrl(liveDeployment.url);
+    if (!url) return null;
+    return {
+      url,
+      provider: liveDeployment.provider,
+      label:
+        liveDeployment.target === "production" ? "Production" : "Live preview",
+      updatedAt: liveDeployment.updatedAt,
+      updatedLabel: formatRelativeTime(liveDeployment.updatedAt),
+    };
+  }
+
+  const liveTarget = deployTargets.find((target) =>
+    normalizeDeployUrl(target.url),
+  );
+  if (!liveTarget) return null;
+
+  const url = normalizeDeployUrl(liveTarget.url);
+  if (!url) return null;
+
+  return {
+    url,
+    provider: liveTarget.provider,
+    label: liveTarget.name.trim() || "Live site",
+    updatedAt: liveTarget.updatedAt,
+    updatedLabel: formatRelativeTime(liveTarget.updatedAt),
+  };
+}
+
 async function assertProjectDiscoverable(
   ctx: Parameters<typeof resolveProjectAccess>[0],
   projectId: Id<"projects">,
@@ -121,6 +183,16 @@ export const getProjectDetails = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
+    const myFeatureUpvotes = await ctx.db
+      .query("projectFeatureUpvotes")
+      .withIndex("by_project_user", (q) =>
+        q.eq("projectId", args.projectId).eq("userId", userId),
+      )
+      .collect();
+    const upvotedFeatureIds = new Set(
+      myFeatureUpvotes.map((row) => row.featureId),
+    );
+
     const sponsors = await ctx.db
       .query("projectSponsors")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
@@ -142,6 +214,19 @@ export const getProjectDetails = query({
       ? await ctx.storage.getUrl(project.demoVideoStorageId)
       : null;
 
+    const deployments = await ctx.db
+      .query("deployments")
+      .withIndex("by_project_created", (q) => q.eq("projectId", args.projectId))
+      .order("desc")
+      .take(20);
+
+    const deployTargets = await ctx.db
+      .query("projectDeployTargets")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+
+    const preview = resolveProjectLivePreview(deployments, deployTargets);
+
     return {
       id: project._id,
       name: project.name,
@@ -151,6 +236,7 @@ export const getProjectDetails = query({
       tech: techForProject(project),
       status: project.status ?? "in-progress",
       visibility: project.visibility ?? "private",
+      communityFeatured: Boolean(project.communityFeaturedAt),
       source: project.source,
       templateId: project.templateId,
       githubRepoUrl:
@@ -190,7 +276,11 @@ export const getProjectDetails = query({
           status: todo.status,
         })),
       features: features
-        .sort((a, b) => b.createdAt - a.createdAt)
+        .sort(
+          (a, b) =>
+            (b.upvotes ?? 0) - (a.upvotes ?? 0) ||
+            b.createdAt - a.createdAt,
+        )
         .map((feature) => ({
           id: feature._id,
           title: feature.title,
@@ -200,6 +290,7 @@ export const getProjectDetails = query({
           sponsorMessage: feature.sponsorMessage,
           sponsorAmount: feature.sponsorAmount,
           upvotes: feature.upvotes ?? 0,
+          viewerHasUpvoted: upvotedFeatureIds.has(feature._id),
           createdAt: feature.createdAt,
         })),
       demo: demoVideoUrl
@@ -209,6 +300,7 @@ export const getProjectDetails = query({
             mediaType: project.demoVideoMediaType ?? "video/mp4",
           }
         : null,
+      preview,
     };
   },
 });
@@ -455,7 +547,7 @@ export const proposeFeature = mutation({
       });
     }
 
-    return await ctx.db.insert("projectFeatureIdeas", {
+    const featureId = await ctx.db.insert("projectFeatureIdeas", {
       projectId: args.projectId,
       title,
       description: args.description?.trim() || undefined,
@@ -467,6 +559,79 @@ export const proposeFeature = mutation({
       upvotes: 1,
       createdAt: Date.now(),
     });
+
+    await ctx.db.insert("projectFeatureUpvotes", {
+      projectId: args.projectId,
+      featureId,
+      userId: identity.subject,
+      createdAt: Date.now(),
+    });
+
+    return featureId;
+  },
+});
+
+export const toggleFeatureUpvote = mutation({
+  args: {
+    projectId: v.id("projects"),
+    featureId: v.id("projectFeatureIdeas"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    await assertProjectDiscoverable(ctx, args.projectId);
+
+    const feature = await ctx.db.get("projectFeatureIdeas", args.featureId);
+    if (!feature || feature.projectId !== args.projectId) {
+      throw new Error("Feature not found");
+    }
+
+    const existing = await ctx.db
+      .query("projectFeatureUpvotes")
+      .withIndex("by_feature_user", (q) =>
+        q.eq("featureId", args.featureId).eq("userId", identity.subject),
+      )
+      .unique();
+
+    const currentUpvotes = feature.upvotes ?? 0;
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      const nextUpvotes = Math.max(0, currentUpvotes - 1);
+      await ctx.db.patch(args.featureId, { upvotes: nextUpvotes });
+      return { upvoted: false, upvotes: nextUpvotes };
+    }
+
+    await ctx.db.insert("projectFeatureUpvotes", {
+      projectId: args.projectId,
+      featureId: args.featureId,
+      userId: identity.subject,
+      createdAt: Date.now(),
+    });
+    const nextUpvotes = currentUpvotes + 1;
+    await ctx.db.patch(args.featureId, { upvotes: nextUpvotes });
+    return { upvoted: true, upvotes: nextUpvotes };
+  },
+});
+
+export const setCommunityFeatured = mutation({
+  args: {
+    projectId: v.id("projects"),
+    featured: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await verifyProjectOwnerAccess(ctx, args.projectId);
+    const project = await ctx.db.get("projects", args.projectId);
+    if (!project) throw new Error("Project not found");
+    if (project.visibility !== "public") {
+      throw new Error("Only public projects can be featured on the community hub");
+    }
+
+    await ctx.db.patch(args.projectId, {
+      communityFeaturedAt: args.featured ? Date.now() : undefined,
+      updatedAt: project.updatedAt,
+    });
+
+    return { featured: args.featured };
   },
 });
 

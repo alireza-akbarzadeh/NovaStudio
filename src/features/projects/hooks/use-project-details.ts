@@ -26,6 +26,14 @@ export function useRecordProjectDownload() {
   return useMutation(api.projectCommunity.recordProjectDownload);
 }
 
+export function useToggleFeatureUpvote() {
+  return useMutation(api.projectCommunity.toggleFeatureUpvote);
+}
+
+export function useSetCommunityFeatured() {
+  return useMutation(api.projectCommunity.setCommunityFeatured);
+}
+
 export function useProposeFeature() {
   return useMutation(api.projectCommunity.proposeFeature);
 }

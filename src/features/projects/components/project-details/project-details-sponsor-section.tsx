@@ -1,22 +1,67 @@
 "use client";
 
-import { SparklesIcon } from "lucide-react";
+import { ChevronUpIcon, SparklesIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ProjectDetailsFeature } from "@/features/projects/lib/project-details-types";
-import { featureStatusStyles } from "@/features/projects/lib/project-details-utils";
+import {
+  featureStatusStyles,
+  formatProjectCount,
+} from "@/features/projects/lib/project-details-utils";
 import { cn } from "@/lib/utils";
 
 type ProjectDetailsSponsorSectionProps = {
   features: ProjectDetailsFeature[];
   onBecomeSponsor: () => void;
+  onUpvoteFeature: (featureId: string) => Promise<{
+    upvoted: boolean;
+    upvotes: number;
+  }>;
 };
 
 export function ProjectDetailsSponsorSection({
   features,
   onBecomeSponsor,
+  onUpvoteFeature,
 }: ProjectDetailsSponsorSectionProps) {
+  const [localFeatures, setLocalFeatures] = useState(features);
+  const [pendingFeatureId, setPendingFeatureId] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setLocalFeatures(features);
+  }, [features]);
+
+  async function handleUpvote(featureId: string) {
+    setPendingFeatureId(featureId);
+    try {
+      const result = await onUpvoteFeature(featureId);
+      setLocalFeatures((current) =>
+        current.map((feature) =>
+          feature.id === featureId
+            ? {
+                ...feature,
+                upvotes: result.upvotes,
+                viewerHasUpvoted: result.upvoted,
+              }
+            : feature,
+        ),
+      );
+    } catch {
+      toast.error("Could not update upvote");
+    } finally {
+      setPendingFeatureId(null);
+    }
+  }
+
+  const sortedFeatures = [...localFeatures].sort(
+    (a, b) => b.upvotes - a.upvotes || b.createdAt - a.createdAt,
+  );
+
   return (
     <section className="rounded-[24px] border border-border/60 bg-card/85 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -28,8 +73,8 @@ export function ProjectDetailsSponsorSection({
             </h2>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Propose something you&apos;d like built — optionally note if
-            you&apos;d sponsor development.
+            Propose something you&apos;d like built — upvote ideas you want
+            prioritized.
           </p>
         </div>
         <Button
@@ -41,37 +86,68 @@ export function ProjectDetailsSponsorSection({
         </Button>
       </div>
 
-      {features.length > 0 ? (
+      {sortedFeatures.length > 0 ? (
         <ul className="mt-5 space-y-3">
-          {features.map((feature) => (
+          {sortedFeatures.map((feature) => (
             <li
               key={feature.id}
-              className="rounded-2xl border border-border/60 bg-muted/20 p-4"
+              className="flex gap-3 rounded-2xl border border-border/60 bg-muted/20 p-4"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-medium">{feature.title}</p>
-                  {feature.description ? (
-                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                      {feature.description}
-                    </p>
-                  ) : null}
-                </div>
-                <Badge
+              <button
+                type="button"
+                disabled={pendingFeatureId === feature.id}
+                onClick={() => void handleUpvote(feature.id)}
+                className={cn(
+                  "flex shrink-0 flex-col items-center gap-0.5 rounded-xl border px-2.5 py-2 text-center transition",
+                  feature.viewerHasUpvoted
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/60 text-muted-foreground hover:border-primary/20 hover:bg-muted/40 hover:text-foreground",
+                )}
+                aria-label={
+                  feature.viewerHasUpvoted
+                    ? `Remove upvote from ${feature.title}`
+                    : `Upvote ${feature.title}`
+                }
+              >
+                <ChevronUpIcon
                   className={cn(
-                    "rounded-full capitalize",
-                    featureStatusStyles[feature.status],
+                    "size-4",
+                    feature.viewerHasUpvoted && "text-primary",
                   )}
-                >
-                  {feature.status}
-                </Badge>
+                />
+                <span className="text-xs font-semibold tabular-nums">
+                  {formatProjectCount(feature.upvotes)}
+                </span>
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{feature.title}</p>
+                    {feature.description ? (
+                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                        {feature.description}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Badge
+                    className={cn(
+                      "rounded-full capitalize",
+                      featureStatusStyles[feature.status],
+                    )}
+                  >
+                    {feature.status}
+                  </Badge>
+                </div>
+                {feature.sponsorName ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Proposed by {feature.sponsorName}
+                    {feature.sponsorAmount
+                      ? ` · ${feature.sponsorAmount}`
+                      : null}
+                  </p>
+                ) : null}
               </div>
-              {feature.sponsorName ? (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Proposed by {feature.sponsorName}
-                  {feature.sponsorAmount ? ` · ${feature.sponsorAmount}` : null}
-                </p>
-              ) : null}
             </li>
           ))}
         </ul>
