@@ -1,6 +1,7 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { verifyAuth } from "../auth";
+import { getOrgContext, projectMatchesTenant } from "./orgContext";
 
 export type AccessibleProject = Doc<"projects"> & {
   role: "owner" | "editor" | "viewer";
@@ -11,6 +12,7 @@ export async function listAccessibleProjects(
 ): Promise<AccessibleProject[]> {
   const identity = await verifyAuth(ctx);
   const userId = identity.subject;
+  const { orgId } = getOrgContext(identity);
 
   const owned = await ctx.db
     .query("projects")
@@ -27,15 +29,21 @@ export async function listAccessibleProjects(
   for (const membership of memberships) {
     if (membership.role === "owner") continue;
     const project = await ctx.db.get("projects", membership.projectId);
-    if (project && project.ownerId !== userId) {
+    if (
+      project &&
+      project.ownerId !== userId &&
+      projectMatchesTenant(project, orgId)
+    ) {
       shared.push({ ...project, role: membership.role });
     }
   }
 
-  const ownedWithRole: AccessibleProject[] = owned.map((project) => ({
-    ...project,
-    role: "owner" as const,
-  }));
+  const ownedWithRole: AccessibleProject[] = owned
+    .filter((project) => projectMatchesTenant(project, orgId))
+    .map((project) => ({
+      ...project,
+      role: "owner" as const,
+    }));
 
   const byId = new Map(
     [...ownedWithRole, ...shared].map((project) => [project._id, project]),
@@ -46,12 +54,17 @@ export async function listAccessibleProjects(
 export async function listOwnedProjectIds(
   ctx: QueryCtx | MutationCtx,
   userId: string,
+  orgId?: string | null,
 ): Promise<Id<"projects">[]> {
   const owned = await ctx.db
     .query("projects")
     .withIndex("by_owner", (q) => q.eq("ownerId", userId))
     .collect();
-  return owned.map((project) => project._id);
+  const scoped =
+    orgId === undefined
+      ? owned
+      : owned.filter((project) => projectMatchesTenant(project, orgId ?? null));
+  return scoped.map((project) => project._id);
 }
 
 export function coverToneForProject(project: Doc<"projects">) {

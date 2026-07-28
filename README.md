@@ -80,7 +80,7 @@ File tree, Monaco editor, AI sidebar, terminal, and preview — the full coding 
 | **Extensions** | Marketplace for editor themes + Vue language pack; installs sync to your account |
 | **Auth & billing** | Clerk sign-in, orgs / workspaces, pricing & Pro upgrade surface |
 | **Notifications** | In-app alerts + optional web push |
-| **Integrations** | GitHub live; Slack, Linear, Discord, Vercel, Notion marked coming soon |
+| **Integrations** | GitHub, Linear, Notion, Slack/Discord, Vercel/Netlify, Google Calendar |
 
 ### Already strong (good places to contribute polish)
 
@@ -194,8 +194,12 @@ SENTRY_AUTH_TOKEN=
 VAPID_PUBLIC_KEY=                 # Convex env for push
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:you@example.com
-```
 
+# Invite emails (set these in the Convex dashboard — required for invite emails)
+# RESEND_API_KEY=re_...
+# RESEND_FROM="NovaStudio <invites@yourdomain.com>"
+# APP_ORIGIN=http://localhost:3000
+```
 ### 3. Run locally
 
 Use three terminals (or run backend + Inngest as needed):

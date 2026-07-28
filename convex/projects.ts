@@ -17,6 +17,7 @@ import {
 import { recordProjectActivity } from "./lib/recordActivity";
 import { seedPublicProjectContent } from "./lib/seedPublicProjectContent";
 import { verifyAuth } from "./auth";
+import { getOrgContext } from "./lib/orgContext";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
@@ -43,6 +44,7 @@ export const createProject = mutation({
 
     const templateId = args.templateId ?? DEFAULT_TEMPLATE_ID;
     const ownerId = identity.subject;
+    const { orgId } = getOrgContext(identity);
     const pendingScaffoldCommand = args.pendingScaffoldCommand?.trim() || undefined;
 
     const projectId = await ctx.db.insert("projects", {
@@ -55,6 +57,7 @@ export const createProject = mutation({
       visibility: "private",
       status: "in-progress",
       progress: 5,
+      ...(orgId ? { orgId } : {}),
       ...(pendingScaffoldCommand
         ? { pendingScaffoldCommand }
         : {}),

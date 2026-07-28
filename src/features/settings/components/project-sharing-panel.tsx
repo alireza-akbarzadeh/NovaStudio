@@ -21,6 +21,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
+import { reportInviteResult } from "@/features/sharing/lib/report-invite-result";
 import { copyInviteLink } from "@/features/sharing/lib/invite-link";
 
 type ProjectSharingPanelProps = {
@@ -64,16 +65,7 @@ export function ProjectSharingPanel({
         email: email.trim(),
         role,
       });
-      if (result.kind === "added") {
-        toast.success("Member added");
-      } else {
-        try {
-          await copyInviteLink(result.token);
-          toast.success("Invite link copied — share it with them");
-        } catch {
-          toast.success("Invite created — copy the link from pending invites");
-        }
-      }
+      await reportInviteResult(result);
       setEmail("");
     } catch (error) {
       toast.error(parseConvexErrorMessage(error, "Failed to invite"));

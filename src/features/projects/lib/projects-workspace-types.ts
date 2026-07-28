@@ -20,13 +20,15 @@ export type WorkspaceProject = {
   lastUpdated: string;
   lastOpened: string;
   lastEditedBy: string;
-  members: { name: string; initials: string; color: string }[];
+  members: { id?: string; name: string; initials: string; color: string }[];
   stars?: number;
   forks?: number;
   views?: number;
   downloads?: number;
   tags?: string[];
-  owner: { name: string; initials: string; color: string };
+  owner: { id?: string; name: string; initials: string; color: string };
+  /** Access role for the signed-in user on this project. */
+  role?: "owner" | "editor" | "viewer";
   trending?: boolean;
   weeklyStars?: number;
   /** GitHub clone lifecycle — present while importing / after failure. */

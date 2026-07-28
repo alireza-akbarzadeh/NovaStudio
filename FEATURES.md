@@ -72,8 +72,9 @@ These are the biggest daily-friction gaps you called out.
 |---|---------|--------|-------|
 | 23 | **Slack integration** | `review` | Incoming webhook · deploy success/failure alerts |
 | 24 | **Discord integration** | `review` | Channel webhook · deploy success/failure alerts |
-| 25 | **Linear integration** | `review` | API key · link issue in Git Info · sync on push / deploy |
+| 25 | **Linear integration** | `review` | API key · Git Linear tab · create / state / cycle · sync on push / deploy |
 | 26 | **Notion integration** | `review` | Internal integration · export AI plans + markdown docs to pages |
+| 31 | **Google Calendar** | `review` | Clerk Google OAuth · Calendar hub meetings · create event + Meet link |
 
 ### Sprint G — Git & editor (current focus)
 
@@ -332,7 +333,11 @@ These are the biggest daily-friction gaps you called out.
 ### 25. Linear integration — ready for review
 
 - Integrations hub **Linear** card: personal API key · verifies viewer + org on connect
-- Git panel **Info** tab: link an issue by ID (e.g. `ENG-123`) · open in Linear · unlink
+- Git panel **Linear** tab: team picker · Mine / Team / Cycle filters · list · create · assign · change state
+- Create task: title · assignee · Todo / In Progress / Done · optional active cycle
+- Issue detail: **Todo → In Progress → Done** shortcuts · assignee picker · full workflow state select · Link to project
+- Active **cycle** (Linear sprint) filter + optional “Add to active cycle” on create
+- Git panel **Info** tab: compact linked-issue summary · unlink
 - **Push to GitHub** → comment on linked issue + move to In Review / In Progress when available
 - **Deploy success** → comment + move to Done / Completed when available in team workflow
 - API key stored server-side; never returned to clients
@@ -345,6 +350,14 @@ These are the biggest daily-friction gaps you called out.
 - **Markdown tabs** → right-click tab → Export to Notion (uses draft buffer when unsaved)
 - Creates child pages with headings, lists, paragraphs, and fenced code blocks
 - Integration secret stored server-side; never returned to clients
+
+### 31. Google Calendar — ready for review
+
+- Integrations hub **Google Calendar** card: Clerk `oauth_google` + Calendar scopes (same pattern as GitHub)
+- **Calendar hub**: meetings for the selected day · Join Meet · open in Google
+- **Schedule meeting**: title · start/end · optional Google Meet link
+- Project **deadlines** remain separate on the same page
+- Access tokens fetched from Clerk at call time; never stored in Convex
 
 ### 27. Stash preview / diff — ready for review
 

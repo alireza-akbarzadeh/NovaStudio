@@ -44,6 +44,8 @@ export default defineSchema({
     name: v.string(),
     ownerId: v.string(),
     updatedAt: v.number(),
+    /** Clerk organization id when this project belongs to a team tenant. Absent = personal. */
+    orgId: v.optional(v.string()),
     description: v.optional(v.string()),
     visibility: v.optional(
       v.union(v.literal("private"), v.literal("public")),
@@ -104,7 +106,9 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
-    .index("by_visibility_updated", ["visibility", "updatedAt"]),
+    .index("by_visibility_updated", ["visibility", "updatedAt"])
+    .index("by_org", ["orgId"])
+    .index("by_org_updated", ["orgId", "updatedAt"]),
 
   githubConnections: defineTable({
     userId: v.string(),
@@ -149,6 +153,20 @@ export default defineSchema({
     apiKey: v.string(),
     organizationName: v.optional(v.string()),
     viewerName: v.optional(v.string()),
+    connectedAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  /**
+   * Google Calendar link metadata. Access tokens come from Clerk
+   * (`oauth_google`) at call time — never stored here.
+   */
+  googleCalendarConnections: defineTable({
+    userId: v.string(),
+    googleUserId: v.string(),
+    email: v.string(),
+    displayName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
     connectedAt: v.number(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),

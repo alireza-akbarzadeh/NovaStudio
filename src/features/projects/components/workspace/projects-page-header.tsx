@@ -1,5 +1,6 @@
 "use client";
 
+import { useOrganization } from "@clerk/nextjs";
 import { PlusIcon, UploadIcon } from "lucide-react";
 import { Manrope } from "next/font/google";
 import { useRouter } from "next/navigation";
@@ -7,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
+import { AppOrganizationSwitcher } from "@/features/billing/components/app-organization-switcher";
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { NotificationControls } from "@/features/notifications/components/notification-controls";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,7 @@ export function ProjectsPageHeader({
   onImport,
 }: ProjectsPageHeaderProps) {
   const router = useRouter();
+  const { organization } = useOrganization();
 
   return (
     <header className="space-y-5">
@@ -39,11 +42,12 @@ export function ProjectsPageHeader({
               "text-3xl font-semibold tracking-tight md:text-4xl",
             )}
           >
-            Projects
+            {organization ? `${organization.name} projects` : "Your projects"}
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground md:text-[15px]">
-            Manage your projects, discover community projects and collaborate
-            with developers.
+            {organization
+              ? "Team projects in this organization. Switch to Personal Account for solo workspaces."
+              : "Personal workspaces. Create a team from the organization switcher to collaborate."}
           </p>
         </div>
 
@@ -64,6 +68,7 @@ export function ProjectsPageHeader({
             Import Project
           </Button>
           <NotificationControls />
+          <AppOrganizationSwitcher />
           <AppUserButton settingsHref="/projects/settings" />
         </div>
       </div>

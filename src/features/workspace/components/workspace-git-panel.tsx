@@ -25,6 +25,7 @@ import { WorkspaceMergeConflictsPanel } from "@/features/workspace/components/wo
 import { WorkspaceGitHistory } from "@/features/workspace/components/workspace-git-history";
 import { WorkspaceGitHubHub } from "@/features/workspace/components/workspace-git-hub";
 import { WorkspaceLinearLink } from "@/features/workspace/components/workspace-linear-link";
+import { WorkspaceLinearPanel } from "@/features/workspace/components/workspace-linear-panel";
 import { WorkspaceStashPanel } from "@/features/workspace/components/workspace-stash-panel";
 import { useChangedFiles } from "@/features/workspace/hooks/use-project-files";
 import {
@@ -42,6 +43,7 @@ const GIT_TABS: { id: GitPanelTab; label: string }[] = [
   { id: "stashes", label: "Stashes" },
   { id: "history", label: "History" },
   { id: "github", label: "GitHub" },
+  { id: "linear", label: "Linear" },
   { id: "info", label: "Info" },
 ];
 
@@ -329,6 +331,8 @@ export function WorkspaceGitPanel({ projectId }: WorkspaceGitPanelProps) {
           projectId={projectId}
           enabled={Boolean(isGitHub)}
         />
+      ) : activeTab === "linear" ? (
+        <WorkspaceLinearPanel projectId={projectId} />
       ) : (
         <GitInfoTab
           project={project}

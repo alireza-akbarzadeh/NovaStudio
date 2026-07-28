@@ -20,6 +20,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AppOrganizationSwitcher } from "@/features/billing/components/app-organization-switcher";
 import { AppUserButton } from "@/features/billing/components/app-user-button";
 import { usePricingDialog } from "@/features/billing/components/pricing-dialog";
 import { useBilling } from "@/features/billing/hooks/use-billing";
@@ -261,6 +262,15 @@ export function WorkspaceToolbar({
               Upgrade
             </Button>
           ) : null}
+          <AppOrganizationSwitcher
+            appearance={{
+              elements: {
+                organizationSwitcherTrigger:
+                  "h-7 rounded-lg border border-ws-border/80 bg-ws-panel px-2 text-[11px]",
+                organizationPreviewAvatarBox: "size-5",
+              },
+            }}
+          />
           <AppUserButton
             onOpenSettings={() => openTab({ kind: "settings" })}
             appearance={{

@@ -7,6 +7,15 @@
  * Convex, you get:
  *   "No auth provider found matching the given token"
  *
+ * Organizations (optional membership):
+ *   The Clerk JWT template named `convex` must include active-org claims so
+ *   Convex can scope projects by tenant:
+ *     org_id:   {{org.id}}
+ *     org_role: {{org.role}}
+ *     org_slug: {{org.slug}}
+ *   Without these, org switching will not refresh Convex access correctly.
+ *   Verify with: clerk api /v1/jwt_templates  (look for name "convex")
+ *
  * Usage:
  *   node scripts/clerk-convex-auth.mjs check
  *   node scripts/clerk-convex-auth.mjs sync   # copy local Clerk → Convex (default)
