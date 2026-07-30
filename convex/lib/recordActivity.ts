@@ -12,7 +12,8 @@ type ActivityType =
   | "merged"
   | "comment"
   | "released"
-  | "joined";
+  | "joined"
+  | "sponsored";
 
 type NotificationTone = "violet" | "green" | "blue" | "orange";
 
@@ -64,4 +65,14 @@ export async function recordProjectActivity(
   }
 
   return activityId;
+}
+
+/** Records activity only when the project is public (community-visible). */
+export async function maybeRecordPublicCommunityActivity(
+  ctx: MutationCtx,
+  args: RecordActivityArgs,
+) {
+  const project = await ctx.db.get("projects", args.projectId);
+  if (!project || project.visibility !== "public") return null;
+  return recordProjectActivity(ctx, args);
 }

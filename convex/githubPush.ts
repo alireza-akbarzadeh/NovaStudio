@@ -15,6 +15,11 @@ function parseOwnerRepo(githubRepoUrl: string): { owner: string; repo: string } 
   return { owner, repo: repo.replace(/\.git$/, "") };
 }
 
+type PushChangedFile = {
+  path: string;
+  content: string;
+};
+
 export const commitAndPush = action({
   args: {
     projectId: v.id("projects"),
@@ -49,7 +54,8 @@ export const commitAndPush = action({
       throw new Error("Project not found");
     }
 
-    const { project, changedFiles } = context;
+    const { project, changedFiles: rawChangedFiles } = context;
+    const changedFiles = rawChangedFiles as PushChangedFile[];
 
     if (project.ownerId !== identity.subject) {
       throw new Error("Unauthorized access to this project");

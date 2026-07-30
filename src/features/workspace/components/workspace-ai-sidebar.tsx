@@ -21,6 +21,7 @@ import {
   type ToolUIPart,
   type UIMessage,
 } from "ai";
+import { nanoid } from "nanoid";
 import { toast } from "sonner";
 
 import { useAiDoneSound } from "@/features/notifications/hooks/use-ai-done-sound";
@@ -43,7 +44,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useAiCustomizeContext } from "@/features/customize/hooks/use-user-customize-items";
 import { useProjectAccess } from "@/features/projects/hooks/use-project-access";
+import { WorkspaceAiBackgroundRuns } from "@/features/workspace/components/workspace-ai-background-runs";
 import { WorkspaceAiChatInput } from "@/features/workspace/components/workspace-ai-chat-input";
 import { WorkspaceAiHistoryPanel } from "@/features/workspace/components/workspace-ai-history-panel";
 import { WorkspaceAiPlanCard } from "@/features/workspace/components/workspace-ai-plan-card";
@@ -61,20 +64,26 @@ import {
   useProjectFiles,
 } from "@/features/workspace/hooks/use-project-files";
 import {
-  createAiChatSession,
   deriveSessionSubtitle,
   deriveSessionTitle,
-  loadAiChatSessions,
-  saveAiChatSessions,
   type AiChatSession,
 } from "@/features/workspace/lib/ai-chat-sessions";
+import { useProjectAiChatSessions } from "@/features/workspace/hooks/use-project-ai-chat-sessions";
+import { useAgentBackendPreference } from "@/features/workspace/hooks/use-agent-backend-preference";
 import { useWorkspaceStore } from "@/features/workspace/store/workspace-store";
 import {
   DEFAULT_AI_CHAT_MODE,
   isAiChatMode,
   type AiChatMode,
 } from "@/lib/ai/chat-mode";
-import { POLARIS_CHAT_MODEL } from "@/lib/ai/gemini-model";
+import {
+  isAllowedNovaStudioChatModel,
+  POLARIS_CHAT_MODEL,
+} from "@/lib/ai/gemini-model";
+import {
+  AGENT_BACKEND_LABELS,
+  type AgentBackend,
+} from "@/lib/ai/agent-backends";
 import {
   WORKSPACE_CONTEXT_LIMITS,
   type WorkspaceChatContext,
@@ -144,6 +153,9 @@ function WorkspaceAiChatSession({
   const changedFiles = useChangedFiles(projectId);
   const access = useProjectAccess(projectId);
   const canEdit = access?.canEdit ?? false;
+  const aiCustomize = useAiCustomizeContext();
+  const { backend: agentBackend, backendConfig, setBackend: setAgentBackend } =
+    useAgentBackendPreference();
 
   const projectFilePaths = useMemo(
     () =>
@@ -183,6 +195,7 @@ function WorkspaceAiChatSession({
       openFiles,
       fileTree,
       changedFiles: changedFiles?.map((file) => file.path) ?? [],
+      customize: aiCustomize,
     };
   }, [
     projectName,
@@ -191,6 +204,7 @@ function WorkspaceAiChatSession({
     editorTabs,
     projectFiles,
     changedFiles,
+    aiCustomize,
   ]);
 
   const workspaceContextRef = useRef(workspaceContext);
@@ -485,6 +499,69 @@ function WorkspaceAiChatSession({
     void sendMessage({ text: value });
   };
 
+  const handleRunInBackground = useCallback(
+    async (prompt: string) => {
+      const trimmed = prompt.trim();
+      if (!trimmed) return;
+
+      const visibleMessages = messages.filter(
+        (message) => message.id !== "welcome",
+      );
+      const userMessage: UIMessage = {
+        id: nanoid(),
+        role: "user",
+        parts: [{ type: "text", text: trimmed }],
+      };
+      const nextMessages = [...visibleMessages, userMessage];
+
+      onSessionChange({
+        ...sessionRef.current,
+        messages: nextMessages,
+        title: deriveSessionTitle(trimmed),
+        subtitle: deriveSessionSubtitle(nextMessages),
+        updatedAt: Date.now(),
+      });
+
+      try {
+        const response = await fetch("/api/ai/background-run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            projectId,
+            sessionClientId: session.id,
+            prompt: trimmed,
+            mode,
+            model: modelIdRef.current,
+            backend: agentBackend,
+            backendConfig,
+            workspace: workspaceContextRef.current,
+            messages: visibleMessages,
+          }),
+        });
+        const payload = (await response.json()) as {
+          error?: string;
+          backend?: AgentBackend;
+        };
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Could not queue background run");
+        }
+        const backendLabel =
+          AGENT_BACKEND_LABELS[payload.backend ?? agentBackend]?.label ??
+          "Agent";
+        toast.success(`${backendLabel} running in background`, {
+          description: "You’ll be notified when it finishes.",
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Could not queue background run",
+        );
+      }
+    },
+    [agentBackend, backendConfig, messages, mode, onSessionChange, projectId, session.id],
+  );
+
   const visibleMessages = messages.filter(
     (message) => message.id !== "welcome",
   );
@@ -604,6 +681,13 @@ function WorkspaceAiChatSession({
             {workspaceContext.fileTree!.length} files in context
           </Badge>
         ) : null}
+        <Badge
+          variant="outline"
+          className="h-5 rounded-md border-ws-border bg-ws-bg px-1.5 text-[10px] font-normal text-ws-text-muted"
+          title={AGENT_BACKEND_LABELS[agentBackend].description}
+        >
+          {AGENT_BACKEND_LABELS[agentBackend].label}
+        </Badge>
       </div>
 
       <Conversation className="min-h-0 flex-1">
@@ -810,7 +894,10 @@ function WorkspaceAiChatSession({
           onModelChange={setModelId}
           autoModel={autoModel}
           onAutoModelChange={setAutoModel}
+          agentBackend={agentBackend}
+          onAgentBackendChange={setAgentBackend}
           onSubmit={handleSubmit}
+          onRunInBackground={handleRunInBackground}
           onStop={() => void stop()}
         />
       </div>
@@ -824,48 +911,74 @@ export function WorkspaceAiSidebar({
   projectName,
 }: WorkspaceAiSidebarProps) {
   const [panelView, setPanelView] = useState<PanelView>("chat");
-  const [sessions, setSessions] = useState<AiChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [liveSession, setLiveSession] = useState<AiChatSession | null>(null);
+  const defaultSessionRequestedRef = useRef(false);
+
+  const {
+    sessions,
+    ready,
+    createSession,
+    ensureDefaultSession,
+    scheduleSave,
+  } = useProjectAiChatSessions(projectId);
 
   useEffect(() => {
-    const stored = loadAiChatSessions(projectId);
-    setSessions(stored);
-    if (stored[0]) {
-      setActiveSessionId(stored[0].id);
-    } else {
-      const created = createAiChatSession();
-      setSessions([created]);
-      setActiveSessionId(created.id);
-    }
+    defaultSessionRequestedRef.current = false;
+    setActiveSessionId(null);
   }, [projectId]);
 
   useEffect(() => {
-    if (sessions.length > 0) {
-      saveAiChatSessions(projectId, sessions);
-    }
-  }, [projectId, sessions]);
+    if (!ready) return;
 
-  const activeSession = useMemo(
-    () => sessions.find((session) => session.id === activeSessionId) ?? null,
-    [sessions, activeSessionId],
+    if (sessions.length === 0) {
+      if (defaultSessionRequestedRef.current) return;
+      defaultSessionRequestedRef.current = true;
+      void ensureDefaultSession().then((id) => {
+        setActiveSessionId(id);
+      });
+      return;
+    }
+
+    setActiveSessionId((current) => {
+      if (current && sessions.some((session) => session.id === current)) {
+        return current;
+      }
+      return sessions[0]?.id ?? null;
+    });
+  }, [ensureDefaultSession, ready, sessions]);
+
+  const activeSession = useMemo(() => {
+    const base =
+      sessions.find((session) => session.id === activeSessionId) ?? null;
+    if (!base) return null;
+    if (liveSession?.id === base.id) {
+      return liveSession;
+    }
+    return base;
+  }, [sessions, activeSessionId, liveSession]);
+
+  const upsertSession = useCallback(
+    (updated: AiChatSession) => {
+      setLiveSession(updated);
+      scheduleSave(updated);
+    },
+    [scheduleSave],
   );
 
-  const upsertSession = useCallback((updated: AiChatSession) => {
-    setSessions((current) => {
-      const index = current.findIndex((session) => session.id === updated.id);
-      if (index === -1) return [updated, ...current];
-      const next = [...current];
-      next[index] = updated;
-      return next;
-    });
-  }, []);
+  const handleSelectSession = (sessionId: string) => {
+    setLiveSession(null);
+    setActiveSessionId(sessionId);
+    setPanelView("chat");
+  };
 
   const handleNewAgent = useCallback(() => {
-    const created = createAiChatSession();
-    setSessions((current) => [created, ...current]);
-    setActiveSessionId(created.id);
-    setPanelView("chat");
-  }, []);
+    void createSession().then((created) => {
+      setLiveSession(created);
+      setActiveSessionId(created.id);
+      setPanelView("chat");
+    });
+  }, [createSession]);
 
   const requestNewChat = useWorkspaceStore((s) => s.requestNewChat);
   const clearRequestNewChat = useWorkspaceStore((s) => s.clearRequestNewChat);
@@ -890,13 +1003,13 @@ export function WorkspaceAiSidebar({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [handleNewAgent]);
 
-  const handleSelectSession = (sessionId: string) => {
-    setActiveSessionId(sessionId);
-    setPanelView("chat");
-  };
-
   return (
     <aside className="ws-chrome flex h-full flex-col bg-transparent">
+      <WorkspaceAiBackgroundRuns
+        projectId={projectId}
+        projectName={projectName}
+        onOpenSession={handleSelectSession}
+      />
       {panelView === "history" ? (
         <>
           <div className="flex h-10 shrink-0 items-center gap-2 border-b border-ws-border-subtle px-3">
@@ -941,7 +1054,11 @@ export function WorkspaceAiSidebar({
             onBack={() => setPanelView("history")}
           />
         </div>
-      ) : null}
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center text-[12px] text-ws-text-muted">
+          {ready ? "Select an agent" : "Loading agents…"}
+        </div>
+      )}
     </aside>
   );
 }

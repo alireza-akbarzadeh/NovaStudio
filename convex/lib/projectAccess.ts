@@ -90,6 +90,15 @@ export async function resolveProjectAccess(
 
   const membership = await getMembership(ctx, projectId, userId);
   if (!membership) {
+    if (project.visibility === "public") {
+      return {
+        project,
+        role: "viewer",
+        userId,
+        canEdit: false,
+        canManage: false,
+      };
+    }
     return null;
   }
 

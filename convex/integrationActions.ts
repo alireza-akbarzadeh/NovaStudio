@@ -74,7 +74,7 @@ export const notifyDeployToIntegrations = internalAction({
     if (targets.length === 0 || !project) return;
 
     await Promise.allSettled(
-      targets.map((target) =>
+      (targets as Array<{ provider: string; webhookUrl: string }>).map((target) =>
         sendDeployWebhookNotification({
           provider: target.provider as WebhookProvider,
           webhookUrl: target.webhookUrl,

@@ -26,6 +26,7 @@ import { WorkspaceCommandPalette } from "@/features/workspace/components/workspa
 import { WorkspaceEditorPanel } from "@/features/workspace/components/workspace-editor-panel";
 import { WorkspaceGoToFileDialog } from "@/features/workspace/components/workspace-go-to-file-dialog";
 import { WorkspaceGoToSymbolDialog } from "@/features/workspace/components/workspace-go-to-symbol-dialog";
+import { WorkspaceSemanticSearchDialog } from "@/features/workspace/components/workspace-semantic-search-dialog";
 import { RenameSymbolDialog } from "@/features/workspace/components/rename-symbol-dialog";
 import { WorkspaceImportBanner } from "@/features/workspace/components/workspace-import-banner";
 import { WorkspaceChatPanel } from "@/features/workspace/components/workspace-chat-panel";
@@ -41,7 +42,7 @@ import { ProjectFilesProvider } from "@/features/workspace/components/project-fi
 import { WebContainerProvider } from "@/features/workspace/components/webcontainer-provider";
 import { PreviewServerProvider } from "@/features/workspace/components/preview-server-provider";
 import { useCollapsiblePanelSync } from "@/features/workspace/hooks/use-collapsible-panel-sync";
-import { useEditorTabsSync, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
+import { useEditorTabsSync, useCustomizeTabShortcut, useNewProjectTabShortcut, useUserJsonTabShortcut } from "@/features/workspace/hooks/use-editor-tabs";
 import { useWebContainerAutoInstall } from "@/features/workspace/hooks/use-webcontainer-auto-install";
 import { usePendingScaffold } from "@/features/workspace/hooks/use-pending-scaffold";
 import { clearMemoryDraftsForOtherProjects } from "@/features/workspace/lib/file-content-drafts";
@@ -81,6 +82,7 @@ function WorkspaceLayoutInner({
   useEditorTabsSync(projectId);
   useNewProjectTabShortcut(projectId);
   useUserJsonTabShortcut(projectId);
+  useCustomizeTabShortcut(projectId);
   usePendingScaffold(projectId);
   useWebContainerAutoInstall(projectId);
 
@@ -172,7 +174,7 @@ function WorkspaceLayoutInner({
           zenMode ? "px-0 pb-0" : "px-1 pb-1.5",
         )}
       >
-        {!zenMode ? <WorkspaceLeftActivityBar /> : null}
+        {!zenMode ? <WorkspaceLeftActivityBar projectId={projectId} /> : null}
 
         <ResizablePanelGroup
           orientation="horizontal"
@@ -228,14 +230,15 @@ function WorkspaceLayoutInner({
                 </div>
               </ResizablePanel>
 
-              <ResizableHandle
-                className={cn(
-                  // Match sidebar↔editor gutter (w-1.5). Base handle uses
-                  // aria-[orientation=horizontal]:h-px which would collapse this.
-                  "h-1.5 w-full bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=horizontal]:h-1.5",
-                  !terminalOpen && "pointer-events-none opacity-0",
-                )}
-              />
+              {terminalOpen ? (
+                <ResizableHandle
+                  className={cn(
+                    // Match sidebar↔editor gutter (w-1.5). Base handle uses
+                    // aria-[orientation=horizontal]:h-px which would collapse this.
+                    "h-1.5 w-full bg-transparent after:hidden hover:bg-ws-accent/40 aria-[orientation=horizontal]:h-1.5",
+                  )}
+                />
+              ) : null}
 
               <ResizablePanel
                 id="terminal"
@@ -301,6 +304,7 @@ function WorkspaceLayoutInner({
       <WorkspaceCommandPalette projectId={projectId} />
       <WorkspaceGoToFileDialog projectId={projectId} />
       <WorkspaceGoToSymbolDialog projectId={projectId} />
+      <WorkspaceSemanticSearchDialog projectId={projectId} />
       <RenameSymbolDialog projectId={projectId} />
       <InitializeGitRepositoryDialog projectId={projectId} />
       <CloneFromGitHubDialog

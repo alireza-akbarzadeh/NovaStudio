@@ -110,6 +110,7 @@ export type EditorTabKind =
   | "settings"
   | "shortcuts"
   | "user-json"
+  | "customize"
   | "new-project"
   | "pull-request"
   | "merge-conflict";
@@ -125,6 +126,8 @@ export type EditorTab = {
   pullNumber?: number;
   /** Merge conflict row id (for `merge-conflict` tabs). */
   conflictId?: string;
+  /** Customize plugin id (for `customize` detail tabs). */
+  pluginId?: string;
   /** Transient tab — italic; replaced by the next preview open. */
   preview?: boolean;
   /** Sticky tab — stays left; survives preview replacement. */
@@ -152,7 +155,16 @@ type WorkspaceState = WorkspacePrefs & {
   } | null;
   goToFileOpen: boolean;
   goToSymbolOpen: boolean;
+  semanticSearchOpen: boolean;
   commandPaletteOpen: boolean;
+  commandPaletteInitialTab:
+    | "all"
+    | "types"
+    | "files"
+    | "symbols"
+    | "actions"
+    | "text"
+    | null;
   gitInitDialogOpen: boolean;
   cloneFromGitHubOpen: boolean;
   branchPickerOpen: boolean;
@@ -168,10 +180,12 @@ type WorkspaceState = WorkspacePrefs & {
   editorSplitTabId: string | null;
   newProjectRequest: number;
   userJsonRequest: number;
+  customizeRequest: number;
   hydrated: boolean;
   breadcrumb: BreadcrumbSegment[];
   treeClipboard: TreeClipboard | null;
   pendingChatAttachPaths: string[] | null;
+  pendingAiComposerText: string | null;
   requestNewChat: boolean;
   terminalCwdRequest: string | null;
   terminalCommandRequest: string | null;
@@ -236,7 +250,11 @@ type WorkspaceState = WorkspacePrefs & {
   closeGoToFile: () => void;
   openGoToSymbol: () => void;
   closeGoToSymbol: () => void;
-  openCommandPalette: () => void;
+  openSemanticSearch: () => void;
+  closeSemanticSearch: () => void;
+  openCommandPalette: (options?: {
+    tab?: "all" | "types" | "files" | "symbols" | "actions" | "text";
+  }) => void;
   closeCommandPalette: () => void;
   openGitInitDialog: () => void;
   closeGitInitDialog: () => void;
@@ -276,11 +294,14 @@ type WorkspaceState = WorkspacePrefs & {
   resetEditorTabs: (projectId: string) => void;
   requestOpenNewProject: () => void;
   requestOpenUserJson: () => void;
+  requestOpenCustomize: () => void;
   setPanelSizes: (sizes: Partial<PanelSizes>) => void;
   setBreadcrumb: (segments: BreadcrumbSegment[]) => void;
   setTreeClipboard: (clipboard: TreeClipboard | null) => void;
   clearTreeClipboard: () => void;
   setPendingChatAttachPaths: (paths: string[] | null) => void;
+  insertAiComposerText: (text: string) => void;
+  clearPendingAiComposerText: () => void;
   requestNewAiChat: () => void;
   clearRequestNewChat: () => void;
   requestTerminalCwd: (cwd: string) => void;
@@ -429,7 +450,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   gutterContextMenu: null,
   goToFileOpen: false,
   goToSymbolOpen: false,
+  semanticSearchOpen: false,
   commandPaletteOpen: false,
+  commandPaletteInitialTab: null,
   gitInitDialogOpen: false,
   cloneFromGitHubOpen: false,
   branchPickerOpen: false,
@@ -444,6 +467,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   editorSplitTabId: null,
   newProjectRequest: 0,
   userJsonRequest: 0,
+  customizeRequest: 0,
   hydrated: false,
   breadcrumb: [
     { label: "src" },
@@ -452,6 +476,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   ],
   treeClipboard: null,
   pendingChatAttachPaths: null,
+  pendingAiComposerText: null,
   requestNewChat: false,
   terminalCwdRequest: null,
   terminalCommandRequest: null,
@@ -639,19 +664,25 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   closeSettings: () => set({ settingsOpen: false }),
   toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen })),
   openGoToFile: () =>
-    set({ goToFileOpen: true, goToSymbolOpen: false }),
+    set({ goToFileOpen: true, goToSymbolOpen: false, semanticSearchOpen: false }),
   closeGoToFile: () => set({ goToFileOpen: false }),
   openGoToSymbol: () =>
-    set({ goToSymbolOpen: true, goToFileOpen: false }),
+    set({ goToSymbolOpen: true, goToFileOpen: false, semanticSearchOpen: false }),
   closeGoToSymbol: () => set({ goToSymbolOpen: false }),
-  openCommandPalette: () =>
+  openSemanticSearch: () =>
+    set({ semanticSearchOpen: true, goToFileOpen: false, goToSymbolOpen: false }),
+  closeSemanticSearch: () => set({ semanticSearchOpen: false }),
+  openCommandPalette: (options) =>
     set({
       commandPaletteOpen: true,
+      commandPaletteInitialTab: options?.tab ?? null,
       goToFileOpen: false,
       goToSymbolOpen: false,
+      semanticSearchOpen: false,
       settingsOpen: false,
     }),
-  closeCommandPalette: () => set({ commandPaletteOpen: false }),
+  closeCommandPalette: () =>
+    set({ commandPaletteOpen: false, commandPaletteInitialTab: null }),
   openGitInitDialog: () => set({ gitInitDialogOpen: true }),
   closeGitInitDialog: () => set({ gitInitDialogOpen: false }),
   openCloneFromGitHub: () => set({ cloneFromGitHubOpen: true }),
@@ -814,6 +845,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     set((s) => ({ newProjectRequest: s.newProjectRequest + 1 })),
   requestOpenUserJson: () =>
     set((s) => ({ userJsonRequest: s.userJsonRequest + 1 })),
+  requestOpenCustomize: () =>
+    set((s) => ({ customizeRequest: s.customizeRequest + 1 })),
   setPanelSizes: (sizes) =>
     set((s) => ({
       panelSizes: { ...s.panelSizes, ...sizes },
@@ -823,6 +856,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   clearTreeClipboard: () => set({ treeClipboard: null }),
   setPendingChatAttachPaths: (paths) =>
     set({ pendingChatAttachPaths: paths }),
+  insertAiComposerText: (text) =>
+    set({
+      pendingAiComposerText: text,
+      aiPanelOpen: true,
+    }),
+  clearPendingAiComposerText: () => set({ pendingAiComposerText: null }),
   requestNewAiChat: () => set({ requestNewChat: true }),
   clearRequestNewChat: () => set({ requestNewChat: false }),
   requestTerminalCwd: (cwd) =>

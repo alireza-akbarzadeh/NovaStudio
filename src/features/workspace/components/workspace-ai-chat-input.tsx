@@ -5,6 +5,7 @@ import {
   BracesIcon,
   Code2Icon,
   FileTextIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent, MutableRefObject } from "react";
@@ -48,8 +49,10 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { SpeechInput } from "@/components/ai-elements/speech-input";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { WorkspaceAiBackendPicker } from "@/features/workspace/components/workspace-ai-backend-picker";
 import { WorkspaceAiModeToggle } from "@/features/workspace/components/workspace-ai-mode-toggle";
 import { WorkspaceAiModelPicker } from "@/features/workspace/components/workspace-ai-model-picker";
+import type { AgentBackend } from "@/lib/ai/agent-backends";
 import { useConvex } from "convex/react";
 
 import { api } from "@/convex/_generated/api";
@@ -70,7 +73,10 @@ type WorkspaceAiChatInputProps = {
   onModelChange: (modelId: string) => void;
   autoModel?: boolean;
   onAutoModelChange?: (auto: boolean) => void;
+  agentBackend?: AgentBackend;
+  onAgentBackendChange?: (backend: AgentBackend) => void;
   onSubmit: (message: PromptInputMessage) => void | Promise<void>;
+  onRunInBackground?: (prompt: string) => void | Promise<void>;
   onStop?: () => void;
 };
 
@@ -249,7 +255,10 @@ function PromptInputFields({
   onModelChange,
   autoModel,
   onAutoModelChange,
+  agentBackend,
+  onAgentBackendChange,
   onStop,
+  onRunInBackground,
   mentionOpen,
   setMentionOpen,
   fileContentsRef,
@@ -470,6 +479,23 @@ function PromptInputFields({
                 <Code2Icon className="mr-2 size-4" />
                 Insert code block
               </PromptInputActionMenuItem>
+              {onRunInBackground ? (
+                <PromptInputActionMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    const prompt = controller.textInput.value.trim();
+                    if (!prompt) return;
+                    void onRunInBackground(prompt);
+                    controller.textInput.setInput("");
+                  }}
+                  disabled={
+                    !controller.textInput.value.trim() || disabled || isBusy
+                  }
+                >
+                  <SparklesIcon className="mr-2 size-4" />
+                  Run in background
+                </PromptInputActionMenuItem>
+              ) : null}
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
 
@@ -516,6 +542,14 @@ function PromptInputFields({
             auto={autoModel}
             onAutoChange={onAutoModelChange}
           />
+
+          {agentBackend && onAgentBackendChange ? (
+            <WorkspaceAiBackendPicker
+              value={agentBackend}
+              onChange={onAgentBackendChange}
+              disabled={disabled || isBusy}
+            />
+          ) : null}
         </PromptInputTools>
 
         <PromptInputSubmit
@@ -597,6 +631,26 @@ function PendingChatAttachBridge({
   return null;
 }
 
+function PendingComposerTextBridge() {
+  const controller = usePromptInputController();
+  const pendingAiComposerText = useWorkspaceStore((s) => s.pendingAiComposerText);
+  const clearPendingAiComposerText = useWorkspaceStore(
+    (s) => s.clearPendingAiComposerText,
+  );
+
+  useEffect(() => {
+    if (!pendingAiComposerText) return;
+    controller.textInput.setInput(pendingAiComposerText);
+    clearPendingAiComposerText();
+  }, [
+    clearPendingAiComposerText,
+    controller.textInput,
+    pendingAiComposerText,
+  ]);
+
+  return null;
+}
+
 function PromptInputShell({
   onSubmit,
   ...props
@@ -630,6 +684,7 @@ function PromptInputShell({
         projectId={props.projectId}
         fileContentsRef={fileContentsRef}
       />
+      <PendingComposerTextBridge />
       <PromptInputFields
         {...props}
         mentionOpen={mentionOpen}

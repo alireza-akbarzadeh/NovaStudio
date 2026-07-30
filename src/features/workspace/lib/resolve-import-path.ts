@@ -86,12 +86,37 @@ export function buildFileContentMap(
   return map;
 }
 
-const DEFINITION_FILE_CAP = 250;
+/** Max Monaco definition helper models kept in memory per editor session. */
+const DEFINITION_FILE_CAP = 48;
+
+/** Max same-directory siblings included for local symbol navigation. */
+const SAME_DIR_CAP = 12;
+
+/** Max files pulled in from each resolved import target directory. */
+const IMPORT_DIR_CAP = 6;
 
 const ROOT_CONFIG_FILES = ["package.json", "tsconfig.json", "jsconfig.json"];
 
 const IMPORT_SPECIFIER_RE =
   /(?:import|export)\s+(?:[\s\S]*?\sfrom\s+)?['"]([^'"]+)['"]/g;
+
+function addSameDirectoryFiles(
+  selected: Set<string>,
+  paths: string[],
+  dir: string,
+  byPath: Map<string, ProjectFileEntry>,
+  cap: number,
+) {
+  let count = 0;
+  for (const path of paths) {
+    if (selected.size >= DEFINITION_FILE_CAP) return;
+    if (dirnamePath(path) !== dir) continue;
+    if (!byPath.has(path)) continue;
+    selected.add(path);
+    count++;
+    if (count >= cap) return;
+  }
+}
 
 /** Bounded subset of project files for Monaco go-to-definition (memory). */
 export function selectDefinitionFiles(
@@ -115,11 +140,7 @@ export function selectDefinitionFiles(
 
   const currentDir = dirnamePath(currentPath);
   if (currentDir) {
-    for (const path of paths) {
-      if (dirnamePath(path) === currentDir) {
-        tryAdd(path);
-      }
-    }
+    addSameDirectoryFiles(selected, paths, currentDir, byPath, SAME_DIR_CAP);
   }
 
   const current = byPath.get(currentPath);
@@ -130,25 +151,15 @@ export function selectDefinitionFiles(
       tryAdd(resolved);
       const resolvedDir = dirnamePath(resolved);
       if (resolvedDir) {
-        for (const path of paths) {
-          if (dirnamePath(path) === resolvedDir) {
-            tryAdd(path);
-          }
-        }
+        addSameDirectoryFiles(
+          selected,
+          paths,
+          resolvedDir,
+          byPath,
+          IMPORT_DIR_CAP,
+        );
       }
     }
-  }
-
-  let dir = currentDir;
-  while (dir && selected.size < DEFINITION_FILE_CAP) {
-    for (const path of paths) {
-      if (path === dir || path.startsWith(`${dir}/`)) {
-        tryAdd(path);
-      }
-    }
-    const parent = dirnamePath(dir);
-    if (!parent || parent === dir) break;
-    dir = parent;
   }
 
   for (const config of ROOT_CONFIG_FILES) {

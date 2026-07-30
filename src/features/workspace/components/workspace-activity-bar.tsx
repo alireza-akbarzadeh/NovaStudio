@@ -30,6 +30,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { CustomizeIcon } from "@/features/customize/components/customize-icon";
 import { useWorkspaceNotifications } from "@/features/projects/hooks/use-workspace";
 import { useProjectDeployments } from "@/features/deploy/hooks/use-deploy-connection";
 import { runCommand } from "@/features/workspace/commands/registry";
@@ -97,7 +98,7 @@ const LEFT_ITEMS: ActivityItem[] = [
     view: "search",
     label: "Find in Files",
     icon: <SearchIcon className="size-4" strokeWidth={1.75} />,
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
   },
   {
     view: "git",
@@ -136,6 +137,15 @@ const LEFT_ITEMS: ActivityItem[] = [
     shortcut: "mod+shift+a",
   },
 ];
+
+/** Left-rail items that open editor tabs instead of sidebar panels. */
+const LEFT_EDITOR_ACTIONS = [
+  {
+    id: "customize",
+    label: "Customize",
+    icon: <CustomizeIcon />,
+  },
+] as const;
 
 function RailButton({
   label,
@@ -215,11 +225,18 @@ function ActivityRailShell({
 }
 
 /** JetBrains-style left activity rail — explorer / search / git / … */
-export function WorkspaceLeftActivityBar() {
+export function WorkspaceLeftActivityBar({ projectId }: { projectId: string }) {
   const isApple = useIsApplePlatform();
   const leftPanelView = useWorkspaceStore((s) => s.leftPanelView);
   const sidebarOpen = useWorkspaceStore((s) => s.sidebarOpen);
   const setLeftPanelView = useWorkspaceStore((s) => s.setLeftPanelView);
+  const editorTabs = useWorkspaceStore((s) => s.editorTabs);
+  const activeEditorTabId = useWorkspaceStore((s) => s.activeEditorTabId);
+  const editorTabsProjectId = useWorkspaceStore((s) => s.editorTabsProjectId);
+
+  const activeEditorTab = editorTabs.find((tab) => tab.id === activeEditorTabId);
+  const customizeActive =
+    editorTabsProjectId === projectId && activeEditorTab?.kind === "customize";
 
   const onSelect = (view: LeftPanelView) => {
     if (leftPanelView === view && sidebarOpen) {
@@ -238,6 +255,17 @@ export function WorkspaceLeftActivityBar() {
           shortcut={formatModShortcut(item.shortcut, isApple)}
           active={sidebarOpen && leftPanelView === item.view}
           onClick={() => onSelect(item.view)}
+          side="left"
+        >
+          {item.icon}
+        </RailButton>
+      ))}
+      {LEFT_EDITOR_ACTIONS.map((item) => (
+        <RailButton
+          key={item.id}
+          label={item.label}
+          active={customizeActive}
+          onClick={() => runCommand("showCustomize")}
           side="left"
         >
           {item.icon}
@@ -355,7 +383,7 @@ export function WorkspaceRightActivityBar({
               ? `Live Comments · ${commentsUnreadCount} new`
               : "Live Comments"
           }
-          shortcut={formatModShortcut("mod+shift+u", isApple)}
+          shortcut={formatModShortcut("mod+alt+u", isApple)}
           active={commentsPanelOpen}
           onClick={() => runCommand("toggleCommentsPanel")}
           side="right"
@@ -458,5 +486,5 @@ export function WorkspaceSidebarUtilities() {
 
 /** @deprecated Prefer WorkspaceLeftActivityBar. */
 export function WorkspaceActivityBar() {
-  return <WorkspaceLeftActivityBar />;
+  return <WorkspaceLeftActivityBar projectId="" />;
 }

@@ -2,7 +2,9 @@
 
 import {
   ArchiveIcon,
+  ArchiveRestoreIcon,
   CopyIcon,
+  GlobeIcon,
   Loader2Icon,
   MoreHorizontalIcon,
   PinIcon,
@@ -10,14 +12,30 @@ import {
   Share2Icon,
 } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useRetryGitHubClone } from "@/features/github/hooks/use-github-connection";
 import { MemberAvatars } from "@/features/projects/components/workspace/member-avatars";
+import { ProjectShareDialog } from "@/features/projects/components/workspace/project-share-dialog";
 import { useOpenWorkspaceProject } from "@/features/projects/hooks/use-open-workspace-project";
-import { useTogglePin } from "@/features/projects/hooks/use-workspace";
+import {
+  useTogglePin,
+  useUpdateProjectMeta,
+} from "@/features/projects/hooks/use-workspace";
 import { parseConvexErrorMessage } from "@/features/github/lib/github-errors";
 import {
   formatImportDuration,
@@ -27,6 +45,7 @@ import {
   IMPORT_TIMEOUT_MS,
 } from "@/features/projects/lib/import-status";
 import type { WorkspaceProject } from "@/features/projects/lib/projects-workspace-types";
+import { communityProjectPath } from "@/features/projects/lib/project-details-share-utils";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 
@@ -89,11 +108,29 @@ export function ContinueProjectCard({
   project,
   index,
 }: ContinueProjectCardProps) {
+  const router = useRouter();
   const { openProject, isPending } = useOpenWorkspaceProject();
   const { retry, isRetrying } = useRetryGitHubClone();
   const togglePin = useTogglePin();
+  const updateMeta = useUpdateProjectMeta();
   const { isImporting, progress, label } = useImportProgress(project);
   const isFailed = project.importStatus === "failed";
+  const isArchived = project.status === "archived";
+  const isOwner = project.isOwner ?? true;
+  const [shareOpen, setShareOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archivePending, setArchivePending] = useState(false);
+  const isPublic = project.visibility === "public";
+  const detailsHref = communityProjectPath(project.id);
+
+  function openDetails(event: MouseEvent<HTMLElement>) {
+    if (!isPublic) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("a, button, input, textarea, select, [role='button']")) {
+      return;
+    }
+    router.push(detailsHref);
+  }
 
   const handleRetry = async () => {
     try {
@@ -115,13 +152,46 @@ export function ContinueProjectCard({
     }
   };
 
+  const handleArchive = async () => {
+    setArchivePending(true);
+    try {
+      await updateMeta({
+        projectId: project.id as Id<"projects">,
+        status: isArchived ? "in-progress" : "archived",
+      });
+      toast.success(
+        isArchived ? "Project restored from archive" : "Project archived",
+      );
+      setArchiveOpen(false);
+    } catch (error) {
+      toast.error(parseConvexErrorMessage(error, "Could not update project"));
+    } finally {
+      setArchivePending(false);
+    }
+  };
+
   return (
+    <>
     <motion.article
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 + index * 0.04, duration: 0.32 }}
+      role={isPublic ? "link" : undefined}
+      tabIndex={isPublic ? 0 : undefined}
+      onClick={openDetails}
+      onKeyDown={
+        isPublic
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                router.push(detailsHref);
+              }
+            }
+          : undefined
+      }
       className={cn(
         "group relative overflow-hidden rounded-[22px] border bg-card/85 p-4 shadow-[0_14px_40px_-30px_rgba(76,29,149,0.45)] backdrop-blur-xl transition-all duration-300",
+        isPublic && "cursor-pointer",
         isImporting
           ? "border-violet-500/40"
           : isFailed
@@ -157,14 +227,22 @@ export function ContinueProjectCard({
                     Import failed
                   </span>
                 ) : (
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                      statusStyles[project.status],
-                    )}
-                  >
-                    {statusLabel[project.status]}
-                  </span>
+                  <>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        statusStyles[project.status],
+                      )}
+                    >
+                      {statusLabel[project.status]}
+                    </span>
+                    {project.visibility === "public" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/12 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:text-sky-300">
+                        <GlobeIcon className="size-3" />
+                        Public
+                      </span>
+                    ) : null}
+                  </>
                 )}
               </div>
               <h3 className="truncate text-[15px] font-semibold tracking-tight">
@@ -228,29 +306,67 @@ export function ContinueProjectCard({
                   />
                 </button>
                 {[
-                  { icon: CopyIcon, label: "Duplicate" },
-                  { icon: ArchiveIcon, label: "Archive" },
-                  { icon: Share2Icon, label: "Share" },
-                ].map(({ icon: Icon, label: actionLabel }) => (
+                  { icon: CopyIcon, label: "Duplicate", disabled: true },
+                  {
+                    icon: isArchived ? ArchiveRestoreIcon : ArchiveIcon,
+                    label: isArchived ? "Restore" : "Archive",
+                    onClick: isOwner ? () => setArchiveOpen(true) : undefined,
+                    disabled: !isOwner,
+                  },
+                  {
+                    icon: Share2Icon,
+                    label: "Share",
+                    onClick: isOwner ? () => setShareOpen(true) : undefined,
+                    disabled: !isOwner,
+                  },
+                ].map(({ icon: Icon, label: actionLabel, onClick, disabled }) => (
                   <button
                     key={actionLabel}
                     type="button"
                     title={actionLabel}
-                    className="inline-flex size-8 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-primary/8 hover:text-primary"
+                    disabled={disabled}
+                    onClick={onClick}
+                    className={cn(
+                      "inline-flex size-8 items-center justify-center rounded-xl text-muted-foreground transition hover:bg-primary/8 hover:text-primary",
+                      disabled && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground",
+                    )}
                   >
                     <Icon className="size-3.5" />
                   </button>
                 ))}
               </div>
 
-              <Button
-                size="sm"
-                className="rounded-xl"
-                disabled={isPending}
-                onClick={() => openProject(project.id)}
-              >
-                {isPending ? "Opening…" : "Open Project"}
-              </Button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {isPublic ? (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-xl"
+                      asChild
+                    >
+                      <Link href={detailsHref}>View details</Link>
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-xl"
+                      disabled={isPending}
+                      onClick={() => openProject(project.id)}
+                    >
+                      {isPending ? "Opening…" : "Open in Studio"}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="rounded-xl"
+                    disabled={isPending}
+                    onClick={() => openProject(project.id)}
+                  >
+                    {isPending ? "Opening…" : "Open Project"}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -289,5 +405,44 @@ export function ContinueProjectCard({
             </div>
           ) : null}
     </motion.article>
+
+      <ProjectShareDialog
+        project={project}
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+      />
+
+      <AlertDialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <AlertDialogContent className="rounded-[22px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {isArchived ? "Restore project?" : "Archive project?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isArchived
+                ? `"${project.name}" will move back to your active projects list.`
+                : `"${project.name}" will be hidden from your main list. You can still find it with the Archived filter.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-xl"
+              disabled={archivePending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleArchive();
+              }}
+            >
+              {archivePending
+                ? "Saving…"
+                : isArchived
+                  ? "Restore"
+                  : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

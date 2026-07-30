@@ -23,6 +23,13 @@ const activityType = v.union(
   v.literal("comment"),
   v.literal("released"),
   v.literal("joined"),
+  v.literal("sponsored"),
+);
+
+const sponsorTier = v.union(
+  v.literal("supporter"),
+  v.literal("backer"),
+  v.literal("feature"),
 );
 
 const deadlineTone = v.union(
@@ -99,10 +106,23 @@ export default defineSchema({
         v.literal("tanstack"),
       ),
     ),
+    starCount: v.optional(v.number()),
+    followCount: v.optional(v.number()),
+    viewCount: v.optional(v.number()),
+    forkCount: v.optional(v.number()),
+    downloadCount: v.optional(v.number()),
+    demoVideoStorageId: v.optional(v.id("_storage")),
+    demoVideoFilename: v.optional(v.string()),
+    demoVideoMediaType: v.optional(v.string()),
+    /** When set, project is pinned in the community hub featured row. */
+    communityFeaturedAt: v.optional(v.number()),
+    /** Source public project when created via community fork / use template. */
+    forkedFromProjectId: v.optional(v.id("projects")),
   })
     .index("by_owner", ["ownerId"])
     .index("by_owner_updated", ["ownerId", "updatedAt"])
     .index("by_visibility_updated", ["visibility", "updatedAt"])
+    .index("by_community_featured", ["communityFeaturedAt"])
     .index("by_org", ["orgId"])
     .index("by_org_updated", ["orgId", "updatedAt"]),
 
@@ -289,6 +309,20 @@ export default defineSchema({
       }),
     ),
     settingsJson: v.optional(v.string()),
+    agentBackend: v.optional(
+      v.union(
+        v.literal("novastudio"),
+        v.literal("cursor-cli"),
+        v.literal("openclaw"),
+        v.literal("cursor-cloud"),
+      ),
+    ),
+    agentBackendConfig: v.optional(
+      v.object({
+        openclawGatewayUrl: v.optional(v.string()),
+        openclawAgentId: v.optional(v.string()),
+      }),
+    ),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
 
@@ -533,6 +567,102 @@ export default defineSchema({
     .index("by_project_status", ["projectId", "status"])
     .index("by_requester", ["requesterUserId"]),
 
+  projectStars: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectFollows: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectCommunityDiscussions: defineTable({
+    projectId: v.id("projects"),
+    parentId: v.optional(v.id("projectCommunityDiscussions")),
+    authorUserId: v.string(),
+    authorName: v.optional(v.string()),
+    authorImageUrl: v.optional(v.string()),
+    authorColor: v.optional(v.string()),
+    body: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_parent", ["parentId"]),
+
+  projectViews: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"])
+    .index("by_user", ["userId"]),
+
+  projectPublicTodos: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    status: v.union(
+      v.literal("todo"),
+      v.literal("in-progress"),
+      v.literal("done"),
+    ),
+    bountyAmount: v.optional(v.string()),
+    goodFirstIssue: v.optional(v.boolean()),
+    sortOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_project", ["projectId"]),
+
+  projectFeatureIdeas: defineTable({
+    projectId: v.id("projects"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    status: v.union(
+      v.literal("open"),
+      v.literal("planned"),
+      v.literal("funded"),
+      v.literal("shipped"),
+    ),
+    sponsorUserId: v.optional(v.string()),
+    sponsorName: v.optional(v.string()),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+    upvotes: v.optional(v.number()),
+    createdAt: v.number(),
+  }).index("by_project", ["projectId"]),
+
+  projectFeatureUpvotes: defineTable({
+    projectId: v.id("projects"),
+    featureId: v.id("projectFeatureIdeas"),
+    userId: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_feature", ["featureId"])
+    .index("by_feature_user", ["featureId", "userId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
+  projectSponsors: defineTable({
+    projectId: v.id("projects"),
+    userId: v.string(),
+    sponsorName: v.optional(v.string()),
+    sponsorMessage: v.optional(v.string()),
+    sponsorAmount: v.optional(v.string()),
+    sponsorTier: v.optional(sponsorTier),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_project_user", ["projectId", "userId"]),
+
   notifications: defineTable({
     userId: v.string(),
     title: v.string(),
@@ -590,6 +720,114 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_extension", ["userId", "extensionId"]),
+
+  userPlugins: defineTable({
+    userId: v.string(),
+    pluginId: v.string(),
+    installedAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_plugin", ["userId", "pluginId"]),
+
+  /** User-configured remote MCP servers (SSE / HTTP). Auth header never returned to clients. */
+  userMcpServers: defineTable({
+    userId: v.string(),
+    name: v.string(),
+    transport: v.union(v.literal("sse"), v.literal("http")),
+    url: v.string(),
+    authHeader: v.optional(v.string()),
+    enabled: v.boolean(),
+    lastVerifiedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_name", ["userId", "name"]),
+
+  /** User-defined subagents, hooks, commands, and rules for NovaStudio AI. */
+  userCustomizeItems: defineTable({
+    userId: v.string(),
+    kind: v.union(
+      v.literal("subagent"),
+      v.literal("hook"),
+      v.literal("command"),
+      v.literal("rule"),
+    ),
+    name: v.string(),
+    description: v.string(),
+    content: v.string(),
+    hookPhase: v.optional(v.union(v.literal("pre"), v.literal("post"))),
+    enabled: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_name", ["userId", "kind", "name"]),
+
+  /** Shared NovaStudio AI chat threads per project (team-visible). */
+  projectAiChatSessions: defineTable({
+    projectId: v.id("projects"),
+    /** Stable client id used by useChat and the sidebar. */
+    clientId: v.string(),
+    title: v.string(),
+    subtitle: v.optional(v.string()),
+    mode: v.union(v.literal("plan"), v.literal("task")),
+    messages: v.any(),
+    createdByUserId: v.string(),
+    createdByName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_project_updated", ["projectId", "updatedAt"])
+    .index("by_project_client", ["projectId", "clientId"]),
+
+  /** Background NovaStudio AI agent runs (Inngest worker). */
+  projectAiAgentRuns: defineTable({
+    projectId: v.id("projects"),
+    sessionClientId: v.optional(v.string()),
+    jobToken: v.string(),
+    status: v.union(
+      v.literal("queued"),
+      v.literal("running"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("cancelled"),
+    ),
+    prompt: v.string(),
+    title: v.string(),
+    mode: v.union(v.literal("plan"), v.literal("task")),
+    model: v.string(),
+    backend: v.optional(
+      v.union(
+        v.literal("novastudio"),
+        v.literal("cursor-cli"),
+        v.literal("openclaw"),
+        v.literal("cursor-cloud"),
+      ),
+    ),
+    workspaceSnapshot: v.any(),
+    inputMessages: v.any(),
+    outputText: v.optional(v.string()),
+    pendingWrites: v.optional(
+      v.array(
+        v.object({
+          path: v.string(),
+          content: v.string(),
+        }),
+      ),
+    ),
+    error: v.optional(v.string()),
+    createdByUserId: v.string(),
+    createdByName: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_project_updated", ["projectId", "updatedAt"])
+    .index("by_project_status", ["projectId", "status"]),
 
   contactMessages: defineTable({
     name: v.string(),

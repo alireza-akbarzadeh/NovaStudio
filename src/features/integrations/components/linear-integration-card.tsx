@@ -1,11 +1,10 @@
 "use client";
 
 import { KanbanSquareIcon, Loader2Icon } from "lucide-react";
-import { useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ConnectLinearDialog } from "@/features/integrations/components/connect-linear-dialog";
+import { LinearConnectionStatus } from "@/features/integrations/components/linear-connection-status";
 import { useLinearConnection } from "@/features/integrations/hooks/use-linear-connection";
 import type { IntegrationMeta } from "@/features/integrations/lib/integrations-catalog";
 import { cn } from "@/lib/utils";
@@ -21,16 +20,12 @@ export function LinearIntegrationCard({
     connection,
     isConnected,
     isLoading,
-    isConnecting,
     isDisconnecting,
-    connect,
     disconnect,
   } = useLinearConnection();
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
-    <>
-      <article className="group flex flex-col overflow-hidden rounded-[22px] border border-border/60 bg-card/80 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-30px_rgba(76,29,149,0.55)]">
+    <article className="group flex flex-col overflow-hidden rounded-[22px] border border-border/60 bg-card/80 shadow-[0_16px_48px_-32px_rgba(76,29,149,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_60px_-30px_rgba(76,29,149,0.55)]">
         <div
           className={cn("relative h-28 bg-gradient-to-br", integration.accent)}
         >
@@ -82,7 +77,7 @@ export function LinearIntegrationCard({
             </p>
           ) : null}
 
-          <div className="mt-auto flex gap-2 pt-2">
+          <div className="mt-auto space-y-3 pt-2">
             {isConnected ? (
               <Button
                 variant="outline"
@@ -93,24 +88,10 @@ export function LinearIntegrationCard({
                 {isDisconnecting ? "Disconnecting…" : "Disconnect"}
               </Button>
             ) : (
-              <Button
-                className="w-full rounded-xl"
-                disabled={isConnecting}
-                onClick={() => setDialogOpen(true)}
-              >
-                Connect {integration.name}
-              </Button>
+              <LinearConnectionStatus />
             )}
           </div>
         </div>
       </article>
-
-      <ConnectLinearDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        onConnect={connect}
-        isConnecting={isConnecting}
-      />
-    </>
   );
 }

@@ -13,6 +13,8 @@ export type AiChatSession = {
   subtitle?: string;
   mode?: AiChatMode;
   messages: UIMessage[];
+  createdByUserId?: string;
+  createdByName?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -23,9 +25,25 @@ export type AiChatSessionGroup = {
 };
 
 const STORAGE_PREFIX = "polaris-ai-sessions:";
+const MIGRATED_PREFIX = "polaris-ai-sessions-migrated:";
 
 function storageKey(projectId: string) {
   return `${STORAGE_PREFIX}${projectId}`;
+}
+
+function migratedKey(projectId: string) {
+  return `${MIGRATED_PREFIX}${projectId}`;
+}
+
+export function hasMigratedAiChatSessions(projectId: string) {
+  if (typeof window === "undefined") return true;
+  return localStorage.getItem(migratedKey(projectId)) === "1";
+}
+
+export function markAiChatSessionsMigrated(projectId: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(migratedKey(projectId), "1");
+  localStorage.removeItem(storageKey(projectId));
 }
 
 export function loadAiChatSessions(projectId: string): AiChatSession[] {

@@ -332,7 +332,13 @@
   @apply rounded-full bg-border border border-transparent border-solid bg-clip-padding;
 }
 
-/* Streamdown code blocks: light readable island inside dark workspace */
+/* Streamdown code blocks: light readable island inside dark workspace (not project docs) */
+.project-doc-markdown [data-streamdown="code-block-actions"],
+.project-doc-markdown [data-streamdown="code-block-copy-button"],
+.project-doc-markdown [data-streamdown="code-block-download-button"] {
+  pointer-events: auto;
+}
+
 [data-streamdown="code-block-actions"],
 [data-streamdown="code-block-copy-button"],
 [data-streamdown="code-block-download-button"],

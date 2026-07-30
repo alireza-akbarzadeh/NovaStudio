@@ -211,3 +211,16 @@ export function useUserJsonTabShortcut(projectId: string) {
     openTab({ kind: "user-json" });
   }, [request, openTab]);
 }
+
+/** Handles ⌘⇧C → open Customize editor tab. */
+export function useCustomizeTabShortcut(projectId: string) {
+  const request = useWorkspaceStore((s) => s.customizeRequest);
+  const { openTab } = useEditorTabs(projectId);
+  const lastHandled = useRef(0);
+
+  useEffect(() => {
+    if (request === 0 || request === lastHandled.current) return;
+    lastHandled.current = request;
+    openTab({ kind: "customize" });
+  }, [request, openTab]);
+}

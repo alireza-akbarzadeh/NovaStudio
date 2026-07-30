@@ -484,6 +484,8 @@ export const listWorkspaceProjects = query({
         owner,
         tags: techForProject(project).slice(0, 3),
         trending: project.visibility === "public",
+        featured: Boolean(project.communityFeaturedAt),
+        featuredAt: project.communityFeaturedAt,
         weeklyStars: undefined,
         stars: undefined,
         forks: undefined,
@@ -496,6 +498,7 @@ export const listWorkspaceProjects = query({
         source: project.source,
         githubRepoUrl: project.githubRepoUrl,
         githubBranch: project.githubBranch,
+        isOwner: project.role === "owner",
       });
     }
 
@@ -506,7 +509,8 @@ export const listWorkspaceProjects = query({
 export const listPublicProjects = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    await verifyAuth(ctx);
+    const identity = await verifyAuth(ctx);
+    const userId = identity.subject;
     const limit = args.limit ?? 24;
     const projects = await ctx.db
       .query("projects")
@@ -514,13 +518,50 @@ export const listPublicProjects = query({
       .order("desc")
       .take(limit);
 
-    return projects.map((project) => {
+    const myMemberships = await ctx.db
+      .query("projectMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const memberProjectIds = new Set(myMemberships.map((row) => row.projectId));
+
+    const myRequests = await ctx.db
+      .query("projectAccessRequests")
+      .withIndex("by_requester", (q) => q.eq("requesterUserId", userId))
+      .collect();
+    const requestByProject = new Map<
+      (typeof myRequests)[number]["projectId"],
+      (typeof myRequests)[number]
+    >();
+    for (const request of myRequests.sort((a, b) => b.createdAt - a.createdAt)) {
+      if (!requestByProject.has(request.projectId)) {
+        requestByProject.set(request.projectId, request);
+      }
+    }
+
+    const result = [];
+    for (const project of projects) {
+      const allMembers = await ctx.db
+        .query("projectMembers")
+        .withIndex("by_project", (q) => q.eq("projectId", project._id))
+        .collect();
+      const members = allMembers.slice(0, 5);
+      const memberCount = allMembers.length;
+      const ownerMember =
+        members.find((member) => member.role === "owner") ??
+        members.find((member) => member.userId === project.ownerId);
+      const ownerName =
+        ownerMember?.name ?? ownerMember?.email ?? "Creator";
       const owner = {
-        name: "Creator",
-        initials: "CR",
-        color: colorForUserId(project.ownerId),
+        name: ownerName,
+        initials: initialsFrom(ownerName),
+        color: ownerMember?.color ?? colorForUserId(project.ownerId),
       };
-      return {
+
+      const isOwner = project.ownerId === userId;
+      const isMember = isOwner || memberProjectIds.has(project._id);
+      const accessRequest = requestByProject.get(project._id);
+
+      result.push({
         id: project._id,
         name: project.name,
         description:
@@ -532,6 +573,7 @@ export const listPublicProjects = query({
         visibility: "public" as const,
         pinned: false,
         progress: project.progress ?? 60,
+        updatedAt: project.updatedAt,
         lastUpdated: `Updated ${formatRelativeTime(project.updatedAt)}`,
         lastOpened: `Opened ${formatRelativeTime(project.updatedAt)}`,
         lastEditedBy: owner.name,
@@ -539,13 +581,22 @@ export const listPublicProjects = query({
         owner,
         tags: techForProject(project).slice(0, 3),
         trending: true,
+        featured: Boolean(project.communityFeaturedAt),
+        featuredAt: project.communityFeaturedAt,
         weeklyStars: undefined,
-        stars: undefined,
-        forks: undefined,
-        views: undefined,
-        downloads: undefined,
-      };
-    });
+        stars: project.starCount ?? 0,
+        forks: Math.max(project.forkCount ?? 0, Math.max(0, memberCount - 1)),
+        views: project.viewCount ?? 0,
+        downloads: project.downloadCount ?? 0,
+        isOwner,
+        isMember,
+        accessRequestStatus: isMember
+          ? undefined
+          : accessRequest?.status,
+      });
+    }
+
+    return result;
   },
 });
 

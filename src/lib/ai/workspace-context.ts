@@ -5,6 +5,11 @@ import {
   type AiChatMode,
 } from "@/lib/ai/chat-mode";
 
+import {
+  formatAiCustomizePrompt,
+  type AiCustomizeContext,
+} from "@/features/customize/lib/customize-user-items";
+
 export const WORKSPACE_CONTEXT_LIMITS = {
   maxFilePaths: 200,
   maxOpenTabs: 12,
@@ -18,6 +23,7 @@ export type WorkspaceChatContext = {
   openFiles?: string[];
   fileTree?: string[];
   changedFiles?: string[];
+  customize?: AiCustomizeContext;
 };
 
 export function truncateForContext(
@@ -75,6 +81,9 @@ export function buildWorkspaceSystemPrompt(
     context.activeFileContent,
     WORKSPACE_CONTEXT_LIMITS.maxActiveContentChars,
   );
+  const customizeSections = context.customize
+    ? formatAiCustomizePrompt(context.customize)
+    : [];
 
   const sections = [
     context.projectName ? `Project: ${context.projectName}` : null,
@@ -95,6 +104,7 @@ export function buildWorkspaceSystemPrompt(
     context.activeFilePath && activeContent != null
       ? `Active file contents (${context.activeFilePath}):\n\`\`\`\n${activeContent}\n\`\`\``
       : null,
+    ...customizeSections,
   ].filter(Boolean);
 
   return [

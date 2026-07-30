@@ -30,10 +30,16 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     shortcut: "mod+t",
   },
   {
+    id: "openSemanticSearch",
+    label: "Semantic Codebase Search",
+    keywords: "natural language ai search codebase where how understand find",
+    shortcut: "mod+alt+s",
+  },
+  {
     id: "findInFiles",
-    label: "Find in Files",
-    keywords: "search text workspace",
-    shortcut: "mod+shift+f",
+    label: "Find in Files (sidebar)",
+    keywords: "search text workspace panel",
+    shortcut: "mod+alt+f",
   },
   {
     id: "formatDocument",
@@ -73,7 +79,7 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     id: "showSearch",
     label: "Show Search",
     keywords: "find search panel",
-    shortcut: "mod+shift+f",
+    shortcut: "mod+alt+f",
     hidden: true,
   },
   {
@@ -111,6 +117,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Show Extensions",
     keywords: "marketplace themes languages vue plugins install",
     shortcut: "mod+shift+x",
+  },
+  {
+    id: "showCustomize",
+    label: "Open Customize",
+    keywords: "plugins marketplace mcps skills rules extensions customize",
   },
   {
     id: "showActivity",
@@ -216,7 +227,7 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     id: "toggleCommentsPanel",
     label: "Toggle Live Comments",
     keywords: "line comments figma threads review annotate",
-    shortcut: "mod+shift+u",
+    shortcut: "mod+alt+u",
   },
   {
     id: "toggleDeployPanel",
@@ -253,6 +264,11 @@ export const PALETTE_COMMANDS: PaletteCommandMeta[] = [
     label: "Open User JSON",
     keywords: "settings.json monaco",
     shortcut: "mod+shift+j",
+  },
+  {
+    id: "openCustomize",
+    label: "Open Customize",
+    keywords: "plugins marketplace mcps skills rules extensions customize",
   },
   {
     id: "openCloneFromGitHub",

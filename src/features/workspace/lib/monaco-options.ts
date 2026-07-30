@@ -51,7 +51,7 @@ export function buildMonacoOptions(
       highlightActiveIndentation: true,
     },
     minimap: {
-      enabled: overrides.minimapEnabled ?? true,
+      enabled: overrides.minimapEnabled ?? false,
       maxColumn: 80,
       renderCharacters: false,
       showSlider: "mouseover",

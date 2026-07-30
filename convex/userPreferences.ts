@@ -25,6 +25,18 @@ export const editorSettingsValidator = v.object({
 
 const SETTINGS_JSON_MAX_CHARS = 32_000;
 
+const agentBackendValidator = v.union(
+  v.literal("novastudio"),
+  v.literal("cursor-cli"),
+  v.literal("openclaw"),
+  v.literal("cursor-cloud"),
+);
+
+const agentBackendConfigValidator = v.object({
+  openclawGatewayUrl: v.optional(v.string()),
+  openclawAgentId: v.optional(v.string()),
+});
+
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -159,6 +171,46 @@ export const upsertSettingsJson = mutation({
       panelSizes: { sidebar: 18, terminal: 28, ai: 28 },
       settingsJson: args.settingsJson,
       ...(args.editor ? { editor: args.editor } : {}),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const upsertAgentBackend = mutation({
+  args: {
+    agentBackend: agentBackendValidator,
+    agentBackendConfig: v.optional(agentBackendConfigValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await verifyAuth(ctx);
+    const existing = await ctx.db
+      .query("userPreferences")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .unique();
+
+    const patch = {
+      agentBackend: args.agentBackend,
+      ...(args.agentBackendConfig !== undefined
+        ? { agentBackendConfig: args.agentBackendConfig }
+        : {}),
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, patch);
+      return existing._id;
+    }
+
+    return await ctx.db.insert("userPreferences", {
+      userId: identity.subject,
+      sidebarOpen: true,
+      terminalOpen: false,
+      aiPanelOpen: true,
+      panelSizes: { sidebar: 18, terminal: 28, ai: 28 },
+      agentBackend: args.agentBackend,
+      ...(args.agentBackendConfig !== undefined
+        ? { agentBackendConfig: args.agentBackendConfig }
+        : {}),
       updatedAt: Date.now(),
     });
   },

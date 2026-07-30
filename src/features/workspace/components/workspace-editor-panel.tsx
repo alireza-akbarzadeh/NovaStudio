@@ -66,6 +66,9 @@ import { ActivityDiffView } from "@/features/workspace/views/activity-diff-view"
 import { FileEditorView } from "@/features/workspace/views/file-editor-view";
 import { ProjectWorkspaceHome } from "@/features/workspace/views/project-workspace-home";
 import { WorkspaceSettingsView } from "@/features/workspace/views/workspace-settings-view";
+import { CustomizeIcon } from "@/features/customize/components/customize-icon";
+import { WorkspaceCustomizeView } from "@/features/customize/views/workspace-customize-view";
+import { WorkspaceCustomizePluginView } from "@/features/customize/views/workspace-customize-plugin-view";
 import { PullRequestView } from "@/features/workspace/views/pull-request-view";
 import { MergeConflictView } from "@/features/workspace/views/merge-conflict-view";
 import { WorkspaceUserJsonView } from "@/features/workspace/views/workspace-user-json-view";
@@ -83,6 +86,8 @@ function TabIcon({ tab }: { tab: EditorTab }) {
       return <KeyboardIcon className="size-3 shrink-0 opacity-70" />;
     case "user-json":
       return <FileJsonIcon className="size-3 shrink-0 opacity-70" />;
+    case "customize":
+      return <CustomizeIcon className="size-3 shrink-0 opacity-70" strokeWidth={1.75} />;
     case "new-project":
       return <FolderPlusIcon className="size-3 shrink-0 opacity-70" />;
     case "diff":
@@ -533,6 +538,15 @@ function SplitPaneContent({
       return <WorkspaceSettingsView projectId={projectId} />;
     case "user-json":
       return <WorkspaceUserJsonView />;
+    case "customize":
+      return tab.pluginId ? (
+        <WorkspaceCustomizePluginView
+          projectId={projectId}
+          pluginId={tab.pluginId}
+        />
+      ) : (
+        <WorkspaceCustomizeView projectId={projectId} />
+      );
     case "shortcuts":
       return (
         <div className="h-full overflow-auto px-6 py-8">

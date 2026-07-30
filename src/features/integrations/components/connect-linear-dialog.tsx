@@ -1,19 +1,13 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
-import { useState } from "react";
-
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { LinearConnectForm } from "@/features/integrations/components/linear-connect-form";
 
 type ConnectLinearDialogProps = {
   open: boolean;
@@ -28,17 +22,17 @@ export function ConnectLinearDialog({
   onConnect,
   isConnecting,
 }: ConnectLinearDialogProps) {
-  const [apiKey, setApiKey] = useState("");
-
-  const submit = async () => {
+  const handleConnect = async (apiKey: string) => {
     await onConnect(apiKey);
-    setApiKey("");
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="sm:max-w-md"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Connect Linear</DialogTitle>
           <DialogDescription>
@@ -47,52 +41,13 @@ export function ConnectLinearDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-1">
-          <div className="space-y-2">
-            <Label htmlFor="linear-api-key">Personal API key</Label>
-            <Input
-              id="linear-api-key"
-              type="password"
-              autoComplete="off"
-              placeholder="lin_api_…"
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-            />
-            <a
-              href="https://linear.app/settings/account/security"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[12px] text-primary underline-offset-2 hover:underline"
-            >
-              Create an API key in Linear →
-            </a>
-          </div>
+        <div className="py-1">
+          <LinearConnectForm
+            onConnect={handleConnect}
+            isConnecting={isConnecting}
+            autoFocus={open}
+          />
         </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isConnecting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={!apiKey.trim() || isConnecting}
-            onClick={() => void submit()}
-          >
-            {isConnecting ? (
-              <>
-                <Loader2Icon className="size-4 animate-spin" />
-                Connecting…
-              </>
-            ) : (
-              "Connect"
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

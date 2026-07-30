@@ -30,6 +30,9 @@ export type WorkspaceProject = {
   /** Access role for the signed-in user on this project. */
   role?: "owner" | "editor" | "viewer";
   trending?: boolean;
+  /** Highlighted at the top of the community hub. */
+  featured?: boolean;
+  featuredAt?: number;
   weeklyStars?: number;
   /** GitHub clone lifecycle — present while importing / after failure. */
   importStatus?: "importing" | "completed" | "failed";
@@ -39,6 +42,14 @@ export type WorkspaceProject = {
   source?: "blank" | "github" | "template";
   githubRepoUrl?: string;
   githubBranch?: string;
+  /** True when the signed-in user owns this project. */
+  isOwner?: boolean;
+  /** True when the signed-in user is already a collaborator. */
+  isMember?: boolean;
+  /** Latest access-request status for public projects (non-members). */
+  accessRequestStatus?: "pending" | "approved" | "denied";
+  /** Raw updated timestamp for hub sorting. */
+  updatedAt?: number;
 };
 
 export type WorkspaceStat = {
@@ -68,7 +79,8 @@ export type WorkspaceActivity = {
     | "merged"
     | "comment"
     | "released"
-    | "joined";
+    | "joined"
+    | "sponsored";
   title: string;
   detail: string;
   time: string;

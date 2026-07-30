@@ -133,3 +133,7 @@ export function useDecideAccessRequest() {
 export function useCreateAccessRequest() {
   return useMutation(api.workspaceActions.createAccessRequest);
 }
+
+export function useUpdateProjectMeta() {
+  return useMutation(api.projects.updateProjectMeta);
+}

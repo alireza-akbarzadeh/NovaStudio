@@ -30,7 +30,7 @@ export function TrendingProjectCard({
       )}
     >
       <Link
-        href={`/projects/${project.id}`}
+        href={`/projects/community/${project.id}`}
         className="flex w-full items-center gap-3"
       >
         <div
