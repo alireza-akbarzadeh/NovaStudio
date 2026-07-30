@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "command": "${userHome}/.local/bin/graphify-mcp",
+      "args": ["${workspaceFolder}/graphify-out/graph.json"]
+    }
+  }
+}

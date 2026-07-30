@@ -18,7 +18,12 @@
     "inngest:dev": "npx --ignore-scripts=false inngest-cli@latest dev -u http://localhost:3000/api/inngest",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "graphify:open": "open graphify-out/graph.html",
+    "graphify:report": "open graphify-out/GRAPH_REPORT.md",
+    "graphify:update": "$HOME/.local/bin/graphify update .",
+    "graphify:query": "$HOME/.local/bin/graphify query",
+    "graphify:mcp": "$HOME/.local/bin/graphify-mcp graphify-out/graph.json"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.1",
